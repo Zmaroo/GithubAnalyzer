@@ -1,5 +1,8 @@
 import os
 from dotenv import load_dotenv
+from ..core.utils import setup_logger
+
+logger = setup_logger(__name__)
 
 # Load environment variables
 load_dotenv()

@@ -1,12 +1,11 @@
 import os
 from typing import Dict, Any, Optional, List
 from tree_sitter import Language, Parser, Node
-import logging
 from ..config.config import LANGUAGE_MAP
 from .models import TreeSitterNode
+from .utils import setup_logger
 
-# Set up logging
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 def convert_node(node: Node) -> TreeSitterNode:
     """Convert a tree-sitter Node to our TreeSitterNode dataclass"""

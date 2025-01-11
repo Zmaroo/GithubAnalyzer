@@ -5,7 +5,9 @@ from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.util import ClassNotFound
 import chardet  # For detecting file encoding
 import sys
+from .utils import setup_logger
 
+logger = setup_logger(__name__)
 
 def discover_files(repo_path):
     files = []

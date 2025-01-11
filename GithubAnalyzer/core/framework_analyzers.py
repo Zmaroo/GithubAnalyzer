@@ -1,16 +1,35 @@
 from typing import Dict, Any, List
 import ast
+from .code_parser import CodeParser
+from .utils import setup_logger
+
+logger = setup_logger(__name__)
 
 class PydanticAnalyzer:
     def __init__(self):
         self.models = []
         self.validators = []
         self.configs = []
+        self.code_parser = CodeParser()
 
     def analyze_file(self, file_path: str) -> Dict[str, Any]:
-        with open(file_path) as f:
-            tree = ast.parse(f.read())
-            return self.analyze_tree(tree)
+        parse_result = self.code_parser.parse_file(file_path)
+        if "error" in parse_result:
+            return {}
+            
+        # Use semantic information from parse_result
+        semantic = parse_result["semantic"]
+        
+        # Extract models, validators, etc.
+        for cls in semantic["classes"]:
+            if self._is_pydantic_model(cls):
+                self.models.append(self._analyze_model(cls))
+                
+        return {
+            'models': self.models,
+            'validators': self.validators,
+            'configs': self.configs
+        }
 
     def analyze_tree(self, tree: ast.AST) -> Dict[str, Any]:
         results = {

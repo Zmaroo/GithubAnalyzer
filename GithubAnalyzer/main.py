@@ -1,55 +1,58 @@
-from git import Repo
-from .core.code_analyzer import CodeAnalyzer
-from .core.database_utils import DatabaseManager
+import click
+from .core.registry import BusinessTools
+from .core.utils import setup_logger
 
-def analyze_repository(repo_url: str, local_path: str = "./temp_repo"):
-    """
-    Analyze a Git repository
-    Args:
-        repo_url: URL of the repository to analyze
-        local_path: Local path to clone the repository to
-    """
-    try:
-        # Clone repository
-        print(f"Cloning {repo_url} to {local_path}")
-        repo = Repo.clone_from(repo_url, local_path)
-        
-        # Initialize analyzer and database
-        analyzer = CodeAnalyzer()
-        db_manager = DatabaseManager()
-        
-        # Set current repository in database
-        db_manager.set_current_repository(repo_url)
-        
-        # Analyze repository
-        print("Starting repository analysis...")
-        analyzer.analyze_repository(local_path)
-        
-        print("Analysis complete!")
-        return True
-        
-    except Exception as e:
-        print(f"Error analyzing repository: {e}")
-        return False
-    finally:
-        # Cleanup
-        if 'repo' in locals():
-            repo.close()
+logger = setup_logger(__name__)
+
+@click.group()
+def cli():
+    """GitHub Code Analysis Tool CLI"""
+    pass
+
+@cli.command()
+@click.argument('repo_url')
+def analyze(repo_url):
+    """Analyze a GitHub repository"""
+    tools = BusinessTools.create()
+    result = tools.repo_manager.analyze_repo(repo_url)
+    click.echo(f"Analysis complete: {result['name']}")
+
+@cli.command()
+@click.argument('question')
+def query(question):
+    """Query the analyzed repository"""
+    tools = BusinessTools.create()
+    response = tools.query_processor.query_repository(question)
+    click.echo(f"Answer: {response.response}")
+    if response.confidence < 0.5:
+        click.echo("(Note: Low confidence response)")
+
+@cli.command()
+def status():
+    """Show repository status"""
+    tools = BusinessTools.create()
+    repos = tools.db_manager.get_active_repositories()
+    if repos:
+        click.echo("\nAnalyzed repositories:")
+        for repo in repos:
+            click.echo(f"  - {repo['name']} (Last analyzed: {repo['last_analyzed']})")
+    else:
+        click.echo("No repositories analyzed yet")
+
+@cli.command()
+def clear():
+    """Clear all stored data"""
+    tools = BusinessTools.create()
+    tools.db_manager.clear_all_data()
+    click.echo("All data cleared")
 
 def main():
-    """Main entry point"""
     try:
-        # Example repository to analyze
-        repo_url = "https://github.com/example/repo.git"
-        success = analyze_repository(repo_url)
-        
-        if success:
-            print("Repository analysis completed successfully")
-        else:
-            print("Repository analysis failed")
-            
+        cli()
     except Exception as e:
-        print(f"Error in main: {e}")
+        logger.error(f"Error: {e}")
+        return 1
+    return 0
 
-if __name__ == "__main__":
-    main() 
+if __name__ == '__main__':
+    exit(main()) 

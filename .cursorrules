@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This tool enables AI agents to deeply understand GitHub repositories by:
+These tools enables any AI agents/models to deeply understand GitHub repositories by:
 - Analyzing code structure and patterns
 - Processing documentation and comments
 - Detecting frameworks and dependencies
