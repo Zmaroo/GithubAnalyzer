@@ -1,0 +1,98 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+.env
+.venv
+YtSpace/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Project specific
+temp/
+.pytest_cache/
+*.log
+logs/
+data/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+neo4j/data/
+redis/data/
+
+# Cache
+.cache/
+.redis/
+__redis_cache__/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# Documentation
+docs/_build/
+docs/generated/
+
+# Test coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*.ipynb
+
+# Local development
+local_settings.py
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Secrets and Configuration
+.env*
+.env.local
+.env.*.local
+config.local.py
+secrets.yml
+*.pem
+*.key
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
