@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=64.0.0", "wheel>=0.37.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "GithubAnalyzer"
+version = "0.1.0"
+description = "AI-powered GitHub repository analyzer"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+dependencies = [
+    "psycopg2-binary>=2.9.10",
+    "neo4j>=5.27.0",
+    "python-dotenv>=1.0.1",
+    "sentence-transformers>=3.3.1",
+    "tree-sitter>=0.23.2",
+    "rich>=13.9.4",
+    "click>=8.1.8",
+    "networkx>=3.4.2",
+    "matplotlib>=3.10.0",
+    "numpy>=2.2.1",
+    "PyYAML>=6.0.2",
+    "jenkinsapi>=0.3.13",
+    "jproperties>=2.1.2",
+    "javaproperties>=0.8.2",
+    "torch>=2.5.1",
+    "transformers>=4.47.1",
+    "scikit-learn>=1.6.0",
+    "redis>=5.2.1",
+    "GitPython>=3.1.43",
+    "openai>=1.58.1",
+    "aiohttp>=3.11.11",
+    "prompt_toolkit>=3.0.48",
+    "tree-sitter-python>=0.23.6",
+    "psutil>=5.9.0",
+]
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-xdist>=3.0.0",
+    "pytest-mock>=3.10.0",
+    "pytest-timeout>=2.1.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-randomly>=3.12.0",
+    "coverage>=7.2.0",
+    "toml>=0.10.2",
+    "psutil>=5.9.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = {find = {where = ["src"], exclude = ["tests*"]}}
+
+[tool.setuptools.package-data]
+GithubAnalyzer = ["py.typed"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "performance: marks tests as performance tests",
+    "security: marks tests as security tests",
+]
+asyncio_mode = "strict" 

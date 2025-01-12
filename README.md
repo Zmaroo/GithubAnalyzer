@@ -1,7 +1,3 @@
-# GitHub Code Analysis Tool
+# GithubAnalyzer
 
-## Documentation
-
-- [Tools and Dependencies](docs/tools.md)
-- [Database Schema](docs/schema.md)
-- [Development Setup](docs/setup.md)
+AI-powered GitHub repository analyzer
