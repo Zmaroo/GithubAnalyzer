@@ -1,9 +1,9 @@
 """Data models for the analyzer"""
-from .repository import RepositoryInfo, RepositoryState
-from .module import ModuleInfo
-from .analysis import AnalysisResult
-from .graph import GraphNode, GraphEdge
-from .database import DatabaseConfig
+from GithubAnalyzer.core.models.repository import RepositoryInfo, RepositoryState
+from GithubAnalyzer.core.models.module import ModuleInfo
+from GithubAnalyzer.core.models.analysis import AnalysisResult
+from GithubAnalyzer.core.models.graph import GraphNode, GraphEdge
+from GithubAnalyzer.core.models.database import DatabaseConfig
 
 __all__ = [
     'RepositoryInfo',
