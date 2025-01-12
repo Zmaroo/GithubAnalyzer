@@ -74,3 +74,56 @@ LANGUAGE_MAP = {
     '.bash': 'bash',
     '.env': 'bash'
 }
+
+FILE_TYPE_MAPPINGS = {
+    # Config files
+    '.json': 'config',
+    '.yaml': 'config',
+    '.yml': 'config',
+    '.toml': 'config',
+    '.ini': 'config',
+    'pyproject.toml': 'config',
+    'setup.cfg': 'config',
+    'package.json': 'config',
+    'requirements.txt': 'config',
+    'Pipfile': 'config',
+    'poetry.lock': 'config',
+    
+    # Documentation files
+    '.md': 'documentation',
+    '.rst': 'documentation',
+    '.txt': 'documentation',
+    'README': 'documentation',
+    'CHANGELOG': 'documentation',
+    'CONTRIBUTING': 'documentation',
+    'AUTHORS': 'documentation',
+    'HISTORY': 'documentation',
+    
+    # License files
+    'LICENSE': 'license',
+    'COPYING': 'license',
+    'LICENSE.md': 'license',
+    'LICENSE.txt': 'license',
+    
+    # Test files
+    'test_*.py': 'test',
+    '*_test.py': 'test',
+    'conftest.py': 'test',
+    'pytest.ini': 'test',
+    
+    # Build files
+    'setup.py': 'build',
+    'Makefile': 'build',
+    'CMakeLists.txt': 'build',
+    
+    # CI/CD files
+    '.github/workflows/*.yml': 'ci',
+    '.gitlab-ci.yml': 'ci',
+    '.travis.yml': 'ci',
+    'Jenkinsfile': 'ci',
+    
+    # Docker files
+    'Dockerfile': 'docker',
+    'docker-compose.yml': 'docker',
+    '.dockerignore': 'docker'
+}

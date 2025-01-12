@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional
 from pathlib import Path
+from ...config.config import FILE_TYPE_MAPPINGS
 from .base_service import BaseService
 from ..parsers.tree_sitter import TreeSitterParser
 from ..parsers.custom import (
@@ -24,29 +25,9 @@ class ParserService(BaseService):
             'license': LicenseParser()
         }
         
-        # File type mappings
-        self.file_type_map = {
-            # Config files
-            '.json': 'config',
-            '.yaml': 'config',
-            '.yml': 'config',
-            '.toml': 'config',
-            '.ini': 'config',
-            'pyproject.toml': 'config',
-            'setup.cfg': 'config',
-            
-            # Documentation files
-            '.md': 'documentation',
-            '.rst': 'documentation',
-            '.txt': 'documentation',
-            'README': 'documentation',
-            'CHANGELOG': 'documentation',
-            
-            # License files
-            'LICENSE': 'license',
-            'COPYING': 'license'
-        }
-    
+        # Use mappings from config
+        self.file_type_map = FILE_TYPE_MAPPINGS
+
     def parse_file(self, file_path: str, content: str) -> ParseResult:
         """Parse file using most appropriate parser"""
         try:
@@ -93,9 +74,10 @@ class ParserService(BaseService):
         if path.suffix in self.file_type_map:
             return self.file_type_map[path.suffix]
             
-        # Special cases for documentation
-        if path.name.upper() in ['README', 'CHANGELOG', 'CONTRIBUTING']:
-            return 'documentation'
+        # Check pattern matches (e.g., test_*.py)
+        for pattern, parser_type in self.file_type_map.items():
+            if '*' in pattern and path.match(pattern):
+                return parser_type
             
         return None
 
