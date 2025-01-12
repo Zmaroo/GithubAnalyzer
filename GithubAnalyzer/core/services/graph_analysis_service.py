@@ -359,4 +359,87 @@ class GraphAnalysisService(BaseService):
             }
         except Exception as e:
             logger.error(f"Error generating refactoring suggestions: {e}")
+            return {}
+
+    def analyze_ast_patterns(self) -> Dict[str, Any]:
+        """Analyze AST patterns using graph algorithms"""
+        try:
+            # Project AST structure to graph
+            ast_projection_query = """
+            CALL gds.graph.project.cypher(
+                'ast_graph',
+                'MATCH (n:ASTNode) RETURN id(n) AS id, labels(n) AS labels, n.type AS type',
+                'MATCH (n:ASTNode)-[r:CHILD|NEXT]->(m:ASTNode) RETURN id(n) AS source, id(m) AS target, type(r) AS type'
+            )
+            """
+            
+            # Find common AST subtree patterns
+            pattern_query = """
+            CALL gds.beta.graphSage.stream('ast_graph', {
+                featureProperties: ['type'],
+                embeddingDimension: 64,
+                relationshipWeightProperty: null,
+                projectedFeatureDimension: 32
+            })
+            YIELD nodeId, embedding
+            WITH gds.util.asNode(nodeId) AS node, embedding
+            WHERE node.type IN ['FunctionDef', 'ClassDef', 'Call', 'Assign']
+            RETURN node.type AS pattern_type,
+                   node.name AS name,
+                   embedding
+            """
+            
+            # Analyze AST complexity patterns
+            complexity_query = """
+            MATCH (n:ASTNode)
+            WHERE n.type = 'FunctionDef'
+            WITH n, size((n)-[:CHILD*]->()) as ast_size,
+                 size((n)-[:CHILD*]->(:If|:For|:While)) as control_flow_count
+            RETURN n.name AS function_name,
+                   ast_size AS complexity,
+                   control_flow_count AS control_structures,
+                   (1.0 * control_flow_count / ast_size) AS complexity_density
+            ORDER BY complexity DESC
+            LIMIT 20
+            """
+            
+            return {
+                'ast_patterns': self.registry.database_service.execute_graph_query(
+                    pattern_query,
+                    {"graph_name": self.graph_name}
+                ),
+                'complexity_analysis': self.registry.database_service.execute_graph_query(
+                    complexity_query,
+                    {"graph_name": self.graph_name}
+                )
+            }
+        except Exception as e:
+            logger.error(f"Error analyzing AST patterns: {e}")
+            return {}
+
+    def correlate_ast_metrics(self) -> Dict[str, Any]:
+        """Correlate AST metrics with graph metrics"""
+        try:
+            correlation_query = """
+            MATCH (n:ASTNode)-[:DEFINES]->(f:Function)
+            WITH f,
+                 size((n)-[:CHILD*]->()) AS ast_complexity,
+                 gds.degree.stream($graph_name, {
+                     nodeLabels: ['Function'],
+                     relationshipTypes: ['CALLS']
+                 }) AS dependency_score
+            RETURN f.name AS function_name,
+                   ast_complexity,
+                   dependency_score,
+                   (ast_complexity * dependency_score) AS combined_complexity
+            ORDER BY combined_complexity DESC
+            LIMIT 15
+            """
+            
+            return self.registry.database_service.execute_graph_query(
+                correlation_query,
+                {"graph_name": self.graph_name}
+            )
+        except Exception as e:
+            logger.error(f"Error correlating AST metrics: {e}")
             return {} 

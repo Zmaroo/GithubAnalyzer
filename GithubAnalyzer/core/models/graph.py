@@ -52,6 +52,32 @@ class CodeEvolutionMetrics:
     cochange_patterns: List[Dict[str, Any]]
     
 @dataclass
+class ASTPattern:
+    """AST pattern information"""
+    pattern_type: str
+    occurrences: int
+    locations: List[Dict[str, Any]]
+    complexity: float
+    embedding: Optional[List[float]] = None
+
+@dataclass
+class ASTMetrics:
+    """AST-based metrics"""
+    ast_size: int
+    max_depth: int
+    avg_branching: float
+    control_flow_density: float
+    cyclomatic_complexity: int
+
+@dataclass
+class CombinedAnalysis:
+    """Combined AST and graph analysis"""
+    ast_patterns: List[ASTPattern]
+    graph_patterns: List[CodePattern]
+    correlated_metrics: Dict[str, float]
+    complexity_hotspots: List[Dict[str, Any]]
+
+@dataclass
 class GraphAnalysisResult:
     """Complete graph analysis results"""
     centrality: CentralityMetrics
@@ -62,6 +88,7 @@ class GraphAnalysisResult:
     dependencies: Optional[DependencyAnalysis] = None
     evolution: Optional[CodeEvolutionMetrics] = None
     refactoring_suggestions: Optional[List[RefactoringSuggestion]] = None
+    ast_analysis: Optional[CombinedAnalysis] = None
     
     def get_key_components(self, limit: int = 10) -> List[str]:
         """Get most important components based on centrality"""
@@ -111,3 +138,31 @@ class GraphAnalysisResult:
             key=lambda x: (x['impact'], -len(x['components'])),
             reverse=True
         ) 
+    
+    def get_complexity_hotspots(self) -> List[str]:
+        """Get components with high combined complexity"""
+        if not self.ast_analysis:
+            return []
+            
+        return [
+            spot['component']
+            for spot in self.ast_analysis.complexity_hotspots
+            if spot['combined_complexity'] > self.get_complexity_threshold()
+        ]
+    
+    def get_complexity_threshold(self) -> float:
+        """Calculate complexity threshold using statistics"""
+        if not self.ast_analysis or not self.ast_analysis.complexity_hotspots:
+            return 0.0
+            
+        complexities = [
+            spot['combined_complexity'] 
+            for spot in self.ast_analysis.complexity_hotspots
+        ]
+        mean = sum(complexities) / len(complexities)
+        std_dev = (
+            sum((x - mean) ** 2 for x in complexities) 
+            / len(complexities)
+        ) ** 0.5
+        
+        return mean + (2 * std_dev)  # Two standard deviations above mean 
