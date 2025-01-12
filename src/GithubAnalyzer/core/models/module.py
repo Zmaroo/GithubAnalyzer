@@ -7,12 +7,12 @@ class FunctionInfo:
     """Information about a function"""
     name: str
     docstring: Optional[str] = None
-    parameters: List[Dict[str, str]] = field(default_factory=list)
-    return_type: Optional[str] = None
+    args: List[str] = field(default_factory=list)
+    returns: Optional[str] = None
     decorators: List[str] = field(default_factory=list)
-    complexity: Optional[int] = None
     start_line: Optional[int] = None
     end_line: Optional[int] = None
+    complexity: Optional[int] = None
 
 @dataclass
 class ClassInfo:
@@ -20,7 +20,7 @@ class ClassInfo:
     name: str
     docstring: Optional[str] = None
     methods: List[FunctionInfo] = field(default_factory=list)
-    base_classes: List[str] = field(default_factory=list)
+    bases: List[str] = field(default_factory=list)
     decorators: List[str] = field(default_factory=list)
     start_line: Optional[int] = None
     end_line: Optional[int] = None
