@@ -1,43 +1,37 @@
-"""Logging configuration"""
+"""Logging configuration for the application"""
 import logging
 import sys
 from pathlib import Path
 from typing import Optional
-from logging.handlers import RotatingFileHandler
 
-def configure_logging(
-    log_level: str = "INFO",
-    log_file: Optional[str] = None,
-    max_size: int = 10 * 1024 * 1024,  # 10MB
-    backup_count: int = 5
-) -> None:
-    """Configure application logging"""
-    # Create logs directory if needed
-    if log_file:
-        log_path = Path(log_file)
-        log_path.parent.mkdir(exist_ok=True)
+def setup_logger(
+    name: str,
+    level: int = logging.INFO,
+    log_file: Optional[Path] = None
+) -> logging.Logger:
+    """Configure and return a logger instance"""
     
-    # Base configuration
-    logging.basicConfig(
-        level=getattr(logging, log_level.upper()),
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(sys.stdout)
-        ]
+    # Create logger
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    
+    # Create formatters
+    detailed_formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    simple_formatter = logging.Formatter(
+        '%(levelname)s - %(message)s'
     )
     
-    # Add file handler if specified
-    if log_file:
-        file_handler = RotatingFileHandler(
-            log_file,
-            maxBytes=max_size,
-            backupCount=backup_count
-        )
-        file_handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        ))
-        logging.getLogger().addHandler(file_handler)
+    # Create console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(simple_formatter)
+    logger.addHandler(console_handler)
     
-    # Set specific levels for noisy libraries
-    logging.getLogger('urllib3').setLevel(logging.WARNING)
-    logging.getLogger('neo4j').setLevel(logging.WARNING) 
+    # Create file handler if log_file specified
+    if log_file:
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(detailed_formatter)
+        logger.addHandler(file_handler)
+    
+    return logger 

@@ -75,3 +75,8 @@ def complex_repo(tmp_path):
     # ... (add more complex file structures)
     
     return repo_dir 
+
+@pytest.fixture
+def common_ops(registry):
+    """Get common operations interface"""
+    return registry.get_common_operations() 

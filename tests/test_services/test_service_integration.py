@@ -165,3 +165,8 @@ def test_error_propagation(registry, tmp_path):
     # Analysis should handle parse failure
     module_info = registry.analyzer_service.analyze_file(str(invalid_file))
     assert module_info is None or not module_info.functions 
+
+@pytest.fixture
+def business_tools(registry):
+    """Get business tools"""
+    return registry.get_business_tools() 

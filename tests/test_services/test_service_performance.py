@@ -2,7 +2,7 @@ import pytest
 import time
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
-from GithubAnalyzer.core.registry import BusinessTools
+from GithubAnalyzer.core.registry import AnalysisToolRegistry
 from GithubAnalyzer.core.models import (
     ModuleInfo,
     AnalysisResult,
@@ -10,11 +10,9 @@ from GithubAnalyzer.core.models import (
 )
 
 @pytest.fixture
-def business_tools():
-    """Create properly initialized business tools"""
-    tools = BusinessTools.create()
-    yield tools
-    tools.database_service.cleanup()
+def common_ops(registry):
+    """Get common operations interface"""
+    return registry.get_common_operations()
 
 @pytest.fixture
 def large_project(tmp_path):
@@ -49,7 +47,7 @@ def helper_function_{j}(data: List[str]) -> Optional[str]:
     
     return project_dir
 
-def test_parallel_analysis(business_tools, large_project):
+def test_parallel_analysis(common_ops, large_project):
     """Test parallel analysis of multiple files"""
     start_time = time.time()
     
@@ -60,7 +58,7 @@ def test_parallel_analysis(business_tools, large_project):
     # Analyze files in parallel
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = [
-            executor.submit(business_tools.analyzer_service.analyze_file, str(f))
+            executor.submit(common_ops.analyze_file, str(f))
             for f in python_files
         ]
         results = [f.result() for f in futures]
@@ -76,24 +74,24 @@ def test_parallel_analysis(business_tools, large_project):
     print(f"\nParallel analysis of 500 files took {duration:.2f} seconds")
     print(f"Average time per file: {(duration/500)*1000:.2f}ms")
 
-def test_cache_performance(business_tools, large_project):
+def test_cache_performance(common_ops, large_project):
     """Test caching performance with large dataset"""
     # First analysis without cache
     start_time = time.time()
-    result1 = business_tools.analyzer_service.analyze_repository(
+    result1 = common_ops.analyze_repository(
         str(large_project)
     )
     first_duration = time.time() - start_time
     
     # Cache the results
-    business_tools.database_service.cache_analysis_result(
+    common_ops.database_service.cache_analysis_result(
         "large_project:analysis",
         result1
     )
     
     # Second analysis with cache
     start_time = time.time()
-    result2 = business_tools.analyzer_service.analyze_repository(
+    result2 = common_ops.analyze_repository(
         str(large_project)
     )
     second_duration = time.time() - start_time
@@ -104,7 +102,7 @@ def test_cache_performance(business_tools, large_project):
     print(f"Cached analysis: {second_duration:.2f}s")
     print(f"Cache speedup: {first_duration/second_duration:.1f}x")
 
-def test_memory_usage(business_tools, large_project):
+def test_memory_usage(common_ops, large_project):
     """Test memory usage during large project analysis"""
     import psutil
     import os
@@ -113,7 +111,7 @@ def test_memory_usage(business_tools, large_project):
     initial_memory = process.memory_info().rss / 1024 / 1024  # MB
     
     # Analyze large project
-    result = business_tools.analyzer_service.analyze_repository(
+    result = common_ops.analyze_repository(
         str(large_project)
     )
     
@@ -126,7 +124,7 @@ def test_memory_usage(business_tools, large_project):
     # Memory usage should be reasonable
     assert memory_increase < 1000  # Less than 1GB increase
 
-def test_database_scaling(business_tools, large_project):
+def test_database_scaling(common_ops, large_project):
     """Test database performance with increasing data"""
     import random
     
@@ -139,11 +137,11 @@ def test_database_scaling(business_tools, large_project):
             progress=random.random(),
             current_operation=f"Operation {i}"
         )
-        business_tools.database_service.store_repository_state(state)
+        common_ops.database_service.store_repository_state(state)
     
     # Bulk retrieve states
     states = [
-        business_tools.database_service.get_repository_state(f"test_url_{i}")
+        common_ops.database_service.get_repository_state(f"test_url_{i}")
         for i in range(100)
     ]
     end_time = time.time()
@@ -153,7 +151,7 @@ def test_database_scaling(business_tools, large_project):
     print(f"Average time per operation: {((end_time-start_time)*1000/100):.2f}ms")
 
 @pytest.mark.slow
-def test_long_running_analysis(business_tools, large_project):
+def test_long_running_analysis(common_ops, large_project):
     """Test stability of long-running analysis"""
     # Simulate long-running analysis with progress updates
     state = RepositoryState(
@@ -164,21 +162,21 @@ def test_long_running_analysis(business_tools, large_project):
     
     for i in range(10):
         state.progress = i / 10
-        business_tools.database_service.store_repository_state(state)
+        common_ops.database_service.store_repository_state(state)
         
         # Analyze a subset of files
         files = list(large_project.rglob("*.py"))[i*50:(i+1)*50]
         for file in files:
-            module_info = business_tools.analyzer_service.analyze_file(str(file))
+            module_info = common_ops.analyze_file(str(file))
             assert module_info is not None
         
         time.sleep(0.1)  # Simulate work
     
     state.status = "completed"
     state.progress = 1.0
-    business_tools.database_service.store_repository_state(state)
+    common_ops.database_service.store_repository_state(state)
     
-    final_state = business_tools.database_service.get_repository_state(
+    final_state = common_ops.database_service.get_repository_state(
         "long_running_test"
     )
     assert final_state.status == "completed"
