@@ -4,6 +4,7 @@ from GithubAnalyzer.core.models.module import ModuleInfo, FunctionInfo, ClassInf
 from GithubAnalyzer.core.models.analysis import AnalysisResult, AnalysisContext
 from GithubAnalyzer.core.models.graph import GraphNode, GraphEdge
 from GithubAnalyzer.core.models.database import DatabaseConfig
+from GithubAnalyzer.core.models.relationships import CodeRelationship, CodeRelationships
 
 __all__ = [
     'RepositoryInfo',
@@ -15,5 +16,7 @@ __all__ = [
     'AnalysisContext',
     'GraphNode',
     'GraphEdge',
-    'DatabaseConfig'
+    'DatabaseConfig',
+    'CodeRelationship',
+    'CodeRelationships'
 ] 
