@@ -1,73 +1,70 @@
+"""Documentation parser for markdown and other documentation files"""
+from typing import List, Dict, Any, Optional
 from pathlib import Path
-from typing import List
 from ..base import BaseParser
 from ...models.base import ParseResult
-from ...models.code import DocumentationInfo
-from ...utils.logging import setup_logger
-
-logger = setup_logger(__name__)
 
 class DocumentationParser(BaseParser):
     """Parser for documentation files"""
     
+    def __init__(self):
+        super().__init__()
+        self.supported_extensions = {'.md', '.rst', '.txt'}
+    
     def can_parse(self, file_path: str) -> bool:
-        """Check if file is a documentation file"""
-        path = Path(file_path)
-        return path.suffix in {'.md', '.rst', '.txt'} or \
-               path.name.upper() in {'README', 'CHANGELOG', 'CONTRIBUTING'}
-
+        """Check if file can be parsed"""
+        return Path(file_path).suffix.lower() in self.supported_extensions
+    
     def parse(self, content: str) -> ParseResult:
         """Parse documentation content"""
         try:
-            path = Path(self.current_file)
-            doc_type = 'markdown' if path.suffix == '.md' else \
-                      'rst' if path.suffix == '.rst' else 'text'
+            if not content.strip():
+                return ParseResult(
+                    success=False,
+                    errors=["Empty content"]
+                )
             
             sections = self._parse_sections(content)
             
             return ParseResult(
-                ast=None,
+                success=True,
                 semantic={
                     'type': 'documentation',
-                    'format': doc_type,
-                    'sections': sections,
-                    'content': content
-                },
-                success=True
+                    'sections': sections
+                }
             )
             
         except Exception as e:
-            logger.error(f"Error parsing documentation {self.current_file}: {e}")
             return ParseResult(
-                ast=None,
-                semantic={},
-                errors=[str(e)],
-                success=False
+                success=False,
+                errors=[f"Documentation parse error: {str(e)}"]
             )
-
+    
     def _parse_sections(self, content: str) -> List[Dict[str, Any]]:
-        """Parse document sections"""
+        """Parse content into sections"""
         sections = []
         current_section = None
         current_content = []
         
-        for line in content.splitlines():
-            if line.startswith('#'):  # Markdown heading
+        for line in content.split('\n'):
+            if line.startswith('#'):
+                # Save previous section if exists
                 if current_section:
                     sections.append({
                         'title': current_section,
-                        'content': '\n'.join(current_content)
+                        'content': '\n'.join(current_content).strip()
                     })
+                # Start new section
                 current_section = line.lstrip('#').strip()
                 current_content = []
             else:
                 current_content.append(line)
-                
+        
         # Add last section
         if current_section:
             sections.append({
                 'title': current_section,
-                'content': '\n'.join(current_content)
+                'content': '\n'.join(current_content).strip()
             })
-            
+        
         return sections 
