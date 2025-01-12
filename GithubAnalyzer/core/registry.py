@@ -1,48 +1,59 @@
 """Registry for analysis tools and services"""
 from typing import Dict, Any, Callable
 from dataclasses import dataclass
-from .services import (
-    ParserService,
-    AnalyzerService,
-    DatabaseService,
-    FrameworkService
-)
-from .utils.logging import setup_logger
+import logging
 
-logger = setup_logger(__name__)
+logger = logging.getLogger(__name__)
 
 @dataclass
 class AnalysisToolRegistry:
     """Central registry for all analysis tools and services"""
-    parser_service: ParserService
-    analyzer_service: AnalyzerService
-    database_service: DatabaseService
-    framework_service: FrameworkService
-
+    
+    def __init__(self):
+        self._services = {}
+        self._initialize_services()
+    
+    def _initialize_services(self) -> None:
+        """Initialize all services"""
+        from .services.parser_service import ParserService
+        from .services.analyzer_service import AnalyzerService
+        from .services.database_service import DatabaseService
+        from .services.framework_service import FrameworkService
+        from .services.graph_analysis_service import GraphAnalysisService
+        
+        self._services = {
+            'parser_service': ParserService(self),
+            'analyzer_service': AnalyzerService(self),
+            'database_service': DatabaseService(self),
+            'framework_service': FrameworkService(self),
+            'graph_analysis_service': GraphAnalysisService(self)
+        }
+    
+    @property
+    def parser_service(self):
+        return self._services['parser_service']
+        
+    @property
+    def analyzer_service(self):
+        return self._services['analyzer_service']
+        
+    @property
+    def database_service(self):
+        return self._services['database_service']
+        
+    @property
+    def framework_service(self):
+        return self._services['framework_service']
+        
+    @property
+    def graph_analysis_service(self):
+        return self._services['graph_analysis_service']
+    
     @classmethod
     def create(cls) -> 'AnalysisToolRegistry':
         """Factory method to create properly initialized tools"""
         try:
-            # Create services in dependency order
-            database_service = DatabaseService()
-            parser_service = ParserService()
-            framework_service = FrameworkService()
-            analyzer_service = AnalyzerService()
-            
-            # Initialize registry
-            registry = cls(
-                parser_service=parser_service,
-                analyzer_service=analyzer_service,
-                database_service=database_service,
-                framework_service=framework_service
-            )
-            
-            # Set registry reference in each service
-            for service in registry.__dict__.values():
-                service.registry = registry
-                
-            return registry
-            
+            return cls()
         except Exception as e:
             logger.error(f"Failed to create tool registry: {e}")
             raise
