@@ -6,7 +6,7 @@ from GithubAnalyzer.core.services import (
     DatabaseService,
     FrameworkService
 )
-from GithubAnalyzer.core.registry import BusinessTools
+from GithubAnalyzer.core.registry import AnalysisToolRegistry
 from GithubAnalyzer.core.models import (
     ModuleInfo,
     AnalysisResult,
@@ -14,12 +14,11 @@ from GithubAnalyzer.core.models import (
 )
 
 @pytest.fixture
-def business_tools():
-    """Create properly initialized business tools"""
-    tools = BusinessTools.create()
-    yield tools
-    # Cleanup
-    tools.database_service.cleanup()
+def registry():
+    """Create properly initialized registry"""
+    registry = AnalysisToolRegistry.create()
+    yield registry
+    registry.database_service.cleanup()
 
 @pytest.fixture
 def sample_django_project(tmp_path):
@@ -52,10 +51,10 @@ class HomeView(View):
     
     return project_dir
 
-def test_full_analysis_flow(business_tools, sample_django_project):
+def test_full_analysis_flow(registry, sample_django_project):
     """Test complete analysis flow through all services"""
     # 1. Analyze repository
-    result = business_tools.analyzer_service.analyze_repository(
+    result = registry.analyzer_service.analyze_repository(
         str(sample_django_project)
     )
     assert isinstance(result, AnalysisResult)
@@ -66,7 +65,7 @@ def test_full_analysis_flow(business_tools, sample_django_project):
     django_files = [m for m in result.modules if 'views' in m.path]
     assert django_files
     
-    framework_results = business_tools.framework_service.detect_frameworks(
+    framework_results = registry.framework_service.detect_frameworks(
         django_files[0]
     )
     assert 'django' in framework_results
@@ -83,15 +82,15 @@ def test_full_analysis_flow(business_tools, sample_django_project):
         }
     )
     
-    success = business_tools.database_service.store_repository_info(repo_info)
+    success = registry.database_service.store_repository_info(repo_info)
     assert success
     
     # 4. Verify storage and cache
-    stored = business_tools.database_service.get_repository_info("test_url")
+    stored = registry.database_service.get_repository_info("test_url")
     assert stored is not None
     assert stored.metadata["frameworks"]["django"] > 0.5
 
-def test_parser_analyzer_integration(business_tools, tmp_path):
+def test_parser_analyzer_integration(registry, tmp_path):
     """Test integration between parser and analyzer"""
     # Create test file
     test_file = tmp_path / "test.py"
@@ -103,7 +102,7 @@ class TestClass:
     
     # Parse file
     with open(test_file) as f:
-        parse_result = business_tools.parser_service.parse_file(
+        parse_result = registry.parser_service.parse_file(
             str(test_file),
             f.read()
         )
@@ -112,12 +111,12 @@ class TestClass:
     assert parse_result.semantic
     
     # Analyze parsed result
-    module_info = business_tools.analyzer_service.analyze_file(str(test_file))
+    module_info = registry.analyzer_service.analyze_file(str(test_file))
     assert isinstance(module_info, ModuleInfo)
     assert len(module_info.classes) == 1
     assert module_info.classes[0].name == "TestClass"
 
-def test_framework_database_integration(business_tools, sample_django_project):
+def test_framework_database_integration(registry, sample_django_project):
     """Test framework detection and storage integration"""
     # Analyze and detect frameworks
     module_info = ModuleInfo(
@@ -130,7 +129,7 @@ def test_framework_database_integration(business_tools, sample_django_project):
         }]
     )
     
-    frameworks = business_tools.framework_service.detect_frameworks(module_info)
+    frameworks = registry.framework_service.detect_frameworks(module_info)
     assert frameworks
     
     # Store framework information
@@ -141,14 +140,14 @@ def test_framework_database_integration(business_tools, sample_django_project):
         metadata={"frameworks": frameworks}
     )
     
-    success = business_tools.database_service.store_repository_info(repo_info)
+    success = registry.database_service.store_repository_info(repo_info)
     assert success
     
     # Verify storage
-    stored = business_tools.database_service.get_repository_info("test_url")
+    stored = registry.database_service.get_repository_info("test_url")
     assert stored.metadata["frameworks"] == frameworks
 
-def test_error_propagation(business_tools, tmp_path):
+def test_error_propagation(registry, tmp_path):
     """Test error handling and propagation between services"""
     # Create invalid Python file
     invalid_file = tmp_path / "invalid.py"
@@ -156,7 +155,7 @@ def test_error_propagation(business_tools, tmp_path):
     
     # Parsing should fail
     with open(invalid_file) as f:
-        parse_result = business_tools.parser_service.parse_file(
+        parse_result = registry.parser_service.parse_file(
             str(invalid_file),
             f.read()
         )
@@ -164,5 +163,5 @@ def test_error_propagation(business_tools, tmp_path):
     assert parse_result.errors
     
     # Analysis should handle parse failure
-    module_info = business_tools.analyzer_service.analyze_file(str(invalid_file))
+    module_info = registry.analyzer_service.analyze_file(str(invalid_file))
     assert module_info is None or not module_info.functions 

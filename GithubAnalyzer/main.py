@@ -1,52 +1,54 @@
+"""GitHub Code Analysis Tool CLI"""
 import click
-from .core.registry import BusinessTools
-from .core.utils import setup_logger
+from pathlib import Path
+from .core.bootstrap import Bootstrap
+from .core.models.errors import AnalysisError, ValidationError
+from .core.utils.logging import configure_logging
+import logging
+import sys
 
-logger = setup_logger(__name__)
+logger = logging.getLogger(__name__)
+
+def init_app(log_level: str = "INFO") -> None:
+    """Initialize application"""
+    try:
+        # Configure logging
+        log_file = Path("logs/github_analyzer.log")
+        configure_logging(
+            log_level=log_level,
+            log_file=str(log_file)
+        )
+        
+        # Initialize application
+        return Bootstrap.initialize()
+    except Exception as e:
+        logger.critical(f"Failed to initialize application: {e}")
+        sys.exit(1)
 
 @click.group()
-def cli():
+@click.option('--log-level', default="INFO", help="Logging level")
+def cli(log_level: str):
     """GitHub Code Analysis Tool CLI"""
-    pass
+    init_app(log_level)
 
 @cli.command()
 @click.argument('repo_url')
-def analyze(repo_url):
+def analyze(repo_url: str):
     """Analyze a GitHub repository"""
-    tools = BusinessTools.create()
-    result = tools.repo_manager.analyze_repo(repo_url)
-    click.echo(f"Analysis complete: {result['name']}")
-
-@cli.command()
-@click.argument('question')
-def query(question):
-    """Query the analyzed repository"""
-    tools = BusinessTools.create()
-    response = tools.query_processor.query_repository(question)
-    click.echo(f"Answer: {response.response}")
-    if response.confidence < 0.5:
-        click.echo("(Note: Low confidence response)")
-
-@cli.command()
-def status():
-    """Show repository status"""
-    tools = BusinessTools.create()
-    repos = tools.db_manager.get_active_repositories()
-    if repos:
-        click.echo("\nAnalyzed repositories:")
-        for repo in repos:
-            click.echo(f"  - {repo['name']} (Last analyzed: {repo['last_analyzed']})")
-    else:
-        click.echo("No repositories analyzed yet")
-
-@cli.command()
-def clear():
-    """Clear all stored data"""
-    tools = BusinessTools.create()
-    tools.db_manager.clear_all_data()
-    click.echo("All data cleared")
+    try:
+        registry = init_app()
+        result = registry.analyzer_service.analyze_repository(repo_url)
+        click.echo(f"Analysis complete: {result.name}")
+    except (AnalysisError, ValidationError) as e:
+        click.echo(f"Error: {e.message}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Unexpected error: {e}", err=True)
+        logger.exception("Unexpected error during analysis")
+        sys.exit(1)
 
 def main():
+    """CLI entry point"""
     try:
         cli()
     except Exception as e:

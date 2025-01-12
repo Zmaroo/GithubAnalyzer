@@ -12,6 +12,8 @@ from ..models import (
     ParseResult
 )
 from ..utils.logging import setup_logger
+from ...config.settings import settings
+from ..utils.file_utils import FileDiscovery
 
 logger = setup_logger(__name__)
 
@@ -20,6 +22,7 @@ class AnalyzerService(BaseService):
     
     def _initialize(self) -> None:
         self.current_file = None
+        self.file_discovery = FileDiscovery()
         
     def analyze_repository(self, repo_path: str) -> AnalysisResult:
         """Analyze entire repository"""
@@ -27,11 +30,15 @@ class AnalyzerService(BaseService):
             modules = []
             relationships = CodeRelationships()
             
-            for file_path in self._discover_files(repo_path):
-                module_info = self.analyze_file(file_path)
-                if module_info:
-                    modules.append(module_info)
-                    
+            for file_batch in self.file_discovery.discover_files_batched(
+                repo_path, 
+                settings.BATCH_SIZE
+            ):
+                for file_path in file_batch:
+                    module_info = self.analyze_file(file_path)
+                    if module_info:
+                        modules.append(module_info)
+                        
             return AnalysisResult(
                 modules=modules,
                 relationships=relationships
@@ -66,38 +73,13 @@ class AnalyzerService(BaseService):
         finally:
             self.current_file = None
 
-    def _discover_files(self, repo_path: str) -> List[str]:
-        """Discover files to analyze in repository"""
-        files = []
-        try:
-            for root, _, filenames in os.walk(repo_path):
-                for filename in filenames:
-                    file_path = os.path.join(root, filename)
-                    if self._should_analyze_file(file_path):
-                        files.append(file_path)
-            return files
-        except Exception as e:
-            logger.error(f"Error discovering files: {e}")
-            return []
-
     def _should_analyze_file(self, file_path: str) -> bool:
         """Check if file should be analyzed"""
         path = Path(file_path)
-        
-        # Skip common non-code paths
-        exclude_patterns = {
-            '__pycache__', 
-            'node_modules',
-            '.git',
-            'venv',
-            'env'
-        }
-        
-        if any(pattern in path.parts for pattern in exclude_patterns):
-            return False
-            
-        # Check if extension is supported
-        return path.suffix in {'.py', '.js', '.ts', '.java', '.cpp', '.go'}
+        return (
+            path.suffix in settings.SUPPORTED_EXTENSIONS and
+            not any(pattern in path.parts for pattern in settings.EXCLUDE_PATTERNS)
+        )
 
     def _create_module_info(self, file_path: str, parse_result: ParseResult) -> ModuleInfo:
         """Create ModuleInfo from parse results"""

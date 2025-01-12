@@ -1,20 +1,21 @@
+"""Utility decorators"""
+from typing import Type, TypeVar, Any
 from functools import wraps
-import time
+import threading
 
-def retry(max_attempts: int = 3, backoff_factor: float = 2):
-    """Retry decorator with exponential backoff"""
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            last_exception = None
-            for attempt in range(max_attempts):
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    last_exception = e
-                    if attempt < max_attempts - 1:
-                        sleep_time = backoff_factor ** attempt
-                        time.sleep(sleep_time)
-            raise last_exception
-        return wrapper
-    return decorator 
+T = TypeVar('T')
+
+def singleton(cls: Type[T]) -> Type[T]:
+    """Thread-safe singleton decorator"""
+    instances = {}
+    lock = threading.Lock()
+
+    @wraps(cls)
+    def get_instance(*args: Any, **kwargs: Any) -> T:
+        if cls not in instances:
+            with lock:
+                if cls not in instances:
+                    instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+
+    return get_instance 
