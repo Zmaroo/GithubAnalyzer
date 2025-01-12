@@ -1,30 +1,38 @@
 """Data models for the application"""
-from .base import BaseModel, TreeSitterNode, ParseResult
+from .base import (
+    BaseModel,
+    TreeSitterNode,
+    ParseResult
+)
 from .code import (
     FunctionInfo,
     ClassInfo,
     ModuleInfo,
-    CodeRelationships
+    CodeRelationships,
+    DocumentationInfo
 )
 from .analysis import (
     AnalysisResult,
     AnalysisContext,
-    AnalysisProgress
+    AnalysisProgress,
+    AnalysisMetadata,
+    RepositoryMetrics
 )
 from .database import (
     DatabaseConfig,
     GraphQuery,
-    RepositoryState
+    RepositoryState,
+    RepositoryInfo
 )
 
-# Ensure all models are imported and exposed here
 __all__ = [
     # Base models
     'BaseModel', 'TreeSitterNode', 'ParseResult',
     # Code models
-    'FunctionInfo', 'ClassInfo', 'ModuleInfo', 'CodeRelationships',
+    'FunctionInfo', 'ClassInfo', 'ModuleInfo', 'CodeRelationships', 'DocumentationInfo',
     # Analysis models
-    'AnalysisResult', 'AnalysisContext', 'AnalysisProgress',
+    'AnalysisResult', 'AnalysisContext', 'AnalysisProgress', 
+    'AnalysisMetadata', 'RepositoryMetrics',
     # Database models
-    'DatabaseConfig', 'GraphQuery', 'RepositoryState'
+    'DatabaseConfig', 'GraphQuery', 'RepositoryState', 'RepositoryInfo'
 ] 
