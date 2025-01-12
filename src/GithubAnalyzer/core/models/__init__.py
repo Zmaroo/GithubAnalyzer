@@ -3,7 +3,7 @@ from GithubAnalyzer.core.models.repository import RepositoryInfo, RepositoryStat
 from GithubAnalyzer.core.models.module import ModuleInfo, FunctionInfo, ClassInfo
 from GithubAnalyzer.core.models.analysis import AnalysisResult, AnalysisContext
 from GithubAnalyzer.core.models.graph import GraphNode, GraphEdge
-from GithubAnalyzer.core.models.database import DatabaseConfig
+from GithubAnalyzer.core.models.database import DatabaseConfig, DatabaseError
 from GithubAnalyzer.core.models.relationships import CodeRelationship, CodeRelationships
 from GithubAnalyzer.core.models.base import ParseResult, TreeSitterNode
 
@@ -18,6 +18,7 @@ __all__ = [
     'GraphNode',
     'GraphEdge',
     'DatabaseConfig',
+    'DatabaseError',
     'CodeRelationship',
     'CodeRelationships',
     'ParseResult',
