@@ -166,3 +166,18 @@ class GraphAnalysisResult:
         ) ** 0.5
         
         return mean + (2 * std_dev)  # Two standard deviations above mean 
+
+@dataclass
+class GraphNode:
+    """Node in the graph database"""
+    id: str
+    labels: List[str]
+    properties: Dict[str, Any]
+
+@dataclass
+class GraphEdge:
+    """Edge in the graph database"""
+    source_id: str
+    target_id: str
+    type: str
+    properties: Optional[Dict[str, Any]] = None 

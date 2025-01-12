@@ -1,38 +1,16 @@
-"""Data models for the application"""
-from .base import (
-    BaseModel,
-    TreeSitterNode,
-    ParseResult
-)
-from .code import (
-    FunctionInfo,
-    ClassInfo,
-    ModuleInfo,
-    CodeRelationships,
-    DocumentationInfo
-)
-from .analysis import (
-    AnalysisResult,
-    AnalysisContext,
-    AnalysisProgress,
-    AnalysisMetadata,
-    RepositoryMetrics
-)
-from .database import (
-    DatabaseConfig,
-    GraphQuery,
-    RepositoryState,
-    RepositoryInfo
-)
+"""Data models for the analyzer"""
+from .repository import RepositoryInfo, RepositoryState
+from .module import ModuleInfo
+from .analysis import AnalysisResult
+from .graph import GraphNode, GraphEdge
+from .database import DatabaseConfig
 
 __all__ = [
-    # Base models
-    'BaseModel', 'TreeSitterNode', 'ParseResult',
-    # Code models
-    'FunctionInfo', 'ClassInfo', 'ModuleInfo', 'CodeRelationships', 'DocumentationInfo',
-    # Analysis models
-    'AnalysisResult', 'AnalysisContext', 'AnalysisProgress', 
-    'AnalysisMetadata', 'RepositoryMetrics',
-    # Database models
-    'DatabaseConfig', 'GraphQuery', 'RepositoryState', 'RepositoryInfo'
+    'RepositoryInfo',
+    'RepositoryState',
+    'ModuleInfo',
+    'AnalysisResult',
+    'GraphNode',
+    'GraphEdge',
+    'DatabaseConfig'
 ] 
