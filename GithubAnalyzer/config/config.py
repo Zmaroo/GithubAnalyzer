@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from ..core.utils import setup_logger
+from ..core.utils.logging import setup_logger
 
 logger = setup_logger(__name__)
 

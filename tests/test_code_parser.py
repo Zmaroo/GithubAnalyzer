@@ -1,38 +1,36 @@
 import pytest
-from GithubAnalyzer.core.code_parser import CodeParser
-from GithubAnalyzer.core.models import TreeSitterNode
+from GithubAnalyzer.core.services import ParserService
+from GithubAnalyzer.core.models import TreeSitterNode, ParseResult
 
 def test_parser_initialization():
-    parser = CodeParser()
+    parser = ParserService()
     assert parser is not None
-    assert parser.parser is not None
-    assert parser.query_cache == {}
+    assert parser.tree_sitter is not None
 
 def test_parse_python_file(code_parser, sample_python_file):
     result = code_parser.parse_file(str(sample_python_file))
     
-    assert "error" not in result
-    assert "tree" in result
-    assert "root_node" in result
-    assert "syntax" in result
-    assert "semantic" in result
+    assert result.success
+    assert result.ast is not None
+    assert result.tree_sitter_node is not None
+    assert not result.errors
     
     # Check semantic information
-    semantic = result["semantic"]
+    semantic = result.semantic
     assert len(semantic["functions"]) == 2  # hello and method
     assert len(semantic["classes"]) == 1    # TestClass
 
 def test_parse_nonexistent_file():
-    parser = CodeParser()
+    parser = ParserService()
     result = parser.parse_file("nonexistent.py")
-    assert "error" in result
-    assert "File not found" in result["error"]
+    assert not result.success
+    assert "File not found" in result.errors[0]
 
 def test_parse_unsupported_extension(tmp_path):
     test_file = tmp_path / "test.unsupported"
     test_file.write_text("Some content")
     
-    parser = CodeParser()
+    parser = ParserService()
     result = parser.parse_file(str(test_file))
     assert "error" in result
     assert "No parser for extension" in result["error"] 
@@ -52,7 +50,7 @@ def broken_function(
     print("Missing closing parenthesis"
 """)
     
-    parser = CodeParser()
+    parser = ParserService()
     result = parser.parse_file(str(test_file))
     
     assert "errors" in result
@@ -65,7 +63,7 @@ def test_multiple_language_support(tmp_path):
         test_file = tmp_path / f"test{ext}"
         test_file.write_text("// Test content")
         
-        parser = CodeParser()
+        parser = ParserService()
         result = parser.parse_file(str(test_file))
         
         assert "error" not in result

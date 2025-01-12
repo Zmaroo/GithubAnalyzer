@@ -1,5 +1,7 @@
 import pytest
 from pathlib import Path
+from GithubAnalyzer.core.parsers import TreeSitterParser, BaseParser
+from GithubAnalyzer.core.services import ParserService
 
 @pytest.fixture
 def sample_python_file(tmp_path):
@@ -36,9 +38,8 @@ class TestClass {
 
 @pytest.fixture
 def code_parser():
-    """Create a CodeParser instance"""
-    from GithubAnalyzer.core.code_parser import CodeParser
-    return CodeParser() 
+    """Create a parser service instance"""
+    return ParserService()
 
 @pytest.fixture
 def sample_error_file(tmp_path):
@@ -75,3 +76,13 @@ def complex_function(a: int, b: Optional[str] = None) -> bool:
     return bool(a and b)
 ''')
     return file_path 
+
+@pytest.fixture
+def parser_service():
+    """Create a ParserService instance"""
+    return ParserService()
+
+@pytest.fixture
+def tree_sitter_parser():
+    """Create a TreeSitterParser instance"""
+    return TreeSitterParser() 
