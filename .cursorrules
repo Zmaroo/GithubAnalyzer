@@ -1,102 +1,47 @@
-# GitHub Code Analysis Tool - Development Guidelines
+# GitHub Code Analysis Tool - Development Rules
 
-## Project Overview
+## Code Organization
+- All core functionality goes in GithubAnalyzer/core/
+- Services must inherit from BaseService
+- Models should be dataclasses in GithubAnalyzer/core/models/
+- Parsers should inherit from BaseParser
+- Use type hints consistently
 
-These tools enables any AI agents/models to deeply understand GitHub repositories by:
-- Analyzing code structure and patterns
-- Processing documentation and comments
-- Detecting frameworks and dependencies
-- Building knowledge graphs of code relationships
-- Providing an AI interface for querying repository knowledge
+## Testing Requirements
+- All new code must have corresponding tests
+- Tests should be organized by component type (services, parsers, etc.)
+- Integration tests must be in tests/test_services/test_service_integration*.py
+- Use pytest fixtures for common test setups
+- Test both success and error cases
 
-The goal is to help developers by having an AI assistant that can:
-- Answer questions about repository structure and functionality
-- Explain code patterns and architectural decisions
-- Identify key components and their relationships
-- Assist in understanding complex codebases
+## Error Handling
+- All public methods should handle exceptions gracefully
+- Use logging.error for failures, logging.warning for issues
+- Return None/empty/false for failures rather than raising
+- Document expected error cases
 
-## Database Structure
+## Database Operations
+- Use DatabaseService for all database operations
+- Cache expensive operations when possible
+- Handle connection failures gracefully
+- Clean up resources properly
 
-### Neo4j Graph Structure
-```mermaid
-graph TD
-    R[Repository] -->|BELONGS_TO| M[Module]
-    M -->|IMPORTS| I[Import]
-    M -->|CONTAINS| F[Function]
-    M -->|CONTAINS| C[Class]
-    C -->|INHERITS_FROM| C2[Base Class]
-```
+## Code Style
+- Follow PEP 8
+- Document all public APIs
+- Use meaningful variable names
+- Keep functions focused and small
+- Add comments for complex logic
 
-### Key Relationships
-- `BELONGS_TO`: Links modules to their repository
-- `IMPORTS`: Tracks module dependencies
-- `DEFINED_IN`: Shows where functions/classes are defined
-- `INHERITS_FROM`: Tracks class inheritance
+## Security
+- Validate all file paths
+- Sanitize database inputs
+- Handle malicious/malformed input
+- Respect file size limits
+- Prevent injection attacks
 
-### Node Types
-- `Repository`: Root node for each codebase
-- `Module`: Python files (.py)
-- `Import`: External dependencies
-- `Function`: Function definitions
-- `Class`: Class definitions
-
-### Properties
-- `name`: Identifier for nodes
-- `path`: File paths for modules
-- `lineno`: Line numbers for functions/classes
-- `last_analyzed`: Timestamp for repository analysis
-
-## Project Structure
-
-[Project Root]
-├── GithubAnalyzer/
-│   ├── core/             # Core analysis and processing modules
-│   │   ├── code_analyzer.py
-│   │   ├── documentation_analyzer.py
-│   │   ├── database_utils.py
-│   │   ├── tree_sitter_utils.py
-│   │   ├── custom_parsers.py
-│   │   ├── discover_files.py
-│   │   ├── framework_analyzers.py
-│   │   └── models.py
-│   ├── agents/           # AI agent implementations
-│   │   ├── ai_agent_cli.py
-│   │   └── ai_agent_enhanced.py
-│   ├── config/           # Configuration files
-│   │   └── config.py
-│   ├── db/              # Database management
-│   │   └── manage_db.py
-│   └── main.py
-├── docker/              # Docker configuration
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── test_docs/          # Test files and documentation
-├── temp/               # Temporary repo processing
-├── docs/              # Project documentation
-├── .env.example
-├── .gitignore
-└── requirements.txt
-
-## Development Setup
-
-### Required Services
-- Neo4j Desktop (ports: 7474, 7687)
-  - Plugins: APOC, Graph Data Science Library
-- PostgreSQL (port: 5432)
-- Conda env: YtSpace
-
-### Database Schema
-PostgreSQL Tables:
-- repository_state: Repository metadata
-- active_sessions: Analysis sessions
-- code_snippets: Code with vector embeddings
-
-Neo4j Structure:
-- Nodes: Repository, File, CodeNode
-- Relationships: CONTAINS, DEFINED_IN, CALLS
-
-### Multi-Repository Support
-- Each AI agent instance gets a unique session ID
-- Sessions can have multiple active repositories
-- Context and state are maintained per session
-- Enables comparing and combining knowledge across repos
+## Performance
+- Cache expensive operations
+- Use batch operations when possible
+- Monitor memory usage
+- Support parallel processing where appropriate
