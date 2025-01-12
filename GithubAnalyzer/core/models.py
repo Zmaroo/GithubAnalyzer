@@ -658,6 +658,7 @@ class ParseResult:
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     success: bool = True
+    tree_sitter_node: Optional[TreeSitterNode] = None
 
 @dataclass
 class AnalysisFilter:

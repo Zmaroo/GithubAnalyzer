@@ -6,6 +6,7 @@ from .repository_manager import RepositoryManager
 from .query_processor import QueryProcessor
 from .documentation_analyzer import DocumentationAnalyzer
 from .utils import setup_logger
+from .tree_sitter_service import TreeSitterService
 
 logger = setup_logger(__name__)
 
@@ -17,17 +18,20 @@ class BusinessTools:
     repo_manager: RepositoryManager
     query_processor: QueryProcessor
     doc_analyzer: DocumentationAnalyzer
+    tree_sitter_service: TreeSitterService
 
     @classmethod
     def create(cls) -> 'BusinessTools':
         """Factory method to create properly initialized tools"""
         db_manager = DatabaseManager()
+        tree_sitter_service = TreeSitterService()
         return cls(
             db_manager=db_manager,
             code_analyzer=CodeAnalyzer(db_manager),
             repo_manager=RepositoryManager(db_manager),
             query_processor=QueryProcessor(db_manager),
-            doc_analyzer=DocumentationAnalyzer()
+            doc_analyzer=DocumentationAnalyzer(),
+            tree_sitter_service=tree_sitter_service
         )
 
     def get_tools(self) -> Dict[str, Callable]:

@@ -10,15 +10,17 @@ import logging
 import ast
 from .registry import BusinessTools
 from .patterns import PatternDetector
+from .embeddings import CodeEmbeddingGenerator
+from .utils import setup_logger
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 class ContextManager:
     """Manages code context analysis and relationships"""
     
     def __init__(self):
         self.tools = BusinessTools.create()
-        self.embedding_model = SentenceTransformer('microsoft/codebert-base')
+        self.embedding_generator = CodeEmbeddingGenerator()
         self.context_analyzer = CodeContextAnalyzer()
         
     def build_context(self, code: str, file_path: str = None) -> ContextAnalysisResult:
@@ -43,7 +45,7 @@ class ContextManager:
             context.project_patterns.extend(patterns['usage'])
             
             # Generate enhanced embeddings
-            context.embeddings = self.generate_contextual_embedding(
+            context.embeddings = self.embedding_generator.generate_contextual_embedding(
                 code, 
                 {
                     'imports': context.imports,

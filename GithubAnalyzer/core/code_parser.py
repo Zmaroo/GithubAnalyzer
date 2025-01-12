@@ -6,6 +6,7 @@ from ..config.config import LANGUAGE_MAP
 from .models import TreeSitterNode
 import traceback
 from .utils import setup_logger
+from .utils import TreeSitterUtils
 
 logger = setup_logger(__name__)
 
@@ -13,8 +14,7 @@ class CodeParser:
     """Unified code parser with semantic understanding capabilities"""
     
     def __init__(self):
-        self.parser = Parser()
-        self.query_cache: Dict[str, Query] = {}
+        self.tree_sitter = None  # Will be injected by BusinessTools
         
     def parse_file(self, file_path: str) -> Dict[str, Any]:
         """Parse a file using appropriate parser"""
@@ -25,24 +25,16 @@ class CodeParser:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
                 
-            ext = Path(file_path).suffix
-            language = self._get_language(ext)
+            parse_result = self.tree_sitter.parse_file(file_path, content)
             
-            if not language:
-                return {"error": f"No parser for extension: {ext}"}
-            
-            self.parser.set_language(language)
-            
-            # Parse with timeout protection
-            self.parser.timeout_micros = 5000000  # 5 seconds
-            tree = self.parser.parse(bytes(content, "utf8"))
+            if not parse_result.success:
+                return {"error": parse_result.errors[0]}
             
             return {
-                "tree": tree,
-                "root_node": self._convert_node(tree.root_node),
-                "syntax": self._extract_syntax_information(tree),
-                "semantic": self._extract_semantic_information(tree, language, file_path),
-                "errors": self._extract_syntax_errors(tree)
+                "tree": parse_result.ast,
+                "root_node": parse_result.tree_sitter_node,
+                "syntax": parse_result.semantic,
+                "semantic": self._extract_semantic_information(parse_result)
             }
             
         except Exception as e:
