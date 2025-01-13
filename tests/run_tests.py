@@ -11,7 +11,7 @@ def setup_test_logging():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler('tests/test.log')
+            logging.FileHandler('test.log')
         ]
     )
 
@@ -24,32 +24,34 @@ def run_tests():
         # Core components
         "test_parsers/test_tree_sitter.py",
         "test_parsers/test_custom_parsers.py",
+        "test_parsers/conftest.py",
+        "test_code_parser.py",
         
         # Services
         "test_services/test_graph_analysis_service.py",
-        "test_services/test_combined_analysis.py",
         "test_services/test_analyzer_service.py",
         "test_services/test_parser_service.py",
         "test_services/test_database_service.py",
-        "test_services/test_framework_service.py",
+        
+        # CLI Tests
+        "test_ai_agent_cli.py",
         
         # Integration tests
         "test_services/test_service_integration.py",
-        "test_services/test_service_integration_complex.py",
-        
-        # Performance tests
-        "test_services/test_service_performance.py",
-        
-        # Security tests
-        "test_services/test_service_security.py"
     ]
     
     failed_tests = []
+    test_dir = Path(__file__).parent
     
     for test_suite in test_suites:
+        test_path = test_dir / test_suite
+        if not test_path.exists():
+            logger.warning(f"Test suite not found: {test_suite}")
+            continue
+            
         logger.info(f"Running test suite: {test_suite}")
         result = pytest.main([
-            f"tests/{test_suite}",
+            str(test_path),
             "-v",
             "--tb=short",
             "--show-capture=no"

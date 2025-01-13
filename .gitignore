@@ -53,6 +53,7 @@ redis/data/
 .cache/
 .redis/
 __redis_cache__/
+.benchmarks/
 
 # Temporary files
 *.tmp
@@ -69,6 +70,7 @@ docs/generated/
 .coverage
 coverage.xml
 htmlcov/
+.pytest_cache/
 
 # Jupyter Notebooks
 .ipynb_checkpoints
@@ -96,3 +98,19 @@ secrets.yml
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Project specific directories
+n8n_data/
+ollama/models/
+.cursor/
+
+# Node/npm (if using any JS tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Additional Python tooling
+.mypy_cache/
+.ruff_cache/
+.pytype/

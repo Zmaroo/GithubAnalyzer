@@ -3,6 +3,8 @@ import pytest
 from pathlib import Path
 from GithubAnalyzer.core.registry import AnalysisToolRegistry
 from GithubAnalyzer.core.models.database import DatabaseConfig
+from GithubAnalyzer.core.parsers.tree_sitter import TreeSitterParser
+from GithubAnalyzer.core.services.parser_service import ParserService
 
 @pytest.fixture(scope="session")
 def test_config():
@@ -27,6 +29,42 @@ def registry():
     registry = AnalysisToolRegistry.create()
     yield registry
     registry.database_service.cleanup()
+
+@pytest.fixture
+def code_parser(registry):
+    """Create code parser instance"""
+    return registry.parser_service
+
+@pytest.fixture
+def sample_python_file(tmp_path):
+    """Create a sample Python file for testing"""
+    file_path = tmp_path / "test.py"
+    file_path.write_text("""
+def example_function(x: int) -> str:
+    return f"Value: {x}"
+
+class ExampleClass:
+    def method(self):
+        return 42
+""")
+    return file_path
+
+@pytest.fixture
+def sample_js_file(tmp_path):
+    """Create a sample JavaScript file for testing"""
+    file_path = tmp_path / "test.js"
+    file_path.write_text("""
+function exampleFunction(x) {
+    return `Value: ${x}`;
+}
+
+class ExampleClass {
+    method() {
+        return 42;
+    }
+}
+""")
+    return file_path
 
 @pytest.fixture
 def sample_repo(tmp_path):

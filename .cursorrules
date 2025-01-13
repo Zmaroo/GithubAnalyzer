@@ -1,47 +1,51 @@
-# GitHub Code Analysis Tool - Development Rules
+# GitHub Code Analysis Tool
 
-## Code Organization
-- All core functionality goes in GithubAnalyzer/core/
-- Services must inherit from BaseService
-- Models should be dataclasses in GithubAnalyzer/core/models/
-- Parsers should inherit from BaseParser
-- Use type hints consistently
+## Project Purpose
 
-## Testing Requirements
-- All new code must have corresponding tests
-- Tests should be organized by component type (services, parsers, etc.)
-- Integration tests must be in tests/test_services/test_service_integration*.py
-- Use pytest fixtures for common test setups
-- Test both success and error cases
+This project provides a framework for deep code understanding that enables AI agents to comprehensively analyze and work with GitHub repositories. The framework is designed to be AI model agnostic, focusing on:
 
-## Error Handling
-- All public methods should handle exceptions gracefully
-- Use logging.error for failures, logging.warning for issues
-- Return None/empty/false for failures rather than raising
-- Document expected error cases
+- Deep code structure analysis and representation
+- Dependency and relationship mapping
+- Code context and semantic understanding
+- Framework and pattern recognition
+- Cross-repository knowledge integration
 
-## Database Operations
-- Use DatabaseService for all database operations
-- Cache expensive operations when possible
-- Handle connection failures gracefully
-- Clean up resources properly
+Our ultimate goal is to enable AI agents to autonomously understand and work with codebases at a level that allows them to contribute meaningful code changes and participate in development.
 
-## Code Style
-- Follow PEP 8
-- Document all public APIs
-- Use meaningful variable names
-- Keep functions focused and small
-- Add comments for complex logic
+## Project Structure
 
-## Security
-- Validate all file paths
-- Sanitize database inputs
-- Handle malicious/malformed input
-- Respect file size limits
-- Prevent injection attacks
+### Core Package (src/GithubAnalyzer/core/)
 
-## Performance
-- Cache expensive operations
-- Use batch operations when possible
-- Monitor memory usage
-- Support parallel processing where appropriate
+- **parsers/**: Code parsing and AST analysis
+  - tree_sitter.py: Tree-sitter based parsing
+  - custom_parsers.py: Language-specific parsing logic
+  - base_parser.py: Abstract base parser class
+
+- **services/**: Core analysis services
+  - analyzer_service.py: Main analysis orchestration
+  - graph_analysis_service.py: Code graph analysis
+  - parser_service.py: Parser coordination
+  - database_service.py: Data persistence
+
+- **models/**: Data structures and types
+  - code_entities.py: Code structure representations
+  - relationships.py: Code relationship definitions
+  - analysis_results.py: Analysis output structures
+
+### Tests (tests/)
+
+- test_parsers/: Parser unit tests
+- test_services/: Service unit and integration tests
+- test_code_parser.py: Core parsing tests
+- run_tests.py: Test orchestration
+
+### Configuration
+
+- pyproject.toml: Project metadata and dependencies
+- setup.py: Package installation
+- requirements.txt: Development dependencies
+
+### Documentation
+
+- docs/: Project documentation
+- README.md: Project overview
