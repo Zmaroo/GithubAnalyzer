@@ -1,7 +1,7 @@
 """Tree-sitter based parser"""
 from pathlib import Path
 from typing import Dict, Any, Optional
-from tree_sitter import Parser, Tree, Node, Language
+from tree_sitter import Parser, Tree, Node
 
 # Import tree-sitter languages
 import tree_sitter_python
@@ -47,7 +47,7 @@ class TreeSitterParser:
             # Initialize languages
             self._init_languages()
             # Default to Python language
-            self.parser.set_language(self.LANGUAGE_MAP['.py'])
+            self.parser.set_language(tree_sitter_python.language)
             logger.info("Tree-sitter parser initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize tree-sitter: {e}")
@@ -121,7 +121,7 @@ class TreeSitterParser:
             })
         except AttributeError:
             logger.warning("TypeScript language not available")
-        
+            
     def can_parse(self, file_path: str) -> bool:
         """Check if file can be parsed with tree-sitter"""
         path = Path(file_path)
@@ -151,32 +151,13 @@ class TreeSitterParser:
             if file_path:
                 path = Path(file_path)
                 key = path.suffix.lower()
-                name = path.name.upper()
-                
-                # Special handling for markdown files
-                if name.startswith(('README', 'CHANGELOG', 'CONTRIBUTING', 'LICENSE')):
-                    self.parser.set_language(tree_sitter_markdown.language)
-                elif not key in self.LANGUAGE_MAP:
+                if not key in self.LANGUAGE_MAP:
                     key = path.name.lower()
-                    if key in self.LANGUAGE_MAP:
-                        self.parser.set_language(self.LANGUAGE_MAP[key])
-                else:
+                if key in self.LANGUAGE_MAP:
                     self.parser.set_language(self.LANGUAGE_MAP[key])
-            
+                
             # Parse content - tree-sitter expects bytes
             tree = self.parser.parse(bytes(content, 'utf8'))
-            
-            # Special validation for markdown files
-            if file_path and (Path(file_path).suffix.lower() == '.md' or 
-                            Path(file_path).name.upper().startswith(('README', 'CHANGELOG', 'CONTRIBUTING', 'LICENSE'))):
-                if not self._validate_markdown(tree):
-                    return ParseResult(
-                        ast=None,
-                        semantic={},
-                        errors=["Invalid markdown structure"],
-                        success=False
-                    )
-            
             if not tree or tree.root_node.has_error:
                 return ParseResult(
                     ast=None,
@@ -248,54 +229,3 @@ class TreeSitterParser:
         except Exception as e:
             logger.error(f"Error extracting semantic info: {e}")
             return {} 
-    
-    def _validate_markdown(self, tree: Tree) -> bool:
-        """Validate markdown structure"""
-        try:
-            root = tree.root_node
-            
-            # Check for basic markdown structure
-            if not root or root.has_error:
-                return False
-                
-            # Validate first line is a heading
-            first_heading = None
-            for child in root.children:
-                if child.type == 'atx_heading' or child.type == 'setext_heading':
-                    first_heading = child
-                    break
-                    
-            if not first_heading:
-                return False
-                
-            # Validate code blocks
-            for node in root.children:
-                if node.type == 'fenced_code_block':
-                    if not self._validate_code_block(node):
-                        return False
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error validating markdown: {e}")
-            return False
-    
-    def _validate_code_block(self, node: Node) -> bool:
-        """Validate markdown code block"""
-        try:
-            # Check for language info
-            info_string = None
-            for child in node.children:
-                if child.type == 'info_string':
-                    info_string = child
-                    break
-            
-            # Code blocks should have language specified
-            if not info_string:
-                return False
-                
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error validating code block: {e}")
-            return False 
