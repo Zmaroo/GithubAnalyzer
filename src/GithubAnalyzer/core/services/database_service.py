@@ -1,46 +1,34 @@
-from typing import Dict, Any, Optional, List
-from ..models.database import DatabaseConfig, DatabaseError
+"""Database service for handling database operations"""
+from typing import Optional
 from ..utils.decorators import singleton
-from ..utils.logging import setup_logger
-import atexit
-
-logger = setup_logger(__name__)
+from ..models.database import DatabaseConfig, DatabaseError
+from .base import BaseService
 
 @singleton
 class DatabaseService(BaseService):
-    """Unified database service for all storage operations"""
+    """Service for database operations"""
     
-    def _initialize(self) -> None:
-        """Initialize database connections and handlers"""
+    def __init__(self):
+        super().__init__()
+        self.config: Optional[DatabaseConfig] = None
+        
+    def initialize(self, config: DatabaseConfig) -> bool:
+        """Initialize database connections"""
         try:
-            self.config = self._load_config()
-            self._init_connections()
-            self._init_cleanup_handlers()
+            self.config = config
+            # Initialize connections here
+            self.initialized = True
+            return True
         except Exception as e:
-            logger.error(f"Failed to initialize database service: {e}")
-            raise DatabaseError("Database initialization failed") from e
-
-    def _init_connections(self) -> None:
-        """Initialize all database connections"""
-        self.connections = {
-            'postgres': self._init_postgres(),
-            'neo4j': self._init_neo4j(),
-            'redis': self._init_redis()
-        }
-        
-        # Validate critical connections
-        if not self.connections['postgres']:
-            raise DatabaseError("Failed to connect to PostgreSQL")
+            self._set_error(f"Failed to initialize database: {e}")
+            return False
             
-    def _init_cleanup_handlers(self) -> None:
-        """Initialize cleanup handlers"""
-        atexit.register(self.cleanup)
-        
-    def cleanup(self) -> None:
-        """Clean up all database connections"""
-        for name, conn in self.connections.items():
-            try:
-                if conn:
-                    conn.close()
-            except Exception as e:
-                logger.error(f"Error closing {name} connection: {e}") 
+    def shutdown(self) -> bool:
+        """Close database connections"""
+        try:
+            # Cleanup connections here
+            self.initialized = False
+            return True
+        except Exception as e:
+            self._set_error(f"Failed to shutdown database: {e}")
+            return False 
