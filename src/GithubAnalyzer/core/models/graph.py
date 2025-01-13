@@ -78,6 +78,13 @@ class CombinedAnalysis:
     complexity_hotspots: List[Dict[str, Any]]
 
 @dataclass
+class ASTAnalysis:
+    """AST analysis results"""
+    ast_patterns: List[ASTPattern]
+    correlated_metrics: Dict[str, Any]
+    complexity_hotspots: List[Dict[str, Any]]
+
+@dataclass
 class GraphAnalysisResult:
     """Result of graph analysis"""
     success: bool
@@ -86,8 +93,9 @@ class GraphAnalysisResult:
     centrality: Optional[CentralityMetrics] = None
     communities: Optional[CommunityDetection] = None
     paths: Optional[PathAnalysis] = None
+    ast_analysis: Optional[ASTAnalysis] = None
+    dependencies: Optional[DependencyAnalysis] = None
     ast_patterns: List[Dict[str, Any]] = field(default_factory=list)
-    dependencies: List[Dict[str, Any]] = field(default_factory=list)
     change_hotspots: List[Dict[str, Any]] = field(default_factory=list)
     coupling_based: List[Dict[str, Any]] = field(default_factory=list)
     
