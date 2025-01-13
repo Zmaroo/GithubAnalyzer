@@ -61,7 +61,7 @@ class ConfigParser(BaseParser):
                 ast=config_data,
                 semantic={
                     'type': 'config',
-                    'format': extension[1:],  # Remove leading dot
+                    'format': 'ini' if extension in ['.ini', '.cfg'] else extension[1:],  # Map .cfg to ini format
                     'content': config_data
                 },
                 success=True

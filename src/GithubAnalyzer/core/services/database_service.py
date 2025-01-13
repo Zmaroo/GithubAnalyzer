@@ -22,17 +22,20 @@ class DatabaseService(BaseService):
         self.config: Optional[DatabaseConfig] = None
         self.registry = registry
         
-    def initialize(self, config: DatabaseConfig) -> bool:
+    def _initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
         """Initialize database connections"""
-        try:
-            self.config = config
-            # Initialize connections here
-            self.initialized = True
-            return True
-        except Exception as e:
-            self._set_error(f"Failed to initialize database: {e}")
-            return False
-            
+        if config:
+            self.config = DatabaseConfig(**config)
+        else:
+            # Use default config for testing
+            self.config = DatabaseConfig(
+                host="localhost",
+                port=5432,
+                username="test",
+                password="test",
+                database="test"
+            )
+        
     def shutdown(self) -> bool:
         """Close database connections"""
         try:

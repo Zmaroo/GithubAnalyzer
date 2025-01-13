@@ -21,6 +21,16 @@ class AnalysisToolRegistry:
         
     def _initialize_services(self):
         """Initialize all services"""
+        default_config = {
+            'database': {
+                'host': 'localhost',
+                'port': 5432,
+                'username': 'test',
+                'password': 'test',
+                'database': 'test'
+            }
+        }
+        
         # Initialize core services
         self.services['database'] = DatabaseService(self)
         self.services['parser'] = ParserService(self)
@@ -28,9 +38,9 @@ class AnalysisToolRegistry:
         self.services['framework'] = FrameworkService(self)
         self.services['graph'] = GraphAnalysisService(self)
         
-        # Initialize each service
-        for service in self.services.values():
-            service.initialize()
+        # Initialize each service with config
+        for name, service in self.services.items():
+            service.initialize(default_config.get(name))
             
         # Create common operations interface
         self.common_operations = CommonOperations(self)

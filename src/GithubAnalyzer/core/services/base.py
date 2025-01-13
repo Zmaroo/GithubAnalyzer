@@ -1,6 +1,6 @@
 """Base service class for all services"""
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Dict, Any
 from ..utils.logging import setup_logger
 
 logger = setup_logger(__name__)
@@ -8,14 +8,23 @@ logger = setup_logger(__name__)
 class BaseService(ABC):
     """Base class for all services"""
     
-    def __init__(self):
-        """Initialize service"""
+    def __init__(self, registry: Optional['AnalysisToolRegistry'] = None):
+        self.registry = registry
         self.initialized = False
-        self.error = None
+        
+    def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
+        """Initialize service with optional config"""
+        try:
+            self._initialize(config)
+            self.initialized = True
+            return True
+        except Exception as e:
+            logger.error(f"Failed to initialize {self.__class__.__name__}: {e}")
+            return False
     
     @abstractmethod
-    def initialize(self) -> bool:
-        """Initialize the service. Must be implemented by subclasses."""
+    def _initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
+        """Initialize service-specific resources"""
         pass
     
     @abstractmethod
