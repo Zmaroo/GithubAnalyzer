@@ -1,6 +1,5 @@
 """Documentation parser for markdown and other documentation files"""
-import re
-from typing import Dict, Any
+from typing import Dict, Any, List
 from pathlib import Path
 from ..base import BaseParser
 from ...models import ParseResult
@@ -32,8 +31,13 @@ class DocumentationParser(BaseParser):
                 ast=sections,
                 semantic={
                     'type': 'documentation',
-                    'sections': sections,
-                    'format': self._detect_format(content)
+                    'sections': [
+                        {
+                            'title': title,
+                            'content': content
+                        }
+                        for title, content in sections.items()
+                    ]
                 },
                 success=True
             )
@@ -45,7 +49,7 @@ class DocumentationParser(BaseParser):
                 success=False
             )
     
-    def _parse_sections(self, content: str) -> Dict[str, Any]:
+    def _parse_sections(self, content: str) -> Dict[str, str]:
         """Parse content into sections"""
         sections = {}
         current_section = None
@@ -63,12 +67,4 @@ class DocumentationParser(BaseParser):
         if current_section:
             sections[current_section] = '\n'.join(current_content).strip()
             
-        return sections
-    
-    def _detect_format(self, content: str) -> str:
-        """Detect documentation format"""
-        if re.search(r'^\s*#', content, re.MULTILINE):
-            return 'markdown'
-        elif re.search(r'^\s*=+\s*$', content, re.MULTILINE):
-            return 'rst'
-        return 'text' 
+        return sections 
