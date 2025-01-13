@@ -32,6 +32,7 @@ class TreeSitterParser(BaseParser):
 
     def can_parse(self, file_path: str) -> bool:
         """Check if this parser can handle the given file"""
+        # Currently only supporting Python files
         return Path(file_path).suffix in ['.py']
         
     def parse(self, content: str) -> ParseResult:
@@ -55,6 +56,15 @@ class TreeSitterParser(BaseParser):
                     semantic={},
                     success=False,
                     errors=["Failed to generate parse tree"]
+                )
+                
+            # Check for syntax errors
+            if tree.root_node.has_error:
+                return ParseResult(
+                    ast=None,
+                    semantic={},
+                    success=False,
+                    errors=[f"Syntax error at line {tree.root_node.start_point[0]}"]
                 )
                 
             converted_ast = self._convert_node(tree.root_node)
