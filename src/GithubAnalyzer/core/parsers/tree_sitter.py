@@ -1,7 +1,7 @@
 """Tree-sitter based parser"""
 from pathlib import Path
 from typing import Dict, Any, Optional
-from tree_sitter import Parser, Tree, Node
+from tree_sitter import Parser, Language, Tree, Node
 
 # Import tree-sitter languages
 import tree_sitter_python
@@ -47,7 +47,7 @@ class TreeSitterParser:
             self.parser = Parser()
             self._init_languages()
             # Default to Python language
-            self.parser.set_language(self.LANGUAGE_MAP['.py'])
+            self.parser.language = self.LANGUAGE_MAP['.py']
             logger.info("Tree-sitter parser initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize tree-sitter: {e}")
@@ -57,65 +57,65 @@ class TreeSitterParser:
         """Initialize language objects"""
         self.LANGUAGE_MAP = {
             # Programming Languages
-            '.py': tree_sitter_python.language,
-            'setup.py': tree_sitter_python.language,
-            '.js': tree_sitter_javascript.language,
-            '.jsx': tree_sitter_javascript.language,
-            '.ts': tree_sitter_typescript.language,
-            '.tsx': tree_sitter_typescript.language,
-            '.java': tree_sitter_java.language,
-            '.c': tree_sitter_c.language,
-            '.h': tree_sitter_c.language,
-            '.cpp': tree_sitter_cpp.language,
-            '.hpp': tree_sitter_cpp.language,
-            '.cs': tree_sitter_c_sharp.language,
-            '.go': tree_sitter_go.language,
-            '.rs': tree_sitter_rust.language,
-            '.rb': tree_sitter_ruby.language,
-            '.php': tree_sitter_php.language,
-            '.scala': tree_sitter_scala.language,
-            '.kt': tree_sitter_kotlin.language,
-            '.lua': tree_sitter_lua.language,
-            '.cu': tree_sitter_cuda.language,
-            '.ino': tree_sitter_arduino.language,
-            '.pde': tree_sitter_arduino.language,
-            '.m': tree_sitter_matlab.language,
-            '.groovy': tree_sitter_groovy.language,
-            'build.gradle': tree_sitter_groovy.language,
+            '.py': Language(tree_sitter_python.language()),
+            'setup.py': Language(tree_sitter_python.language()),
+            '.js': Language(tree_sitter_javascript.language()),
+            '.jsx': Language(tree_sitter_javascript.language()),
+            '.ts': Language(tree_sitter_typescript.language()),
+            '.tsx': Language(tree_sitter_typescript.language()),
+            '.java': Language(tree_sitter_java.language()),
+            '.c': Language(tree_sitter_c.language()),
+            '.h': Language(tree_sitter_c.language()),
+            '.cpp': Language(tree_sitter_cpp.language()),
+            '.hpp': Language(tree_sitter_cpp.language()),
+            '.cs': Language(tree_sitter_c_sharp.language()),
+            '.go': Language(tree_sitter_go.language()),
+            '.rs': Language(tree_sitter_rust.language()),
+            '.rb': Language(tree_sitter_ruby.language()),
+            '.php': Language(tree_sitter_php.language()),
+            '.scala': Language(tree_sitter_scala.language()),
+            '.kt': Language(tree_sitter_kotlin.language()),
+            '.lua': Language(tree_sitter_lua.language()),
+            '.cu': Language(tree_sitter_cuda.language()),
+            '.ino': Language(tree_sitter_arduino.language()),
+            '.pde': Language(tree_sitter_arduino.language()),
+            '.m': Language(tree_sitter_matlab.language()),
+            '.groovy': Language(tree_sitter_groovy.language()),
+            'build.gradle': Language(tree_sitter_groovy.language()),
             
             # Build Systems
-            'CMakeLists.txt': tree_sitter_cmake.language,
-            '.cmake': tree_sitter_cmake.language,
+            'CMakeLists.txt': Language(tree_sitter_cmake.language()),
+            '.cmake': Language(tree_sitter_cmake.language()),
             
             # Web Technologies
-            '.html': tree_sitter_html.language,
-            '.css': tree_sitter_css.language,
+            '.html': Language(tree_sitter_html.language()),
+            '.css': Language(tree_sitter_css.language()),
             
             # Data & Config
-            '.json': tree_sitter_json.language,
-            '.yaml': tree_sitter_yaml.language,
-            '.yml': tree_sitter_yaml.language,
-            '.toml': tree_sitter_toml.language,
-            '.xml': tree_sitter_xml.language,
+            '.json': Language(tree_sitter_json.language()),
+            '.yaml': Language(tree_sitter_yaml.language()),
+            '.yml': Language(tree_sitter_yaml.language()),
+            '.toml': Language(tree_sitter_toml.language()),
+            '.xml': Language(tree_sitter_xml.language()),
             
             # Documentation
-            '.md': tree_sitter_markdown.language,
-            '.markdown': tree_sitter_markdown.language,
-            'README': tree_sitter_markdown.language,
-            'README.md': tree_sitter_markdown.language,
-            'CHANGELOG': tree_sitter_markdown.language,
-            'CHANGELOG.md': tree_sitter_markdown.language,
-            'CONTRIBUTING': tree_sitter_markdown.language,
-            'CONTRIBUTING.md': tree_sitter_markdown.language,
-            'LICENSE.md': tree_sitter_markdown.language,
+            '.md': Language(tree_sitter_markdown.language()),
+            '.markdown': Language(tree_sitter_markdown.language()),
+            'README': Language(tree_sitter_markdown.language()),
+            'README.md': Language(tree_sitter_markdown.language()),
+            'CHANGELOG': Language(tree_sitter_markdown.language()),
+            'CHANGELOG.md': Language(tree_sitter_markdown.language()),
+            'CONTRIBUTING': Language(tree_sitter_markdown.language()),
+            'CONTRIBUTING.md': Language(tree_sitter_markdown.language()),
+            'LICENSE.md': Language(tree_sitter_markdown.language()),
             
             # Query Languages
-            '.sql': tree_sitter_sql.language,
+            '.sql': Language(tree_sitter_sql.language()),
             
             # Shell Scripts
-            '.sh': tree_sitter_bash.language,
-            '.bash': tree_sitter_bash.language,
-            '.env': tree_sitter_bash.language
+            '.sh': Language(tree_sitter_bash.language()),
+            '.bash': Language(tree_sitter_bash.language()),
+            '.env': Language(tree_sitter_bash.language())
         }
         
     def can_parse(self, file_path: str) -> bool:
@@ -150,7 +150,7 @@ class TreeSitterParser:
                 if not key in self.LANGUAGE_MAP:
                     key = path.name.lower()
                 if key in self.LANGUAGE_MAP:
-                    self.parser.set_language(self.LANGUAGE_MAP[key])
+                    self.parser.language = self.LANGUAGE_MAP[key]
                 
             # Parse content - tree-sitter expects bytes
             tree = self.parser.parse(bytes(content, 'utf8'))
