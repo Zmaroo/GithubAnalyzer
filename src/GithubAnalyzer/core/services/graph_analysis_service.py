@@ -1,77 +1,30 @@
-"""Service for graph analysis operations"""
+"""Graph analysis service"""
 from typing import Dict, Any, Optional, List
-from pathlib import Path
-from ..utils.performance import measure_time
 from .base import BaseService
+from ..models.graph import GraphAnalysisResult
 
 class GraphAnalysisService(BaseService):
-    """Service for analyzing code dependency graphs"""
+    """Service for graph-based code analysis"""
     
-    def __init__(self, registry=None):
+    def _initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
         """Initialize graph analysis service"""
-        super().__init__()
-        self.registry = registry
-        self.graph = None
-        self.graph_name = "code_analysis_graph"
+        self.graph = None  # Initialize graph DB connection etc.
         
-    def initialize(self) -> bool:
-        """Initialize the service"""
-        try:
-            # Initialize graph database connection etc.
-            self.initialized = True
-            return True
-        except Exception as e:
-            self._set_error(f"Failed to initialize graph analysis: {e}")
-            return False
-            
-    def shutdown(self) -> bool:
-        """Cleanup resources"""
-        try:
-            self.graph = None
-            self.initialized = False
-            return True
-        except Exception as e:
-            self._set_error(f"Failed to shutdown graph analysis: {e}")
-            return False
-    
-    @measure_time
-    def analyze_dependencies(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Analyze code dependencies"""
-        if not self.initialized:
-            self._set_error("Service not initialized")
-            return None
-            
-        try:
-            # Analyze dependencies
-            return {
-                'nodes': [],
-                'edges': [],
-                'metrics': {}
-            }
-        except Exception as e:
-            self._set_error(f"Failed to analyze dependencies: {e}")
-            return None
-            
-    def analyze_code_structure(self, path: str) -> Dict[str, Any]:
+    def analyze_code_structure(self, path: str) -> GraphAnalysisResult:
         """Analyze code structure"""
-        return {'structure': 'analyzed'}
-        
-    def analyze_dependency_structure(self) -> Dict[str, Any]:
-        """Analyze dependency structure"""
-        return {'dependencies': []}
-        
-    def analyze_ast_patterns(self) -> List[Dict[str, Any]]:
-        """Analyze AST patterns"""
-        return []
-        
-    def correlate_ast_metrics(self) -> Dict[str, Any]:
-        """Correlate AST metrics"""
-        return {'metrics': {}}
-        
-    def analyze_code_evolution(self) -> Dict[str, Any]:
-        """Analyze code evolution"""
-        return {'evolution': []}
-        
-    def get_refactoring_suggestions(self) -> List[str]:
-        """Get refactoring suggestions"""
-        return [] 
+        try:
+            # Implement actual analysis
+            return GraphAnalysisResult(
+                nodes=[],
+                edges=[],
+                metrics={},
+                success=True
+            )
+        except Exception as e:
+            return GraphAnalysisResult(
+                nodes=[],
+                edges=[],
+                metrics={},
+                success=False,
+                errors=[str(e)]
+            ) 

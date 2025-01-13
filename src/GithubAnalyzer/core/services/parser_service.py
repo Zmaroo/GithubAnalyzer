@@ -1,68 +1,37 @@
-"""Service for parsing code files"""
-from pathlib import Path
-from typing import Optional, Dict, Any
+"""Parser service for handling file parsing"""
+from typing import Dict, Any, Optional, List
+from ..parsers.base import BaseParser
 from ..parsers.tree_sitter import TreeSitterParser
-from ..parsers.custom import DocumentationParser, ConfigParser, LicenseParser
-from ..models.base import ParseResult
+from ..parsers.custom import (
+    ConfigParser,
+    DocumentationParser,
+    LicenseParser
+)
 from .base import BaseService
 
 class ParserService(BaseService):
-    """Service for parsing different types of files"""
+    """Service for parsing files"""
     
     def __init__(self, registry=None):
-        super().__init__()
-        self.registry = registry
-        self.tree_sitter = TreeSitterParser()
-        self.custom_parsers = {
-            'documentation': DocumentationParser(),
-            'config': ConfigParser(),
-            'license': LicenseParser()
-        }
-        self.file_type_map = {
-            '.py': self.tree_sitter,
-            '.md': self.custom_parsers['documentation'],
-            '.rst': self.custom_parsers['documentation'],
-            '.yaml': self.custom_parsers['config'],
-            '.yml': self.custom_parsers['config'],
-            'LICENSE': self.custom_parsers['license']
-        }
+        """Initialize parser service"""
+        super().__init__(registry)
+        self.parsers: List[BaseParser] = []
         
-    def initialize(self) -> bool:
+    def _initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
         """Initialize parsers"""
-        self.initialized = True
-        return True
+        self.parsers = [
+            TreeSitterParser(),
+            ConfigParser(),
+            DocumentationParser(),
+            LicenseParser()
+        ]
         
-    def shutdown(self) -> bool:
-        """Cleanup resources"""
-        self.initialized = False
-        return True
-        
-    def parse_file(self, file_path: str, content: str) -> ParseResult:
-        """Parse a file using appropriate parser"""
-        if not content.strip():
-            return ParseResult(
-                ast=None,
-                semantic={},
-                errors=["Empty content"],
-                success=False
-            )
-            
-        path = Path(file_path)
-        parser = self._get_parser(path)
-        
-        if not parser:
-            return ParseResult(
-                ast=None,
-                semantic={},
-                errors=[f"No parser available for {path.suffix}"],
-                success=False
-            )
-            
-        return parser.parse(content)
-        
-    def _get_parser(self, path: Path):
-        """Get appropriate parser for file"""
-        if path.name.upper() == 'LICENSE':
-            return self.custom_parsers['license']
-            
-        return self.file_type_map.get(path.suffix.lower()) 
+    def parse_file(self, file_path: str, content: str) -> Dict[str, Any]:
+        """Parse file content"""
+        for parser in self.parsers:
+            if parser.can_parse(file_path):
+                return parser.parse_file(file_path, content)
+        return {
+            'success': False,
+            'errors': ['No suitable parser found']
+        } 
