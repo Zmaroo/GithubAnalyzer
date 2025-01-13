@@ -3,10 +3,12 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 from tree_sitter import Parser, Language, Tree, Node
 import tree_sitter_python
+import tree_sitter_javascript
 
 from .base import BaseParser
 from ..models.base import TreeSitterNode, ParseResult
 from ..utils.logging import setup_logger
+from ...config.config import LANGUAGE_MAP  # Use centralized language mapping
 
 logger = setup_logger(__name__)
 
@@ -17,23 +19,42 @@ class TreeSitterParser(BaseParser):
         """Initialize tree-sitter parser"""
         super().__init__()
         self.parser = Parser()
+        self.languages: Dict[str, Language] = {}
         self._load_languages()
         
     def _load_languages(self):
         """Load language support"""
         try:
-            # Load Python language using the language() function directly
-            # The Language constructor only takes one argument - the language object
-            PY_LANGUAGE = Language(tree_sitter_python.language())
-            self.parser.language = PY_LANGUAGE
+            # Map of language modules to their tree-sitter packages
+            language_modules = {
+                'python': tree_sitter_python,
+                'javascript': tree_sitter_javascript,
+                # Add other languages as needed based on LANGUAGE_MAP
+            }
+            
+            # Load each language
+            for lang_name, module in language_modules.items():
+                try:
+                    self.languages[lang_name] = Language(module.language())
+                    logger.info(f"Successfully loaded {lang_name} language parser")
+                except Exception as e:
+                    logger.warning(f"Failed to load {lang_name} language: {e}")
+                    
+            # Set default to Python
+            self.parser.language = self.languages.get('python')
+            
+            if not self.languages:
+                raise RuntimeError("No language parsers were successfully loaded")
+            
+            return True
         except Exception as e:
             logger.error(f"Failed to load language support: {str(e)}")
             raise RuntimeError(f"Failed to load language support: {str(e)}")
 
     def can_parse(self, file_path: str) -> bool:
         """Check if this parser can handle the given file"""
-        # Currently only supporting Python files
-        return Path(file_path).suffix in ['.py']
+        suffix = Path(file_path).suffix
+        return suffix in LANGUAGE_MAP and LANGUAGE_MAP[suffix] in self.languages
         
     def parse(self, content: str) -> ParseResult:
         """Parse content string directly"""
@@ -84,7 +105,7 @@ class TreeSitterParser(BaseParser):
                 success=False,
                 errors=[f"Failed to parse content: {str(e)}"]
             )
-        
+            
     def parse_file(self, file_path: str, content: Optional[str] = None) -> ParseResult:
         """Parse file content"""
         try:
@@ -94,6 +115,21 @@ class TreeSitterParser(BaseParser):
                     semantic={},
                     success=False,
                     errors=[f"Unsupported file type: {file_path}"]
+                )
+                
+            # Set the appropriate language parser
+            suffix = Path(file_path).suffix
+            lang_name = LANGUAGE_MAP.get(suffix)
+            if lang_name in self.languages:
+                self.parser.language = self.languages[lang_name]
+                logger.debug(f"Using {lang_name} parser for {file_path}")
+            else:
+                logger.warning(f"No parser available for language {lang_name}")
+                return ParseResult(
+                    ast=None,
+                    semantic={},
+                    success=False,
+                    errors=[f"No parser available for {lang_name}"]
                 )
                 
             if content is None:
@@ -134,7 +170,6 @@ class TreeSitterParser(BaseParser):
     def _extract_semantic_info(self, tree: Tree) -> Dict[str, Any]:
         """Extract semantic information from parse tree"""
         try:
-            # Initialize semantic info
             semantic_info = {
                 "root_type": tree.root_node.type,
                 "node_count": tree.root_node.descendant_count,
@@ -157,8 +192,8 @@ class TreeSitterParser(BaseParser):
                 if not visited_children:
                     node = cursor.node
                     
-                    # Handle function definitions
-                    if node.type == 'function_definition':
+                    # Handle Python and JavaScript function definitions
+                    if node.type in ['function_definition', 'function_declaration', 'method_definition']:
                         name_node = node.child_by_field_name('name')
                         if name_node:
                             semantic_info["functions"].append({
@@ -168,8 +203,8 @@ class TreeSitterParser(BaseParser):
                                 "parameters": self._extract_parameters(node)
                             })
                     
-                    # Handle class definitions
-                    elif node.type == 'class_definition':
+                    # Handle Python and JavaScript class definitions
+                    elif node.type in ['class_definition', 'class_declaration']:
                         name_node = node.child_by_field_name('name')
                         if name_node:
                             semantic_info["classes"].append({
