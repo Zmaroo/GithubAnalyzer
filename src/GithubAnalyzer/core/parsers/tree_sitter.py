@@ -83,9 +83,6 @@ class TreeSitterParser:
         '.toml': tree_sitter_toml.language,
         '.xml': tree_sitter_xml.language,
         
-        # Query Languages
-        '.sql': tree_sitter_sql.language,
-        
         # Documentation
         '.md': tree_sitter_markdown.language,
         '.markdown': tree_sitter_markdown.language,
@@ -108,7 +105,7 @@ class TreeSitterParser:
         try:
             self.parser = Parser()
             # Default to Python language
-            self.parser.set_language(python_language)
+            self.parser.set_language(tree_sitter_python.language)
             logger.info("Tree-sitter parser initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize tree-sitter: {e}")
@@ -147,7 +144,7 @@ class TreeSitterParser:
                 
                 # Special handling for markdown files
                 if name.startswith(('README', 'CHANGELOG', 'CONTRIBUTING', 'LICENSE')):
-                    self.parser.set_language(markdown_language)
+                    self.parser.set_language(tree_sitter_markdown.language)
                 elif not key in self.LANGUAGE_MAP:
                     key = path.name.lower()
                     if key in self.LANGUAGE_MAP:
