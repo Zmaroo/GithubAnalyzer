@@ -1,9 +1,24 @@
 # Cursor rules for GitHub Analyzer project
 version: 1.0
 
+# Project structure
+structure:
+  core:
+    - services/
+    - models/
+    - parsers/
+    - utils/
+  tests:
+    - test_services/
+    - test_parsers/
+    - test_models/
+    - test_utils/
+
 # File patterns to analyze
 patterns:
-  python: "**/*.py"
+  python:
+    source: "src/GithubAnalyzer/**/*.py"
+    tests: "tests/**/*.py"
   yaml: "**/*.{yml,yaml}"
   json: "**/*.json"
   markdown: "**/*.md"
@@ -14,6 +29,14 @@ rules:
     max_line_length: 100
     require_docstrings: true
     complexity_threshold: 10
+    class_rules:
+      require_init: true
+      require_cleanup: true
+      max_inheritance_depth: 3
+    service_rules:
+      require_config: true
+      require_error_handling: true
+      require_logging: true
     
   yaml:
     require_comments: true
@@ -26,21 +49,69 @@ rules:
       - "**/venv/**"
       - "**/build/**"
       - "**/dist/**"
+      - "**/*.pyc"
+      - ".pytest_cache/**"
+
+# Service requirements
+services:
+  base_requirements:
+    - initialization
+    - error_handling
+    - logging
+    - cleanup
+  
+  required_services:
+    - database_service
+    - parser_service
+    - analyzer_service
+    - graph_analysis_service
+    - framework_service
 
 # Custom analysis settings
 settings:
   enable_type_checking: true
   enable_security_checks: true
   enable_style_checks: true
+  neo4j:
+    check_gds_patterns: true
+    validate_projections: true
   
 # Documentation requirements
 documentation:
   require_module_docs: true
   require_class_docs: true
   require_function_docs: true
+  docstring_style: "google"
   
 # Testing requirements
 testing:
   min_coverage: 80
   require_unit_tests: true
   require_integration_tests: true
+  test_patterns:
+    unit: "test_*.py"
+    integration: "test_*_integration.py"
+  required_test_cases:
+    services:
+      - initialization
+      - error_handling
+      - cleanup
+      - configuration
+    database:
+      - connection
+      - transactions
+      - caching
+    graph:
+      - projections
+      - algorithms
+      - error_cases
+
+# Code quality
+quality:
+  max_cognitive_complexity: 15
+  max_method_length: 50
+  max_class_length: 500
+  naming_conventions:
+    classes: "^[A-Z][a-zA-Z0-9]*$"
+    functions: "^[a-z][a-zA-Z0-9_]*$"
+    variables: "^[a-z][a-zA-Z0-9_]*$"

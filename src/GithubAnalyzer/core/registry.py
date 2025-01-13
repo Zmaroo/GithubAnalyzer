@@ -1,6 +1,7 @@
 """Registry for managing services"""
-from typing import Dict, Any
-from .services.base import BaseService
+from typing import Dict, Any, Optional, Type
+from .services.base import BaseService, ServiceConfig
+from .services.configurable import DatabaseConfig, GraphConfig
 from .services.database_service import DatabaseService
 from .services.graph_analysis_service import GraphAnalysisService
 from .services.parser_service import ParserService
@@ -17,68 +18,41 @@ class AnalysisToolRegistry:
     def __init__(self):
         """Initialize registry"""
         self.services: Dict[str, BaseService] = {}
+        self._service_configs: Dict[str, ServiceConfig] = self._get_default_configs()
         self._initialize_services()
         
-    def _initialize_services(self):
-        """Initialize all services"""
-        default_config = {
-            'database': {
-                'host': 'localhost',
-                'port': 5432,
-                'username': 'test',
-                'password': 'test',
-                'database': 'test'
-            }
+    def _get_default_configs(self) -> Dict[str, ServiceConfig]:
+        """Get default service configurations"""
+        return {
+            'database': DatabaseConfig(),
+            'graph': GraphConfig(),
+            'parser': ServiceConfig(),
+            'analyzer': ServiceConfig(),
+            'framework': ServiceConfig()
         }
         
-        # Initialize core services
-        self.services['database'] = DatabaseService(self)
-        self.services['parser'] = ParserService(self)
-        self.services['analyzer'] = AnalyzerService(self)
-        self.services['framework'] = FrameworkService(self)
-        self.services['graph'] = GraphAnalysisService(self)
+    def _initialize_services(self) -> None:
+        """Initialize all services"""
+        service_classes = {
+            'database': DatabaseService,
+            'parser': ParserService,
+            'analyzer': AnalyzerService,
+            'framework': FrameworkService,
+            'graph': GraphAnalysisService
+        }
         
-        # Initialize each service with config
-        for name, service in self.services.items():
-            service.initialize(default_config.get(name))
+        # Initialize each service with its config
+        for name, service_class in service_classes.items():
+            config = self._service_configs.get(name)
+            self.services[name] = service_class(self, config)
             
         # Create common operations interface
         self.common_operations = CommonOperations(self)
     
-    @property
-    def database_service(self) -> DatabaseService:
-        """Get database service"""
-        return self.services['database']
-        
-    @property
-    def parser_service(self) -> ParserService:
-        """Get parser service"""
-        return self.services['parser']
-        
-    @property
-    def analyzer_service(self) -> AnalyzerService:
-        """Get analyzer service"""
-        return self.services['analyzer']
-        
-    @property
-    def framework_service(self) -> FrameworkService:
-        """Get framework service"""
-        return self.services['framework']
-        
-    @property
-    def graph_service(self) -> GraphAnalysisService:
-        """Get graph analysis service"""
-        return self.services['graph']
-    
-    def get_common_operations(self) -> CommonOperations:
-        """Get common operations interface"""
-        return self.common_operations
-    
-    @classmethod
-    def create(cls) -> 'AnalysisToolRegistry':
-        """Create registry instance"""
-        return cls()
-    
-    def get_service(self, name: str) -> Any:
+    def get_service(self, name: str) -> Optional[BaseService]:
         """Get service by name"""
-        return self.services.get(name) 
+        return self.services.get(name)
+        
+    def get_config(self, service_name: str) -> Optional[ServiceConfig]:
+        """Get service configuration"""
+        return self._service_configs.get(service_name) 
