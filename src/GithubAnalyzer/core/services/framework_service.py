@@ -31,13 +31,14 @@ class FrameworkService(BaseService):
             
     def detect_frameworks(self, module: ModuleInfo) -> Dict[str, float]:
         """Detect frameworks used in module"""
-        frameworks = {}
+        if not hasattr(self, 'framework_patterns'):
+            self._initialize()
         
+        frameworks = {}
         for framework, patterns in self.framework_patterns.items():
             confidence = self._calculate_confidence(module, patterns)
             if confidence > 0:
                 frameworks[framework] = confidence
-                
         return frameworks
         
     def _calculate_confidence(self, module: ModuleInfo, patterns: list) -> float:

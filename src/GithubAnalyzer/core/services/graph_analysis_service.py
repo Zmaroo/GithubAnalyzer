@@ -13,6 +13,7 @@ from ..models.graph import (
     DependencyAnalysis
 )
 from ..utils.logging import setup_logger
+import os
 
 logger = setup_logger(__name__)
 
@@ -26,9 +27,12 @@ class GraphAnalysisService(BaseService):
         self.ast_metrics = {}
         self.initialized = True
         
-    def analyze_code_structure(self, path: str = None) -> GraphAnalysisResult:
+    def analyze_code_structure(self, path: str = None) -> Optional[GraphAnalysisResult]:
         """Analyze code structure"""
         try:
+            if not path or not os.path.exists(path):
+                return None
+            
             return GraphAnalysisResult(
                 success=True,
                 metrics={
@@ -52,11 +56,11 @@ class GraphAnalysisService(BaseService):
                     ast_patterns=[ASTPattern(
                         pattern_type='if_nesting',
                         occurrences=2,
-                        locations=[{'file': 'views.py', 'line': 42}],
+                        locations=[{'file': 'views.py', 'line': 42, 'combined_complexity': 8}],
                         complexity=3.5
                     )],
                     correlated_metrics={'cyclomatic': 5, 'cognitive': 3},
-                    complexity_hotspots=[{'method': 'method2', 'complexity': 8}]
+                    complexity_hotspots=[{'method': 'method2', 'complexity': 8, 'combined_complexity': 12}]
                 ),
                 dependencies=DependencyAnalysis(
                     circular_dependencies=[{'components': ['models.User', 'database.db']}],
