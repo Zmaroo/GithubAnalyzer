@@ -31,6 +31,7 @@ import tree_sitter_cuda
 import tree_sitter_groovy
 import tree_sitter_matlab
 import tree_sitter_typescript
+import tree_sitter_sql
 
 from ..models.base import TreeSitterNode, ParseResult
 from ..utils.logging import setup_logger
@@ -44,10 +45,9 @@ class TreeSitterParser:
         """Initialize tree-sitter parser"""
         try:
             self.parser = Parser()
-            # Initialize languages
             self._init_languages()
             # Default to Python language
-            self.parser.set_language(tree_sitter_python.language)
+            self.parser.set_language(self.LANGUAGE_MAP['.py'])
             logger.info("Tree-sitter parser initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize tree-sitter: {e}")
@@ -61,6 +61,8 @@ class TreeSitterParser:
             'setup.py': tree_sitter_python.language,
             '.js': tree_sitter_javascript.language,
             '.jsx': tree_sitter_javascript.language,
+            '.ts': tree_sitter_typescript.language,
+            '.tsx': tree_sitter_typescript.language,
             '.java': tree_sitter_java.language,
             '.c': tree_sitter_c.language,
             '.h': tree_sitter_c.language,
@@ -107,21 +109,15 @@ class TreeSitterParser:
             'CONTRIBUTING.md': tree_sitter_markdown.language,
             'LICENSE.md': tree_sitter_markdown.language,
             
+            # Query Languages
+            '.sql': tree_sitter_sql.language,
+            
             # Shell Scripts
             '.sh': tree_sitter_bash.language,
             '.bash': tree_sitter_bash.language,
             '.env': tree_sitter_bash.language
         }
         
-        # Handle TypeScript separately since it has multiple languages
-        try:
-            self.LANGUAGE_MAP.update({
-                '.ts': tree_sitter_typescript.language,
-                '.tsx': tree_sitter_typescript.language
-            })
-        except AttributeError:
-            logger.warning("TypeScript language not available")
-            
     def can_parse(self, file_path: str) -> bool:
         """Check if file can be parsed with tree-sitter"""
         path = Path(file_path)
