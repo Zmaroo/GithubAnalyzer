@@ -83,6 +83,9 @@ class GraphAnalysisResult:
     success: bool
     metrics: Dict[str, Any]
     errors: List[str] = field(default_factory=list)
+    centrality: Optional[CentralityMetrics] = None
+    communities: Optional[CommunityDetection] = None
+    paths: Optional[PathAnalysis] = None
     ast_patterns: List[Dict[str, Any]] = field(default_factory=list)
     dependencies: List[Dict[str, Any]] = field(default_factory=list)
     change_hotspots: List[Dict[str, Any]] = field(default_factory=list)

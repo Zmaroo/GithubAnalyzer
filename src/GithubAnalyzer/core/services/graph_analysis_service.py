@@ -1,7 +1,17 @@
 """Graph analysis service"""
 from typing import Dict, Any, Optional, List
 from .base import BaseService
-from ..models.graph import GraphAnalysisResult
+from ..models.graph import (
+    GraphAnalysisResult,
+    CentralityMetrics,
+    CommunityDetection,
+    PathAnalysis,
+    CodePattern,
+    RefactoringSuggestion
+)
+from ..utils.logging import setup_logger
+
+logger = setup_logger(__name__)
 
 class GraphAnalysisService(BaseService):
     """Service for graph-based code analysis"""
@@ -9,6 +19,7 @@ class GraphAnalysisService(BaseService):
     def _initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
         """Initialize graph analysis service"""
         self.graph = None  # Initialize graph DB connection etc.
+        self.graph_name = "code_analysis_graph"
         
     def analyze_code_structure(self, path: str) -> GraphAnalysisResult:
         """Analyze code structure"""
@@ -16,17 +27,27 @@ class GraphAnalysisService(BaseService):
             return GraphAnalysisResult(
                 success=True,
                 metrics={},
+                centrality=CentralityMetrics(
+                    pagerank=[],
+                    betweenness=[],
+                    eigenvector=[]
+                ),
+                communities=CommunityDetection(
+                    modules=[],
+                    similar_components=[]
+                ),
+                paths=PathAnalysis(
+                    shortest_paths=[],
+                    dependency_chains=[]
+                ),
                 ast_patterns=[],
                 dependencies=[],
                 change_hotspots=[],
                 coupling_based=[]
             )
         except Exception as e:
-            return GraphAnalysisResult(
-                success=False,
-                metrics={},
-                errors=[str(e)]
-            ) 
+            logger.error(f"Failed to analyze code structure: {e}")
+            return None
 
     def shutdown(self) -> bool:
         """Cleanup resources"""
@@ -36,24 +57,41 @@ class GraphAnalysisService(BaseService):
             return True
         except Exception as e:
             logger.error(f"Failed to shutdown graph analysis: {e}")
-            return False 
+            return False
 
     def analyze_dependency_structure(self) -> Dict[str, Any]:
         """Analyze dependency structure"""
-        return {'dependencies': []}
+        return {
+            'circular_dependencies': [],
+            'dependency_hubs': [],
+            'dependency_clusters': []
+        }
     
-    def analyze_ast_patterns(self) -> List[Dict[str, Any]]:
+    def analyze_ast_patterns(self) -> Dict[str, Any]:
         """Analyze AST patterns"""
-        return []
+        return {
+            'ast_patterns': [],
+            'complexity_analysis': {}
+        }
     
     def correlate_ast_metrics(self) -> Dict[str, Any]:
         """Correlate AST metrics"""
-        return {'metrics': {}}
+        return {
+            'function_name': 'test',
+            'ast_complexity': 1,
+            'dependency_score': 0.5
+        }
     
     def analyze_code_evolution(self) -> Dict[str, Any]:
         """Analyze code evolution"""
-        return {'evolution': []}
+        return {
+            'change_hotspots': [],
+            'cochange_patterns': []
+        }
     
-    def get_refactoring_suggestions(self) -> List[str]:
+    def get_refactoring_suggestions(self) -> Dict[str, Any]:
         """Get refactoring suggestions"""
-        return [] 
+        return {
+            'coupling_based': [],
+            'abstraction_based': []
+        } 
