@@ -1,5 +1,5 @@
 """Graph analysis models"""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
 @dataclass
@@ -79,16 +79,14 @@ class CombinedAnalysis:
 
 @dataclass
 class GraphAnalysisResult:
-    """Complete graph analysis results"""
-    centrality: CentralityMetrics
-    communities: CommunityDetection
-    paths: PathAnalysis
-    similarity: Dict[str, List[Dict[str, Any]]]
-    patterns: Optional[List[CodePattern]] = None
-    dependencies: Optional[DependencyAnalysis] = None
-    evolution: Optional[CodeEvolutionMetrics] = None
-    refactoring_suggestions: Optional[List[RefactoringSuggestion]] = None
-    ast_analysis: Optional[CombinedAnalysis] = None
+    """Result of graph analysis"""
+    success: bool
+    metrics: Dict[str, Any]
+    errors: List[str] = field(default_factory=list)
+    ast_patterns: List[Dict[str, Any]] = field(default_factory=list)
+    dependencies: List[Dict[str, Any]] = field(default_factory=list)
+    change_hotspots: List[Dict[str, Any]] = field(default_factory=list)
+    coupling_based: List[Dict[str, Any]] = field(default_factory=list)
     
     def get_key_components(self, limit: int = 10) -> List[str]:
         """Get most important components based on centrality"""

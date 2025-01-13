@@ -13,19 +13,18 @@ class GraphAnalysisService(BaseService):
     def analyze_code_structure(self, path: str) -> GraphAnalysisResult:
         """Analyze code structure"""
         try:
-            # Implement actual analysis
             return GraphAnalysisResult(
-                nodes=[],
-                edges=[],
+                success=True,
                 metrics={},
-                success=True
+                ast_patterns=[],
+                dependencies=[],
+                change_hotspots=[],
+                coupling_based=[]
             )
         except Exception as e:
             return GraphAnalysisResult(
-                nodes=[],
-                edges=[],
-                metrics={},
                 success=False,
+                metrics={},
                 errors=[str(e)]
             ) 
 

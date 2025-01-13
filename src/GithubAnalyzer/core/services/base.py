@@ -33,7 +33,7 @@ class BaseService(ABC):
     
     @abstractmethod
     def shutdown(self) -> bool:
-        """Cleanup resources. Must be implemented by subclasses."""
+        """Cleanup resources"""
         pass
     
     def get_status(self) -> tuple[bool, Optional[str]]:
