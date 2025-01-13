@@ -1,18 +1,13 @@
 """Graph analysis service"""
 from typing import Dict, Any, Optional, List, TYPE_CHECKING
+from ..utils.logging import setup_logger
 from .base import BaseService
 from ..models.graph import (
     GraphAnalysisResult,
     CentralityMetrics,
     CommunityDetection,
-    PathAnalysis,
-    CodePattern,
-    RefactoringSuggestion,
-    ASTAnalysis,
-    ASTPattern,
-    DependencyAnalysis
+    PathAnalysis
 )
-from ..utils.logging import setup_logger
 import os
 
 if TYPE_CHECKING:
