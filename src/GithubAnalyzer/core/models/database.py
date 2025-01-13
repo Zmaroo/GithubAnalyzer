@@ -1,6 +1,7 @@
 """Database related models"""
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
+from .graph import GraphNode, GraphEdge
 
 @dataclass
 class DatabaseConfig:

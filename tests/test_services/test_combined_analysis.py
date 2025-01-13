@@ -38,6 +38,13 @@ class ComplexClass:
     
     return repo_dir
 
+@pytest.fixture
+def graph_service():
+    """Create a graph analysis service instance"""
+    service = GraphAnalysisService()
+    service.initialize()
+    return service
+
 def test_combined_analysis(graph_service, complex_codebase):
     """Test combined AST and graph analysis"""
     # Analyze code structure
