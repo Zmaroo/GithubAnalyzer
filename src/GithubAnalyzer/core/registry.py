@@ -2,7 +2,7 @@
 from typing import Dict, Any
 from .services.base import BaseService
 from .services.database_service import DatabaseService
-from ..utils.logging import setup_logger
+from .utils.logging import setup_logger
 
 logger = setup_logger(__name__)
 
