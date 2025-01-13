@@ -1,5 +1,5 @@
 """Graph analysis service"""
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, TYPE_CHECKING
 from .base import BaseService
 from ..models.graph import (
     GraphAnalysisResult,
@@ -14,6 +14,9 @@ from ..models.graph import (
 )
 from ..utils.logging import setup_logger
 import os
+
+if TYPE_CHECKING:
+    from ..registry import AnalysisToolRegistry
 
 logger = setup_logger(__name__)
 

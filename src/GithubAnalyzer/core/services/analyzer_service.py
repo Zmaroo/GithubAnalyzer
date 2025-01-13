@@ -1,10 +1,13 @@
 """Analyzer service for code analysis"""
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 from .base import BaseService
 from ..models.analysis import AnalysisResult
 from ..models.module import ModuleInfo
 from ..utils.logging import setup_logger
 import os
+
+if TYPE_CHECKING:
+    from ..registry import AnalysisToolRegistry
 
 logger = setup_logger(__name__)
 
