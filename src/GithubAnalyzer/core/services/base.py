@@ -1,7 +1,10 @@
 """Base service class for all services"""
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 from ..utils.logging import setup_logger
+
+if TYPE_CHECKING:
+    from ..registry import AnalysisToolRegistry
 
 logger = setup_logger(__name__)
 
@@ -11,6 +14,7 @@ class BaseService(ABC):
     def __init__(self, registry: Optional['AnalysisToolRegistry'] = None):
         self.registry = registry
         self.initialized = False
+        self.error = None
         
     def initialize(self, config: Optional[Dict[str, Any]] = None) -> bool:
         """Initialize service with optional config"""
