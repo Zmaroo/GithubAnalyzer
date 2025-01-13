@@ -1,17 +1,17 @@
 """Registry for managing services"""
 from typing import Dict, Any, Optional, Type
-from .services.base import BaseService, ServiceConfig
-from .services.configurable import (
+from ..services.base import BaseService, ServiceConfig
+from ..services.configurable import (
     DatabaseConfig, GraphConfig, ParserConfig,
     AnalyzerConfig, FrameworkConfig
 )
-from .services.database_service import DatabaseService
-from .services.graph_analysis_service import GraphAnalysisService
-from .services.parser_service import ParserService
-from .services.analyzer_service import AnalyzerService
-from .services.framework_service import FrameworkService
+from ..services.database_service import DatabaseService
+from ..services.graph_analysis_service import GraphAnalysisService
+from ..services.parser_service import ParserService
+from ..services.analyzer_service import AnalyzerService
+from ..services.framework_service import FrameworkService
 from .container import ServiceContainer
-from .utils.logging import setup_logger
+from .logging import setup_logger
 
 logger = setup_logger(__name__)
 

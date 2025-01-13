@@ -1,8 +1,8 @@
 """Base service class"""
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
-from ..di import DependencyContainer
-from ..errors import ServiceError
+from ..dependency_container import DependencyContainer
+from ..utils.errors import ServiceError
 
 class BaseService(ABC):
     """Base class for all services"""
