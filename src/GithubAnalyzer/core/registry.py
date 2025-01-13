@@ -3,6 +3,7 @@ from typing import Dict, Any, List
 from .services.base import BaseService
 from .services.database_service import DatabaseService
 from .services.graph_analysis_service import GraphAnalysisService
+from .services.parser_service import ParserService
 from .utils.logging import setup_logger
 
 logger = setup_logger(__name__)
@@ -20,7 +21,8 @@ class AnalysisToolRegistry:
         try:
             self.services = {
                 'database': DatabaseService(registry=self),
-                'graph_analysis': GraphAnalysisService(registry=self)
+                'graph_analysis': GraphAnalysisService(registry=self),
+                'parser': ParserService(registry=self)
             }
         except Exception as e:
             logger.error(f"Failed to initialize services: {e}")
@@ -35,6 +37,11 @@ class AnalysisToolRegistry:
     def graph_analysis_service(self) -> GraphAnalysisService:
         """Get graph analysis service"""
         return self.services['graph_analysis']
+        
+    @property
+    def parser_service(self) -> ParserService:
+        """Get parser service"""
+        return self.services['parser']
     
     def get_common_operations(self) -> List[str]:
         """Get list of common operations"""

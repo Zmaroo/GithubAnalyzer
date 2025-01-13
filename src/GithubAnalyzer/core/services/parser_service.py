@@ -1,95 +1,68 @@
-from typing import Dict, Any, Optional
+"""Service for parsing code files"""
 from pathlib import Path
-from ...config.config import FILE_TYPE_MAPPINGS
-from .base_service import BaseService
+from typing import Optional, Dict, Any
 from ..parsers.tree_sitter import TreeSitterParser
-from ..parsers.custom import (
-    ConfigParser,
-    DocumentationParser,
-    LicenseParser
-)
+from ..parsers.custom import DocumentationParser, ConfigParser, LicenseParser
 from ..models.base import ParseResult
-from ..utils.logging import setup_logger
-
-logger = setup_logger(__name__)
+from .base import BaseService
 
 class ParserService(BaseService):
-    """Centralized parsing service"""
+    """Service for parsing different types of files"""
     
-    def _initialize(self) -> None:
-        # Initialize parsers
+    def __init__(self, registry=None):
+        super().__init__()
+        self.registry = registry
         self.tree_sitter = TreeSitterParser()
         self.custom_parsers = {
-            'config': ConfigParser(),
             'documentation': DocumentationParser(),
+            'config': ConfigParser(),
             'license': LicenseParser()
         }
+        self.file_type_map = {
+            '.py': self.tree_sitter,
+            '.md': self.custom_parsers['documentation'],
+            '.rst': self.custom_parsers['documentation'],
+            '.yaml': self.custom_parsers['config'],
+            '.yml': self.custom_parsers['config'],
+            'LICENSE': self.custom_parsers['license']
+        }
         
-        # Use mappings from config
-        self.file_type_map = FILE_TYPE_MAPPINGS
-
+    def initialize(self) -> bool:
+        """Initialize parsers"""
+        self.initialized = True
+        return True
+        
+    def shutdown(self) -> bool:
+        """Cleanup resources"""
+        self.initialized = False
+        return True
+        
     def parse_file(self, file_path: str, content: str) -> ParseResult:
-        """Parse file using most appropriate parser"""
-        try:
-            path = Path(file_path)
-            
-            # Try tree-sitter first for code files
-            if self.tree_sitter.can_parse(file_path):
-                result = self.tree_sitter.parse(content)
-                if result.success:
-                    return result
-                logger.warning(f"Tree-sitter parse failed for {file_path}, trying custom parser")
-            
-            # Use custom parser based on file type
-            parser_type = self._get_parser_type(path)
-            if parser_type and parser_type in self.custom_parsers:
-                parser = self.custom_parsers[parser_type]
-                parser.set_current_file(file_path)
-                return parser.parse(content)
-            
-            # Return error if no parser available
+        """Parse a file using appropriate parser"""
+        if not content.strip():
             return ParseResult(
                 ast=None,
                 semantic={},
-                errors=[f"No parser available for {file_path}"],
+                errors=["Empty content"],
                 success=False
             )
             
-        except Exception as e:
-            logger.error(f"Error parsing file {file_path}: {e}")
+        path = Path(file_path)
+        parser = self._get_parser(path)
+        
+        if not parser:
             return ParseResult(
                 ast=None,
                 semantic={},
-                errors=[str(e)],
+                errors=[f"No parser available for {path.suffix}"],
                 success=False
             )
-
-    def _get_parser_type(self, path: Path) -> Optional[str]:
-        """Determine appropriate parser type for file"""
-        # Check exact filename matches first
-        if path.name in self.file_type_map:
-            return self.file_type_map[path.name]
             
-        # Then check extensions
-        if path.suffix in self.file_type_map:
-            return self.file_type_map[path.suffix]
+        return parser.parse(content)
+        
+    def _get_parser(self, path: Path):
+        """Get appropriate parser for file"""
+        if path.name.upper() == 'LICENSE':
+            return self.custom_parsers['license']
             
-        # Check pattern matches (e.g., test_*.py)
-        for pattern, parser_type in self.file_type_map.items():
-            if '*' in pattern and path.match(pattern):
-                return parser_type
-            
-        return None
-
-    def get_available_parsers(self) -> Dict[str, Any]:
-        """Get information about available parsers"""
-        return {
-            'tree_sitter': {
-                'available': bool(self.tree_sitter),
-                'supported_languages': self.tree_sitter.supported_languages if self.tree_sitter else []
-            },
-            'custom_parsers': {
-                name: parser.__class__.__name__
-                for name, parser in self.custom_parsers.items()
-            }
-        } 
+        return self.file_type_map.get(path.suffix.lower()) 
