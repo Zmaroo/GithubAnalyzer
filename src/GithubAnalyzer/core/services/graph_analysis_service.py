@@ -7,7 +7,10 @@ from ..models.graph import (
     CommunityDetection,
     PathAnalysis,
     CodePattern,
-    RefactoringSuggestion
+    RefactoringSuggestion,
+    ASTAnalysis,
+    ASTPattern,
+    DependencyAnalysis
 )
 from ..utils.logging import setup_logger
 

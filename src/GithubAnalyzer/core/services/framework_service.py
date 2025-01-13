@@ -18,6 +18,7 @@ class FrameworkService(BaseService):
             'sqlalchemy': ['sqlalchemy'],
             'pydantic': ['pydantic']
         }
+        self.initialized = True
         
     def shutdown(self) -> bool:
         """Cleanup resources"""
