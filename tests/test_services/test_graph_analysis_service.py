@@ -1,7 +1,9 @@
 import pytest
 from pathlib import Path
-from GithubAnalyzer.core.services import GraphAnalysisService
-from GithubAnalyzer.core.models.graph import (
+from GithubAnalyzer.services import GraphAnalysisService
+from GithubAnalyzer.models.graph import (
+    GraphNode,
+    GraphEdge,
     GraphAnalysisResult,
     CentralityMetrics,
     CommunityDetection,

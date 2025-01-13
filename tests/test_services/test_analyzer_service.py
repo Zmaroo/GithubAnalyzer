@@ -1,6 +1,11 @@
 import pytest
 from pathlib import Path
-from GithubAnalyzer.core.services import AnalyzerService
+from GithubAnalyzer.services import AnalyzerService
+from GithubAnalyzer.models import (
+    AnalysisResult,
+    CodeMetrics,
+    SecurityVulnerability
+)
 from GithubAnalyzer.core.models import (
     ModuleInfo,
     FunctionInfo,

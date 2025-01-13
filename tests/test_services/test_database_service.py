@@ -1,12 +1,11 @@
 import pytest
-import json
-from datetime import datetime
-from GithubAnalyzer.core.services import DatabaseService
-from GithubAnalyzer.core.models.database import (
+from unittest.mock import MagicMock
+from GithubAnalyzer.services import DatabaseService
+from GithubAnalyzer.models.database import (
+    DatabaseConfig,
+    DatabaseConnection,
     RepositoryInfo,
-    GraphNode,
-    GraphRelationship,
-    RepositoryState
+    GraphNode
 )
 
 @pytest.fixture

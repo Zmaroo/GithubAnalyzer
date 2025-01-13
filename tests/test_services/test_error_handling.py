@@ -1,11 +1,12 @@
 """Test error handling across services"""
 import pytest
-from GithubAnalyzer.core.models.errors import (
+from GithubAnalyzer.models.errors import (
     AnalysisError,
-    ParseError,
-    DatabaseError
+    ValidationError,
+    DatabaseError,
+    ParserError
 )
-from GithubAnalyzer.core.error_handler import handle_errors
+from GithubAnalyzer.utils.error_handler import handle_errors
 
 def test_error_handler_decorator():
     """Test error handler decorator"""

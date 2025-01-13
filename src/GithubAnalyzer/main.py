@@ -1,9 +1,9 @@
 """GitHub Code Analysis Tool CLI"""
 import click
 from pathlib import Path
-from .core.bootstrap import Bootstrap
-from .core.models.errors import AnalysisError, ValidationError
-from .core.utils.logging import configure_logging
+from .utils.bootstrap import Bootstrap
+from .models.errors import AnalysisError, ValidationError
+from .utils.logging import configure_logging
 import logging
 import sys
 

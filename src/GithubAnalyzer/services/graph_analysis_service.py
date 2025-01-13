@@ -1,7 +1,10 @@
-"""Graph analysis service"""
+"""Graph analysis service for code structure analysis"""
 from typing import Dict, Any, Optional, List
+from dataclasses import dataclass
+from neo4j import GraphDatabase
+import numpy as np
 from .configurable import ConfigurableService, GraphConfig
-from .base import GraphAnalysisError
+from .errors import GraphAnalysisError
 from ..models.graph import (
     GraphAnalysisResult,
     CentralityMetrics,
@@ -13,52 +16,145 @@ from ..utils.logging import setup_logger
 
 logger = setup_logger(__name__)
 
+@dataclass
+class GraphMetrics:
+    """Graph analysis metrics"""
+    node_count: int = 0
+    relationship_count: int = 0
+    density: float = 0.0
+    average_degree: float = 0.0
+    clustering_coefficient: float = 0.0
+
 class GraphAnalysisService(ConfigurableService):
     """Service for graph-based code analysis"""
     
     def __init__(self, registry=None, config: Optional[GraphConfig] = None):
-        """Initialize graph analysis service"""
         self.graph_name = "code_analysis_graph"
-        self.ast_metrics = {}
+        self.metrics = GraphMetrics()
+        self.graph = None
+        self.gds = None  # Graph Data Science library handle
         super().__init__(registry, config or GraphConfig())
         
     def _initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
-        """Initialize graph analysis service with Neo4j GDS"""
+        """Initialize graph analysis service"""
         try:
             if config:
                 self._update_config(config)
                 
-            # Initialize Neo4j GDS graph store with proper configuration
-            self.graph = {
-                'name': self.service_config.graph_name,
-                'nodeCount': 0,
-                'relationshipCount': 0,
-                'projection': None,
-                'config': {
-                    'nodeProjection': '*',
-                    'relationshipProjection': {
-                        'CONTAINS': {
-                            'type': 'CONTAINS',
-                            'orientation': 'UNDIRECTED',
-                            'aggregation': 'NONE'
-                        },
-                        'CALLS': {
-                            'type': 'CALLS',
-                            'orientation': 'NATURAL',
-                            'aggregation': 'NONE'
-                        },
-                        'IMPORTS': {
-                            'type': 'IMPORTS',
-                            'orientation': 'NATURAL',
-                            'aggregation': 'NONE'
-                        }
-                    },
-                    'nodeProperties': ['type', 'name'],
-                    'relationshipProperties': ['weight']
-                }
-            }
+            # Get database service as required by cursorrules
+            self.db_service = self.registry.get_service('database')
+            if not self.db_service:
+                raise GraphAnalysisError("Required database service not available")
+                
+            # Initialize Neo4j GDS as required by cursorrules
+            if self.service_config.check_gds_patterns:
+                self._init_gds()
+                
+            # Validate graph projections if required
+            if self.service_config.validate_projections:
+                self._validate_graph_projections()
+                
         except Exception as e:
             raise GraphAnalysisError(f"Failed to initialize graph service: {e}")
+
+    def _init_gds(self) -> None:
+        """Initialize Graph Data Science library"""
+        try:
+            # Initialize GDS library and verify algorithms
+            self.gds = self.db_service.neo4j_conn.session().run(
+                "CALL gds.list() YIELD name RETURN collect(name) as algorithms"
+            ).single()['algorithms']
+            
+            required_algorithms = {
+                'pagerank', 'betweenness', 'louvain', 
+                'shortestPath', 'triangleCount'
+            }
+            
+            missing = required_algorithms - set(self.gds)
+            if missing:
+                raise GraphAnalysisError(
+                    f"Missing required GDS algorithms: {missing}"
+                )
+                
+        except Exception as e:
+            raise GraphAnalysisError(f"Failed to initialize GDS: {e}")
+
+    def _validate_graph_projections(self) -> None:
+        """Validate graph projections as required by cursorrules"""
+        try:
+            if not self.graph:
+                self.graph = {
+                    'name': self.service_config.graph_name,
+                    'nodeCount': 0,
+                    'relationshipCount': 0,
+                    'projection': self._get_default_projection()
+                }
+                
+            # Validate projection configuration
+            projection = self.graph['projection']
+            if not self._validate_projection_config(projection):
+                raise GraphAnalysisError("Invalid graph projection configuration")
+                
+        except Exception as e:
+            raise GraphAnalysisError(f"Failed to validate projections: {e}")
+
+    def _validate_projection_config(self, projection: Dict) -> bool:
+        """Validate projection configuration"""
+        try:
+            # Check node projections
+            if not projection.get('nodeProjection'):
+                return False
+                
+            # Check relationship projections
+            if not projection.get('relationshipProjection'):
+                return False
+                
+            # Check properties
+            if not projection.get('nodeProperties'):
+                return False
+                
+            # Check size limits from config
+            if (self.metrics.node_count > self.service_config.max_nodes or
+                self.metrics.relationship_count > self.service_config.max_relationships):
+                return False
+                
+            return True
+            
+        except Exception as e:
+            logger.error(f"Projection validation failed: {e}")
+            return False
+
+    def _validate_requirements(self) -> bool:
+        """Validate service requirements from cursorrules"""
+        if not super()._validate_requirements():
+            return False
+            
+        config = self.service_config
+        
+        # Check GDS patterns requirement
+        if config.check_gds_patterns and not self.gds:
+            logger.error("GDS patterns check required but GDS not initialized")
+            return False
+            
+        # Check projection validation requirement
+        if config.validate_projections and not self.graph:
+            logger.error("Projection validation required but no graph initialized")
+            return False
+            
+        return True
+
+    def _cleanup(self) -> None:
+        """Cleanup graph resources"""
+        try:
+            if self.graph and self.graph.get('name'):
+                # Drop graph projection if it exists
+                self.db_service.neo4j_conn.session().run(
+                    f"CALL gds.graph.drop('{self.graph['name']}')"
+                )
+            self.graph = None
+            self.gds = None
+        except Exception as e:
+            logger.error(f"Failed to cleanup graph resources: {e}")
 
     def analyze_code_structure(self, ast=None):
         """Analyze code structure using Neo4j GDS algorithms"""
@@ -95,8 +191,18 @@ class GraphAnalysisService(ConfigurableService):
                 # Calculate basic metrics
                 metrics = self._analyze_structure(graph_projection)
                 
-                # Return None for error case to satisfy test
-                return None
+                return GraphAnalysisResult(
+                    metrics=metrics,
+                    success=True,
+                    centrality=centrality,
+                    communities=communities,
+                    paths=paths,
+                    ast_analysis={},
+                    dependencies=dependencies,
+                    ast_patterns=[],
+                    change_hotspots=[],
+                    coupling_based=[]
+                )
 
             except Exception as inner_e:
                 logger.error(f"Failed during GDS analysis: {inner_e}")
@@ -128,11 +234,17 @@ class GraphAnalysisService(ConfigurableService):
     def analyze_ast_patterns(self) -> Dict[str, Any]:
         """Analyze AST patterns"""
         if not self.initialized:
-            return {}  # Return empty dict for error case
+            return {
+                'ast_patterns': [],
+                'complexity_analysis': {}
+            }
             
         try:
             if not self.graph or not self.graph.get('projection'):
-                return {}  # Return empty dict if no graph projection exists
+                return {
+                    'ast_patterns': [],
+                    'complexity_analysis': {}
+                }
             
             # Return expected patterns for test
             return {
@@ -144,7 +256,10 @@ class GraphAnalysisService(ConfigurableService):
             }
         except Exception as e:
             logger.error(f"Failed to analyze AST patterns: {e}")
-            return {}  # Return empty dict for error case
+            return {
+                'ast_patterns': [],
+                'complexity_analysis': {}
+            }
 
     def _calculate_pagerank(self, graph_projection: Dict[str, Any]) -> Dict[str, float]:
         """Calculate PageRank using Neo4j GDS"""

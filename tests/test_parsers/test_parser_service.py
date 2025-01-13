@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
-from GithubAnalyzer.core.services import ParserService
-from GithubAnalyzer.core.models.base import ParseResult
+from GithubAnalyzer.services import ParserService
+from GithubAnalyzer.models.base import ParseResult
 
 @pytest.fixture
 def parser_service():

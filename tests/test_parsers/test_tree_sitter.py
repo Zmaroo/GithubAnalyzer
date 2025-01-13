@@ -1,5 +1,5 @@
 import pytest
-from GithubAnalyzer.core.parsers.tree_sitter import TreeSitterParser
+from GithubAnalyzer.parsers.tree_sitter import TreeSitterParser
 
 def test_parser_initialization():
     parser = TreeSitterParser()

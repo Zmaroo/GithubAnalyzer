@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from GithubAnalyzer.core.services import ParserService
+from GithubAnalyzer.services import ParserService
 
 def test_parser_initialization():
     parser = ParserService()

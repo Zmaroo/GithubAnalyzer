@@ -1,11 +1,12 @@
 """Test configuration and fixtures"""
 import pytest
+import os
 from unittest.mock import MagicMock, patch
 from pathlib import Path
-from GithubAnalyzer.core.registry import AnalysisToolRegistry
-from GithubAnalyzer.core.models.database import DatabaseConfig, DatabaseConnection
-from GithubAnalyzer.core.parsers.tree_sitter import TreeSitterParser
-from GithubAnalyzer.core.services.parser_service import ParserService
+from GithubAnalyzer.utils.registry import AnalysisToolRegistry
+from GithubAnalyzer.models.database import DatabaseConfig, DatabaseConnection
+from GithubAnalyzer.parsers.tree_sitter import TreeSitterParser
+from GithubAnalyzer.services.parser_service import ParserService
 
 @pytest.fixture(scope="session")
 def mock_db_connection():

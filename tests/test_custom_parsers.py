@@ -1,5 +1,10 @@
 import pytest
 from pathlib import Path
+from GithubAnalyzer.parsers.custom import (
+    PythonParser,
+    JavaScriptParser,
+    TypeScriptParser
+)
 from GithubAnalyzer.core.custom_parsers import (
     BuildSystemParser,
     CIConfigParser,

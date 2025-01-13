@@ -23,6 +23,78 @@ patterns:
   json: "**/*.json"
   markdown: "**/*.md"
 
+# Service configuration
+services:
+  # Base requirements for all services
+  base_requirements:
+    - initialization
+    - error_handling
+    - logging
+    - cleanup
+    - config_validation
+    - dependency_validation
+
+  # Service initialization order
+  initialization_order:
+    - database_service  # Must initialize first
+    - graph_service     # Depends on database
+    - parser_service    # Independent
+    - analyzer_service  # Depends on parser and graph
+    - framework_service # Depends on analyzer
+
+  # Service definitions
+  required_services:
+    database_service:
+      dependencies: []
+      config:
+        require_ssl: true
+        connection_pooling: true
+      health_check:
+        enabled: true
+        interval: 300
+        timeout: 30
+    
+    parser_service:
+      dependencies: []
+      config:
+        max_file_size: 1048576
+        require_type_hints: true
+    
+    analyzer_service:
+      dependencies: 
+        - parser_service
+        - graph_service
+      config:
+        enable_security_checks: true
+        enable_type_checking: true
+    
+    graph_service:
+      dependencies:
+        - database_service
+      config:
+        check_gds_patterns: true
+        validate_projections: true
+
+  # Service monitoring
+  monitoring:
+    health_checks:
+      enabled: true
+      interval: 300  # seconds
+      timeout: 30    # seconds
+    
+    metrics:
+      enabled: true
+      collection_interval: 60
+      exporters:
+        - prometheus
+        - logging
+
+  # Service recovery
+  recovery:
+    max_retries: 3
+    backoff_factor: 2
+    timeout: 30
+
 # Analysis rules
 rules:
   python:
@@ -52,42 +124,38 @@ rules:
       - "**/*.pyc"
       - ".pytest_cache/**"
 
-# Service requirements
-services:
-  base_requirements:
-    - initialization
-    - error_handling
-    - logging
-    - cleanup
-  
-  required_services:
-    - database_service
-    - parser_service
-    - analyzer_service
-    - graph_analysis_service
-    - framework_service
+# Quality requirements
+quality:
+  complexity:
+    max_cognitive: 15
+    max_cyclomatic: 10
+    max_maintainability_index: 20
+  size:
+    max_method_lines: 50
+    max_class_lines: 500
+    max_file_lines: 1000
+  naming_conventions:
+    classes: "^[A-Z][a-zA-Z0-9]*$"
+    functions: "^[a-z][a-zA-Z0-9_]*$"
+    variables: "^[a-z][a-zA-Z0-9_]*$"
+  documentation:
+    require_module_docs: true
+    require_class_docs: true
+    require_method_docs: true
+    docstring_style: "google"
 
-# Custom analysis settings
-settings:
-  enable_type_checking: true
-  enable_security_checks: true
-  enable_style_checks: true
-  neo4j:
-    check_gds_patterns: true
-    validate_projections: true
-  
-# Documentation requirements
-documentation:
-  require_module_docs: true
-  require_class_docs: true
-  require_function_docs: true
-  docstring_style: "google"
-  
-# Testing requirements
+# Testing requirements  
 testing:
-  min_coverage: 80
-  require_unit_tests: true
-  require_integration_tests: true
+  min_coverage:
+    total: 80
+    services: 90
+    models: 85
+    critical_paths: 95
+  required_test_types:
+    - unit
+    - integration
+    - security
+    - performance
   test_patterns:
     unit: "test_*.py"
     integration: "test_*_integration.py"
@@ -105,13 +173,3 @@ testing:
       - projections
       - algorithms
       - error_cases
-
-# Code quality
-quality:
-  max_cognitive_complexity: 15
-  max_method_length: 50
-  max_class_length: 500
-  naming_conventions:
-    classes: "^[A-Z][a-zA-Z0-9]*$"
-    functions: "^[a-z][a-zA-Z0-9_]*$"
-    variables: "^[a-z][a-zA-Z0-9_]*$"
