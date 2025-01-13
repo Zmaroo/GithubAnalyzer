@@ -1,9 +1,10 @@
 """Registry for managing services"""
-from typing import Dict, Any, List
+from typing import Dict, Any
 from .services.base import BaseService
 from .services.database_service import DatabaseService
 from .services.graph_analysis_service import GraphAnalysisService
 from .services.parser_service import ParserService
+from .operations import CommonOperations
 from .utils.logging import setup_logger
 
 logger = setup_logger(__name__)
@@ -15,6 +16,7 @@ class AnalysisToolRegistry:
         """Initialize registry"""
         self.services: Dict[str, BaseService] = {}
         self._initialize_services()
+        self.common_operations = CommonOperations(self)
         
     def _initialize_services(self):
         """Initialize all services"""
@@ -43,14 +45,9 @@ class AnalysisToolRegistry:
         """Get parser service"""
         return self.services['parser']
     
-    def get_common_operations(self) -> List[str]:
-        """Get list of common operations"""
-        return [
-            'parse_file',
-            'analyze_dependencies',
-            'check_security',
-            'validate_syntax'
-        ]
+    def get_common_operations(self) -> CommonOperations:
+        """Get common operations interface"""
+        return self.common_operations
     
     @classmethod
     def create(cls) -> 'AnalysisToolRegistry':
