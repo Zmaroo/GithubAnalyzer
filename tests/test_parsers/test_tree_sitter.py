@@ -9,8 +9,9 @@ def test_parser_initialization():
 def test_parse_python_file(sample_python_file):
     parser = TreeSitterParser()
     with open(sample_python_file) as f:
-        result = parser.parse(f.read())
+        content = f.read()
+    result = parser.parse_file(str(sample_python_file), content)
     
     assert result.success
-    assert result.tree_sitter_node is not None
+    assert result.ast is not None
     assert not result.errors 
