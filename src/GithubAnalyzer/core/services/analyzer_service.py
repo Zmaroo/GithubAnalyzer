@@ -62,18 +62,32 @@ class AnalyzerService(BaseService):
     def analyze_file(self, file_path: str) -> Optional[ModuleInfo]:
         """Analyze single file"""
         try:
+            # Security checks
+            if not file_path or '..' in file_path or not os.path.abspath(file_path).startswith(os.getcwd()):
+                logger.error("Invalid file path")
+                return None
+            
             if not os.path.exists(file_path):
+                return None
+            
+            # Check file size
+            if os.path.getsize(file_path) > 10 * 1024 * 1024:  # 10MB limit
+                logger.error("File too large")
                 return None
             
             with open(file_path) as f:
                 content = f.read()
+            
+            # Security checks on content
+            if any(pattern in content.lower() for pattern in ['javascript:', 'exec(', 'eval(', 'system(']):
+                logger.error("Potentially malicious content detected")
+                return None
             
             # Parse file content
             parse_result = self.registry.parser_service.parse_file(file_path, content)
             if not parse_result.success:
                 return None
             
-            # Extract module info
             return ModuleInfo(
                 path=file_path,
                 imports=parse_result.semantic.get('imports', []),
