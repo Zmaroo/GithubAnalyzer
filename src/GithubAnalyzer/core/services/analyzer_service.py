@@ -11,6 +11,13 @@ logger = setup_logger(__name__)
 class AnalyzerService(BaseService):
     """Service for code analysis"""
     
+    def __init__(self, registry: Optional['AnalysisToolRegistry'] = None):
+        """Initialize analyzer service"""
+        super().__init__(registry)
+        self.current_file = None
+        self.context = None
+        self.initialized = True
+        
     def _initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
         """Initialize analyzer service"""
         self.current_file = None
@@ -62,6 +69,9 @@ class AnalyzerService(BaseService):
     def analyze_file(self, file_path: str) -> Optional[ModuleInfo]:
         """Analyze single file"""
         try:
+            if not self.initialized:
+                return None
+            
             # Security checks
             if not file_path or '..' in file_path or not os.path.abspath(file_path).startswith(os.getcwd()):
                 logger.error("Invalid file path")
@@ -85,7 +95,7 @@ class AnalyzerService(BaseService):
             
             # Parse file content
             parse_result = self.registry.parser_service.parse_file(file_path, content)
-            if not parse_result.success:
+            if not parse_result or not getattr(parse_result, 'success', False):
                 return None
             
             return ModuleInfo(

@@ -20,10 +20,17 @@ logger = setup_logger(__name__)
 class GraphAnalysisService(BaseService):
     """Service for graph-based code analysis"""
     
+    def __init__(self, registry: Optional['AnalysisToolRegistry'] = None):
+        """Initialize graph analysis service"""
+        super().__init__(registry)
+        self.graph_name = "code_analysis_graph"
+        self.ast_metrics = {}
+        self.initialized = True
+        
     def _initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
         """Initialize graph analysis service"""
         self.graph = None  # Initialize graph DB connection etc.
-        self.graph_name = "code_analysis_graph"
+        self.graph_name = "code_analysis_graph"  # Set in both places for test compatibility
         self.ast_metrics = {}
         self.initialized = True
         

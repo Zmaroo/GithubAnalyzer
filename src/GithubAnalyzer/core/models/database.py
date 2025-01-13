@@ -1,6 +1,6 @@
 """Database related models"""
-from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from dataclasses import dataclass, field
+from typing import Dict, Any, Optional, List
 from .graph import GraphNode, GraphEdge
 
 @dataclass
@@ -33,3 +33,18 @@ class RepositoryInfo:
     url: str
     local_path: str
     metadata: Dict[str, Any] 
+
+@dataclass
+class GraphRelationship:
+    """Graph relationship information"""
+    source: str
+    target: str
+    type: str
+    properties: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class GraphNode:
+    """Graph node information"""
+    id: str
+    labels: List[str]
+    properties: Dict[str, Any] = field(default_factory=dict) 
