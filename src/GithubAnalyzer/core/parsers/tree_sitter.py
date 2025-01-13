@@ -44,11 +44,16 @@ class TreeSitterParser:
     def __init__(self):
         """Initialize tree-sitter parser"""
         try:
+            # Initialize parser first
             self.parser = Parser()
-            self._init_languages()
-            # Default to Python language
+            
+            # Initialize Python language as default
             PY_LANGUAGE = Language(tree_sitter_python.language())
             self.parser.language = PY_LANGUAGE
+            
+            # Initialize language map after default is set
+            self._init_languages()
+            
             logger.info("Tree-sitter parser initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize tree-sitter: {e}")
@@ -56,69 +61,73 @@ class TreeSitterParser:
             
     def _init_languages(self):
         """Initialize language objects"""
-        self.LANGUAGE_MAP = {
-            # Programming Languages
-            '.py': Language(tree_sitter_python.language()),
-            'setup.py': Language(tree_sitter_python.language()),
-            '.js': Language(tree_sitter_javascript.language()),
-            '.jsx': Language(tree_sitter_javascript.language()),
-            '.ts': Language(tree_sitter_typescript.language()),
-            '.tsx': Language(tree_sitter_typescript.language()),
-            '.java': Language(tree_sitter_java.language()),
-            '.c': Language(tree_sitter_c.language()),
-            '.h': Language(tree_sitter_c.language()),
-            '.cpp': Language(tree_sitter_cpp.language()),
-            '.hpp': Language(tree_sitter_cpp.language()),
-            '.cs': Language(tree_sitter_c_sharp.language()),
-            '.go': Language(tree_sitter_go.language()),
-            '.rs': Language(tree_sitter_rust.language()),
-            '.rb': Language(tree_sitter_ruby.language()),
-            '.php': Language(tree_sitter_php.language()),
-            '.scala': Language(tree_sitter_scala.language()),
-            '.kt': Language(tree_sitter_kotlin.language()),
-            '.lua': Language(tree_sitter_lua.language()),
-            '.cu': Language(tree_sitter_cuda.language()),
-            '.ino': Language(tree_sitter_arduino.language()),
-            '.pde': Language(tree_sitter_arduino.language()),
-            '.m': Language(tree_sitter_matlab.language()),
-            '.groovy': Language(tree_sitter_groovy.language()),
-            'build.gradle': Language(tree_sitter_groovy.language()),
+        try:
+            self.LANGUAGE_MAP = {
+                # Programming Languages
+                '.py': Language(tree_sitter_python.language()),
+                'setup.py': Language(tree_sitter_python.language()),
+                '.js': Language(tree_sitter_javascript.language()),
+                '.jsx': Language(tree_sitter_javascript.language()),
+                '.ts': Language(tree_sitter_typescript.language()),
+                '.tsx': Language(tree_sitter_typescript.language()),
+                '.java': Language(tree_sitter_java.language()),
+                '.c': Language(tree_sitter_c.language()),
+                '.h': Language(tree_sitter_c.language()),
+                '.cpp': Language(tree_sitter_cpp.language()),
+                '.hpp': Language(tree_sitter_cpp.language()),
+                '.cs': Language(tree_sitter_c_sharp.language()),
+                '.go': Language(tree_sitter_go.language()),
+                '.rs': Language(tree_sitter_rust.language()),
+                '.rb': Language(tree_sitter_ruby.language()),
+                '.php': Language(tree_sitter_php.language()),
+                '.scala': Language(tree_sitter_scala.language()),
+                '.kt': Language(tree_sitter_kotlin.language()),
+                '.lua': Language(tree_sitter_lua.language()),
+                '.cu': Language(tree_sitter_cuda.language()),
+                '.ino': Language(tree_sitter_arduino.language()),
+                '.pde': Language(tree_sitter_arduino.language()),
+                '.m': Language(tree_sitter_matlab.language()),
+                '.groovy': Language(tree_sitter_groovy.language()),
+                'build.gradle': Language(tree_sitter_groovy.language()),
+                
+                # Build Systems
+                'CMakeLists.txt': Language(tree_sitter_cmake.language()),
+                '.cmake': Language(tree_sitter_cmake.language()),
+                
+                # Web Technologies
+                '.html': Language(tree_sitter_html.language()),
+                '.css': Language(tree_sitter_css.language()),
+                
+                # Data & Config
+                '.json': Language(tree_sitter_json.language()),
+                '.yaml': Language(tree_sitter_yaml.language()),
+                '.yml': Language(tree_sitter_yaml.language()),
+                '.toml': Language(tree_sitter_toml.language()),
+                '.xml': Language(tree_sitter_xml.language()),
+                
+                # Documentation
+                '.md': Language(tree_sitter_markdown.language()),
+                '.markdown': Language(tree_sitter_markdown.language()),
+                'README': Language(tree_sitter_markdown.language()),
+                'README.md': Language(tree_sitter_markdown.language()),
+                'CHANGELOG': Language(tree_sitter_markdown.language()),
+                'CHANGELOG.md': Language(tree_sitter_markdown.language()),
+                'CONTRIBUTING': Language(tree_sitter_markdown.language()),
+                'CONTRIBUTING.md': Language(tree_sitter_markdown.language()),
+                'LICENSE.md': Language(tree_sitter_markdown.language()),
+                
+                # Query Languages
+                '.sql': Language(tree_sitter_sql.language()),
+                
+                # Shell Scripts
+                '.sh': Language(tree_sitter_bash.language()),
+                '.bash': Language(tree_sitter_bash.language()),
+                '.env': Language(tree_sitter_bash.language())
+            }
+        except Exception as e:
+            logger.error(f"Failed to initialize language map: {e}")
+            self.LANGUAGE_MAP = {}
             
-            # Build Systems
-            'CMakeLists.txt': Language(tree_sitter_cmake.language()),
-            '.cmake': Language(tree_sitter_cmake.language()),
-            
-            # Web Technologies
-            '.html': Language(tree_sitter_html.language()),
-            '.css': Language(tree_sitter_css.language()),
-            
-            # Data & Config
-            '.json': Language(tree_sitter_json.language()),
-            '.yaml': Language(tree_sitter_yaml.language()),
-            '.yml': Language(tree_sitter_yaml.language()),
-            '.toml': Language(tree_sitter_toml.language()),
-            '.xml': Language(tree_sitter_xml.language()),
-            
-            # Documentation
-            '.md': Language(tree_sitter_markdown.language()),
-            '.markdown': Language(tree_sitter_markdown.language()),
-            'README': Language(tree_sitter_markdown.language()),
-            'README.md': Language(tree_sitter_markdown.language()),
-            'CHANGELOG': Language(tree_sitter_markdown.language()),
-            'CHANGELOG.md': Language(tree_sitter_markdown.language()),
-            'CONTRIBUTING': Language(tree_sitter_markdown.language()),
-            'CONTRIBUTING.md': Language(tree_sitter_markdown.language()),
-            'LICENSE.md': Language(tree_sitter_markdown.language()),
-            
-            # Query Languages
-            '.sql': Language(tree_sitter_sql.language()),
-            
-            # Shell Scripts
-            '.sh': Language(tree_sitter_bash.language()),
-            '.bash': Language(tree_sitter_bash.language()),
-            '.env': Language(tree_sitter_bash.language())
-        }
-        
     def can_parse(self, file_path: str) -> bool:
         """Check if file can be parsed with tree-sitter"""
         path = Path(file_path)
