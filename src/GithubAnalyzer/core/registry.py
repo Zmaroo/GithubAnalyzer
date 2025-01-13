@@ -4,6 +4,8 @@ from .services.base import BaseService
 from .services.database_service import DatabaseService
 from .services.graph_analysis_service import GraphAnalysisService
 from .services.parser_service import ParserService
+from .services.analyzer_service import AnalyzerService
+from .services.framework_service import FrameworkService
 from .operations import CommonOperations
 from .utils.logging import setup_logger
 
@@ -16,19 +18,22 @@ class AnalysisToolRegistry:
         """Initialize registry"""
         self.services: Dict[str, BaseService] = {}
         self._initialize_services()
-        self.common_operations = CommonOperations(self)
         
     def _initialize_services(self):
         """Initialize all services"""
-        try:
-            self.services = {
-                'database': DatabaseService(registry=self),
-                'graph_analysis': GraphAnalysisService(registry=self),
-                'parser': ParserService(registry=self)
-            }
-        except Exception as e:
-            logger.error(f"Failed to initialize services: {e}")
-            raise
+        # Initialize core services
+        self.services['database'] = DatabaseService(self)
+        self.services['parser'] = ParserService(self)
+        self.services['analyzer'] = AnalyzerService(self)
+        self.services['framework'] = FrameworkService(self)
+        self.services['graph'] = GraphAnalysisService(self)
+        
+        # Initialize each service
+        for service in self.services.values():
+            service.initialize()
+            
+        # Create common operations interface
+        self.common_operations = CommonOperations(self)
     
     @property
     def database_service(self) -> DatabaseService:
@@ -36,14 +41,24 @@ class AnalysisToolRegistry:
         return self.services['database']
         
     @property
-    def graph_analysis_service(self) -> GraphAnalysisService:
-        """Get graph analysis service"""
-        return self.services['graph_analysis']
-        
-    @property
     def parser_service(self) -> ParserService:
         """Get parser service"""
         return self.services['parser']
+        
+    @property
+    def analyzer_service(self) -> AnalyzerService:
+        """Get analyzer service"""
+        return self.services['analyzer']
+        
+    @property
+    def framework_service(self) -> FrameworkService:
+        """Get framework service"""
+        return self.services['framework']
+        
+    @property
+    def graph_service(self) -> GraphAnalysisService:
+        """Get graph analysis service"""
+        return self.services['graph']
     
     def get_common_operations(self) -> CommonOperations:
         """Get common operations interface"""

@@ -12,13 +12,14 @@ class ConfigParser(BaseParser):
     
     def __init__(self):
         super().__init__()
-        self.supported_extensions = {'.yaml', '.yml', '.json', '.toml', '.ini'}
+        self.supported_extensions = {'.yaml', '.yml', '.json', '.toml', '.ini', '.cfg'}
         self.parsers = {
             '.yaml': self._parse_yaml,
             '.yml': self._parse_yaml,
             '.json': self._parse_json,
             '.toml': self._parse_toml,
-            '.ini': self._parse_ini
+            '.ini': self._parse_ini,
+            '.cfg': self._parse_ini
         }
     
     def can_parse(self, file_path: str) -> bool:

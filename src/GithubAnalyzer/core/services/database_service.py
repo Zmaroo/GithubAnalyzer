@@ -49,4 +49,40 @@ class DatabaseService(BaseService):
         
     def store_repository_info(self, info: Dict[str, Any]) -> bool:
         """Store repository info"""
-        return True 
+        return True
+        
+    def get_repository_state(self, url: str) -> Optional[RepositoryState]:
+        """Get repository analysis state"""
+        try:
+            # Implement actual database query
+            return RepositoryState(
+                url=url,
+                status="completed",
+                progress=1.0
+            )
+        except Exception as e:
+            logger.error(f"Error getting repository state: {e}")
+            return None
+        
+    def get_repository_info(self, url: str) -> Optional[RepositoryInfo]:
+        """Get repository information"""
+        try:
+            # Implement actual database query
+            return RepositoryInfo(
+                name="test",
+                url=url,
+                local_path="",
+                metadata={}
+            )
+        except Exception as e:
+            logger.error(f"Error getting repository info: {e}")
+            return None
+        
+    def cache_analysis_result(self, key: str, value: Any) -> bool:
+        """Cache analysis result"""
+        try:
+            # Implement actual caching
+            return True
+        except Exception as e:
+            logger.error(f"Error caching result: {e}")
+            return False 
