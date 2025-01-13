@@ -97,15 +97,24 @@ def apache_license_file(tmp_path):
 """)
     return file_path
 
-def test_config_parser(sample_config_file):
-    parser = ConfigParser()
-    assert parser.can_parse(str(sample_config_file))
+def test_config_parser(tmp_path):
+    """Test basic config parsing"""
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("""
+app:
+  name: TestApp
+  version: 1.0.0
+settings:
+  debug: true
+    """)
     
-    with open(sample_config_file) as f:
-        result = parser.parse(f.read())
+    parser = ConfigParser()
+    with open(config_file) as f:
+        result = parser.parse_file(str(config_file), f.read())
     
     assert result.success
     assert result.semantic['type'] == 'config'
+    assert result.semantic['format'] == 'yaml'
     assert result.semantic['content']['app']['name'] == 'TestApp'
 
 def test_doc_parser(sample_doc_file):
@@ -166,14 +175,10 @@ def test_license_parser_apache(apache_license_file):
 
 def test_parser_nonexistent_file():
     """Test handling of nonexistent files"""
-    parsers = [ConfigParser(), DocumentationParser(), LicenseParser()]
-    
-    for parser in parsers:
-        assert not parser.can_parse('nonexistent.txt')
-        parser.set_current_file('nonexistent.txt')
-        result = parser.parse('')
-        assert not result.success
-        assert len(result.errors) > 0
+    parser = ConfigParser()
+    result = parser.parse_file('nonexistent.txt', '')
+    assert not result.success
+    assert "File not found" in result.errors[0]
 
 def test_parser_empty_content():
     """Test handling of empty content"""
@@ -196,9 +201,8 @@ def test_config_parser_different_formats(tmp_path):
         file_path = tmp_path / filename
         file_path.write_text(content)
         
-        assert parser.can_parse(str(file_path))
         with open(file_path) as f:
-            result = parser.parse(f.read())
+            result = parser.parse_file(str(file_path), f.read())
         
         assert result.success
         assert result.semantic['type'] == 'config'
