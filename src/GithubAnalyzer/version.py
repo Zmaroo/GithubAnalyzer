@@ -12,7 +12,8 @@ def get_version() -> Tuple[str, str]:
     
     try:
         from git import Repo
-        repo = Repo(os.path.dirname(os.path.dirname(__file__)))
+        # Go up three levels: src/GithubAnalyzer/version.py -> src/GithubAnalyzer -> src -> root
+        repo = Repo(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
         git_version = repo.head.commit.hexsha[:7]
     except:
         git_version = "unknown"
