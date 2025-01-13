@@ -2,6 +2,7 @@
 from pathlib import Path
 from typing import Dict, Any, Optional
 from tree_sitter import Language, Parser, Tree, Node
+from tree_sitter_python import language as py_language
 from ..models.base import TreeSitterNode, ParseResult
 from ..utils.logging import setup_logger
 
@@ -13,10 +14,9 @@ class TreeSitterParser:
     def __init__(self):
         self.parser = Parser()
         try:
-            # Load Python language
-            LANGUAGE_PATH = Path(__file__).parent / "build" / "languages.so"
-            PY_LANGUAGE = Language(LANGUAGE_PATH, 'python')
-            self.parser.set_language(PY_LANGUAGE)
+            # Use installed Python language
+            self.parser.set_language(py_language)
+            logger.info("Tree-sitter parser initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize tree-sitter: {e}")
             self.parser = None
