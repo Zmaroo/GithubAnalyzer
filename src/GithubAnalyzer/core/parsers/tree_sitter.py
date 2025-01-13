@@ -3,35 +3,34 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from tree_sitter import Parser, Tree, Node
 
-# Import all available tree-sitter languages
-from tree_sitter_arduino import language as arduino_language
-from tree_sitter_bash import language as bash_language
-from tree_sitter_c import language as c_language
-from tree_sitter_c_sharp import language as csharp_language
-from tree_sitter_cmake import language as cmake_language
-from tree_sitter_cpp import language as cpp_language
-from tree_sitter_css import language as css_language
-from tree_sitter_cuda import language as cuda_language
-from tree_sitter_go import language as go_language
-from tree_sitter_groovy import language as groovy_language
-from tree_sitter_html import language as html_language
-from tree_sitter_java import language as java_language
-from tree_sitter_javascript import language as javascript_language
-from tree_sitter_json import language as json_language
-from tree_sitter_kotlin import language as kotlin_language
-from tree_sitter_lua import language as lua_language
-from tree_sitter_markdown import language as markdown_language
-from tree_sitter_matlab import language as matlab_language
-from tree_sitter_php import language as php_language
-from tree_sitter_python import language as python_language
-from tree_sitter_ruby import language as ruby_language
-from tree_sitter_rust import language as rust_language
-from tree_sitter_scala import language as scala_language
-from tree_sitter_sql import language as sql_language
-from tree_sitter_toml import language as toml_language
-from tree_sitter_typescript import language as typescript_language
-from tree_sitter_xml import language as xml_language
-from tree_sitter_yaml import language as yaml_language
+# Import tree-sitter languages - handle different import patterns
+import tree_sitter_python
+import tree_sitter_javascript
+import tree_sitter_java
+import tree_sitter_go
+import tree_sitter_rust
+import tree_sitter_cpp
+import tree_sitter_c
+import tree_sitter_c_sharp
+import tree_sitter_ruby
+import tree_sitter_php
+import tree_sitter_scala
+import tree_sitter_kotlin
+import tree_sitter_html
+import tree_sitter_css
+import tree_sitter_json
+import tree_sitter_yaml
+import tree_sitter_toml
+import tree_sitter_xml
+import tree_sitter_bash
+import tree_sitter_lua
+import tree_sitter_markdown
+import tree_sitter_cmake
+import tree_sitter_arduino
+import tree_sitter_cuda
+import tree_sitter_groovy
+import tree_sitter_matlab
+import tree_sitter_typescript
 
 from ..models.base import TreeSitterNode, ParseResult
 from ..utils.logging import setup_logger
@@ -43,58 +42,65 @@ class TreeSitterParser:
     
     LANGUAGE_MAP = {
         # Programming Languages
-        '.py': python_language,
-        'setup.py': python_language,
-        '.js': javascript_language,
-        '.jsx': javascript_language,
-        '.ts': typescript_language,
-        '.tsx': typescript_language,
-        '.java': java_language,
-        '.c': c_language,
-        '.h': c_language,
-        '.cpp': cpp_language,
-        '.hpp': cpp_language,
-        '.cs': csharp_language,
-        '.go': go_language,
-        '.rs': rust_language,
-        '.rb': ruby_language,
-        '.php': php_language,
-        '.scala': scala_language,
-        '.kt': kotlin_language,
-        '.lua': lua_language,
-        '.cu': cuda_language,
-        '.ino': arduino_language,
-        '.pde': arduino_language,
-        '.m': matlab_language,
-        '.groovy': groovy_language,
-        'build.gradle': groovy_language,
+        '.py': tree_sitter_python.language,
+        'setup.py': tree_sitter_python.language,
+        '.js': tree_sitter_javascript.language,
+        '.jsx': tree_sitter_javascript.language,
+        '.ts': tree_sitter_typescript.language,
+        '.tsx': tree_sitter_typescript.language,
+        '.java': tree_sitter_java.language,
+        '.c': tree_sitter_c.language,
+        '.h': tree_sitter_c.language,
+        '.cpp': tree_sitter_cpp.language,
+        '.hpp': tree_sitter_cpp.language,
+        '.cs': tree_sitter_c_sharp.language,
+        '.go': tree_sitter_go.language,
+        '.rs': tree_sitter_rust.language,
+        '.rb': tree_sitter_ruby.language,
+        '.php': tree_sitter_php.language,
+        '.scala': tree_sitter_scala.language,
+        '.kt': tree_sitter_kotlin.language,
+        '.lua': tree_sitter_lua.language,
+        '.cu': tree_sitter_cuda.language,
+        '.ino': tree_sitter_arduino.language,
+        '.pde': tree_sitter_arduino.language,
+        '.m': tree_sitter_matlab.language,
+        '.groovy': tree_sitter_groovy.language,
+        'build.gradle': tree_sitter_groovy.language,
         
         # Build Systems
-        'CMakeLists.txt': cmake_language,
-        '.cmake': cmake_language,
+        'CMakeLists.txt': tree_sitter_cmake.language,
+        '.cmake': tree_sitter_cmake.language,
         
         # Web Technologies
-        '.html': html_language,
-        '.css': css_language,
+        '.html': tree_sitter_html.language,
+        '.css': tree_sitter_css.language,
         
         # Data & Config
-        '.json': json_language,
-        '.yaml': yaml_language,
-        '.yml': yaml_language,
-        '.toml': toml_language,
-        '.xml': xml_language,
+        '.json': tree_sitter_json.language,
+        '.yaml': tree_sitter_yaml.language,
+        '.yml': tree_sitter_yaml.language,
+        '.toml': tree_sitter_toml.language,
+        '.xml': tree_sitter_xml.language,
         
         # Query Languages
-        '.sql': sql_language,
+        '.sql': tree_sitter_sql.language,
         
         # Documentation
-        '.md': markdown_language,
-        '.markdown': markdown_language,
+        '.md': tree_sitter_markdown.language,
+        '.markdown': tree_sitter_markdown.language,
+        'README': tree_sitter_markdown.language,
+        'README.md': tree_sitter_markdown.language,
+        'CHANGELOG': tree_sitter_markdown.language,
+        'CHANGELOG.md': tree_sitter_markdown.language,
+        'CONTRIBUTING': tree_sitter_markdown.language,
+        'CONTRIBUTING.md': tree_sitter_markdown.language,
+        'LICENSE.md': tree_sitter_markdown.language,
         
         # Shell Scripts
-        '.sh': bash_language,
-        '.bash': bash_language,
-        '.env': bash_language
+        '.sh': tree_sitter_bash.language,
+        '.bash': tree_sitter_bash.language,
+        '.env': tree_sitter_bash.language
     }
     
     def __init__(self):
@@ -137,13 +143,32 @@ class TreeSitterParser:
             if file_path:
                 path = Path(file_path)
                 key = path.suffix.lower()
-                if not key in self.LANGUAGE_MAP:
-                    key = path.name.lower()
-                if key in self.LANGUAGE_MAP:
-                    self.parser.set_language(self.LANGUAGE_MAP[key])
+                name = path.name.upper()
                 
+                # Special handling for markdown files
+                if name.startswith(('README', 'CHANGELOG', 'CONTRIBUTING', 'LICENSE')):
+                    self.parser.set_language(markdown_language)
+                elif not key in self.LANGUAGE_MAP:
+                    key = path.name.lower()
+                    if key in self.LANGUAGE_MAP:
+                        self.parser.set_language(self.LANGUAGE_MAP[key])
+                else:
+                    self.parser.set_language(self.LANGUAGE_MAP[key])
+            
             # Parse content - tree-sitter expects bytes
             tree = self.parser.parse(bytes(content, 'utf8'))
+            
+            # Special validation for markdown files
+            if file_path and (Path(file_path).suffix.lower() == '.md' or 
+                            Path(file_path).name.upper().startswith(('README', 'CHANGELOG', 'CONTRIBUTING', 'LICENSE'))):
+                if not self._validate_markdown(tree):
+                    return ParseResult(
+                        ast=None,
+                        semantic={},
+                        errors=["Invalid markdown structure"],
+                        success=False
+                    )
+            
             if not tree or tree.root_node.has_error:
                 return ParseResult(
                     ast=None,
@@ -215,3 +240,54 @@ class TreeSitterParser:
         except Exception as e:
             logger.error(f"Error extracting semantic info: {e}")
             return {} 
+    
+    def _validate_markdown(self, tree: Tree) -> bool:
+        """Validate markdown structure"""
+        try:
+            root = tree.root_node
+            
+            # Check for basic markdown structure
+            if not root or root.has_error:
+                return False
+                
+            # Validate first line is a heading
+            first_heading = None
+            for child in root.children:
+                if child.type == 'atx_heading' or child.type == 'setext_heading':
+                    first_heading = child
+                    break
+                    
+            if not first_heading:
+                return False
+                
+            # Validate code blocks
+            for node in root.children:
+                if node.type == 'fenced_code_block':
+                    if not self._validate_code_block(node):
+                        return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating markdown: {e}")
+            return False
+    
+    def _validate_code_block(self, node: Node) -> bool:
+        """Validate markdown code block"""
+        try:
+            # Check for language info
+            info_string = None
+            for child in node.children:
+                if child.type == 'info_string':
+                    info_string = child
+                    break
+            
+            # Code blocks should have language specified
+            if not info_string:
+                return False
+                
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating code block: {e}")
+            return False 
