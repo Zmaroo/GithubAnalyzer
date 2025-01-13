@@ -4,15 +4,16 @@ version: 1.0
 # Project structure
 structure:
   core:
-    - services/
-    - models/
-    - parsers/
-    - utils/
-  tests:
-    - test_services/
-    - test_parsers/
-    - test_models/
-    - test_utils/
+    - src/GithubAnalyzer/services/core/
+    - src/GithubAnalyzer/models/core/
+    - src/GithubAnalyzer/utils/
+  analysis:
+    - src/GithubAnalyzer/services/analysis/
+    - src/GithubAnalyzer/models/analysis/
+  storage:
+    - src/GithubAnalyzer/models/storage/
+  framework:
+    - src/GithubAnalyzer/services/framework/
 
 # File patterns to analyze
 patterns:
@@ -34,17 +35,18 @@ services:
     - config_validation
     - dependency_validation
 
-  # Service initialization order
+  # Service initialization order and dependencies
   initialization_order:
-    - database_service  # Must initialize first
-    - graph_service     # Depends on database
-    - parser_service    # Independent
-    - analyzer_service  # Depends on parser and graph
-    - framework_service # Depends on analyzer
+    - database  # Core service
+    - parser    # Core service
+    - graph     # Analysis service, depends on database
+    - analyzer  # Analysis service, depends on parser and graph
+    - framework # Framework service, depends on analyzer
 
-  # Service definitions
+  # Service definitions with dependencies
   required_services:
-    database_service:
+    database:
+      type: core
       dependencies: []
       config:
         require_ssl: true
@@ -54,95 +56,73 @@ services:
         interval: 300
         timeout: 30
     
-    parser_service:
+    parser:
+      type: core
       dependencies: []
       config:
         max_file_size: 1048576
         require_type_hints: true
     
-    analyzer_service:
+    analyzer:
+      type: analysis
       dependencies: 
-        - parser_service
-        - graph_service
+        - parser
+        - graph
       config:
         enable_security_checks: true
         enable_type_checking: true
     
-    graph_service:
+    graph:
+      type: analysis
       dependencies:
-        - database_service
+        - database
       config:
         check_gds_patterns: true
         validate_projections: true
 
-  # Service monitoring
-  monitoring:
-    health_checks:
-      enabled: true
-      interval: 300  # seconds
-      timeout: 30    # seconds
-    
-    metrics:
-      enabled: true
-      collection_interval: 60
-      exporters:
-        - prometheus
-        - logging
+    framework:
+      type: framework
+      dependencies:
+        - analyzer
+      config:
+        enable_validation: true
+        enable_caching: true
 
-  # Service recovery
-  recovery:
-    max_retries: 3
-    backoff_factor: 2
-    timeout: 30
+# Dependency injection configuration
+dependency_injection:
+  container:
+    singleton: true
+    components:
+      - service_registry
+      - configuration_manager
+    validation:
+      check_circular_dependencies: true
+      validate_config: true
 
-# Analysis rules
-rules:
-  python:
-    max_line_length: 100
-    require_docstrings: true
-    complexity_threshold: 10
-    class_rules:
-      require_init: true
-      require_cleanup: true
-      max_inheritance_depth: 3
-    service_rules:
-      require_config: true
-      require_error_handling: true
-      require_logging: true
-    
-  yaml:
-    require_comments: true
-    max_depth: 5
-    
-  general:
-    ignore_patterns:
-      - "**/__pycache__/**"
-      - "**/.*"
-      - "**/venv/**"
-      - "**/build/**"
-      - "**/dist/**"
-      - "**/*.pyc"
-      - ".pytest_cache/**"
+  configuration:
+    sources:
+      - settings
+      - environment
+      - cursorrules
+    merge_strategy: override
 
-# Quality requirements
-quality:
-  complexity:
-    max_cognitive: 15
-    max_cyclomatic: 10
-    max_maintainability_index: 20
-  size:
-    max_method_lines: 50
-    max_class_lines: 500
-    max_file_lines: 1000
-  naming_conventions:
-    classes: "^[A-Z][a-zA-Z0-9]*$"
-    functions: "^[a-z][a-zA-Z0-9_]*$"
-    variables: "^[a-z][a-zA-Z0-9_]*$"
-  documentation:
-    require_module_docs: true
-    require_class_docs: true
-    require_method_docs: true
-    docstring_style: "google"
+# Model requirements
+models:
+  base_requirements:
+    - validation
+    - serialization
+    - error_handling
+  
+  types:
+    core:
+      - repository
+      - module
+    analysis:
+      - code
+      - relationships
+    storage:
+      - database
+      - graph
 
 # Testing requirements  
 testing:
@@ -173,3 +153,23 @@ testing:
       - projections
       - algorithms
       - error_cases
+
+# Quality requirements
+quality:
+  complexity:
+    max_cognitive: 15
+    max_cyclomatic: 10
+    max_maintainability_index: 20
+  size:
+    max_method_lines: 50
+    max_class_lines: 500
+    max_file_lines: 1000
+  naming_conventions:
+    classes: "^[A-Z][a-zA-Z0-9]*$"
+    functions: "^[a-z][a-zA-Z0-9_]*$"
+    variables: "^[a-z][a-zA-Z0-9_]*$"
+  documentation:
+    require_module_docs: true
+    require_class_docs: true
+    require_method_docs: true
+    docstring_style: "google"
