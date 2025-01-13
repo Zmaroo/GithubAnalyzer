@@ -3,24 +3,39 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from tree_sitter import Language, Parser, Tree, Node
 from ..models.base import TreeSitterNode, ParseResult
-from .base import BaseParser
+from ..utils.logging import setup_logger
 
-class TreeSitterParser(BaseParser):
-    """Parser using tree-sitter"""
+logger = setup_logger(__name__)
+
+class TreeSitterParser:
+    """Tree-sitter based parser implementation"""
     
     def __init__(self):
-        super().__init__()
         self.parser = Parser()
-        # TODO: Initialize languages
-        self.supported_languages = {'.py': 'python'}
+        try:
+            # Load Python language
+            LANGUAGE_PATH = Path(__file__).parent / "build" / "languages.so"
+            PY_LANGUAGE = Language(LANGUAGE_PATH, 'python')
+            self.parser.set_language(PY_LANGUAGE)
+        except Exception as e:
+            logger.error(f"Failed to initialize tree-sitter: {e}")
+            self.parser = None
         
     def can_parse(self, file_path: str) -> bool:
-        """Check if file can be parsed"""
-        return Path(file_path).suffix in self.supported_languages
+        """Check if file can be parsed with tree-sitter"""
+        return Path(file_path).suffix == '.py' and self.parser is not None
         
     def parse(self, content: str) -> ParseResult:
         """Parse content using tree-sitter"""
         try:
+            if not self.parser:
+                return ParseResult(
+                    ast=None,
+                    semantic={},
+                    errors=["Tree-sitter not initialized"],
+                    success=False
+                )
+                
             if not content.strip():
                 return ParseResult(
                     ast=None,
@@ -39,6 +54,7 @@ class TreeSitterParser(BaseParser):
                 success=True
             )
         except Exception as e:
+            logger.error(f"Error parsing content: {e}")
             return ParseResult(
                 ast=None,
                 semantic={},
