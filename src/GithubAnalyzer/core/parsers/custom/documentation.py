@@ -1,70 +1,65 @@
 """Documentation parser for markdown and other documentation files"""
-from typing import List, Dict, Any, Optional
-from pathlib import Path
+import re
+from typing import Dict, Any
 from ..base import BaseParser
-from ...models.base import ParseResult
+from ...models import ParseResult
 
 class DocumentationParser(BaseParser):
     """Parser for documentation files"""
     
-    def __init__(self):
-        super().__init__()
-        self.supported_extensions = {'.md', '.rst', '.txt'}
-    
-    def can_parse(self, file_path: str) -> bool:
-        """Check if file can be parsed"""
-        return Path(file_path).suffix.lower() in self.supported_extensions
-    
     def parse(self, content: str) -> ParseResult:
         """Parse documentation content"""
-        try:
-            if not content.strip():
-                return ParseResult(
-                    success=False,
-                    errors=["Empty content"]
-                )
-            
-            sections = self._parse_sections(content)
-            
+        if not content.strip():
             return ParseResult(
-                success=True,
+                ast=None,
+                semantic={},
+                errors=["Empty content"],
+                success=False
+            )
+            
+        try:
+            sections = self._parse_sections(content)
+            return ParseResult(
+                ast=sections,
                 semantic={
                     'type': 'documentation',
-                    'sections': sections
-                }
+                    'sections': sections,
+                    'format': self._detect_format(content)
+                },
+                success=True
             )
-            
         except Exception as e:
             return ParseResult(
-                success=False,
-                errors=[f"Documentation parse error: {str(e)}"]
+                ast=None,
+                semantic={},
+                errors=[str(e)],
+                success=False
             )
     
-    def _parse_sections(self, content: str) -> List[Dict[str, Any]]:
+    def _parse_sections(self, content: str) -> Dict[str, Any]:
         """Parse content into sections"""
-        sections = []
+        sections = {}
         current_section = None
         current_content = []
         
         for line in content.split('\n'):
             if line.startswith('#'):
-                # Save previous section if exists
                 if current_section:
-                    sections.append({
-                        'title': current_section,
-                        'content': '\n'.join(current_content).strip()
-                    })
-                # Start new section
+                    sections[current_section] = '\n'.join(current_content).strip()
                 current_section = line.lstrip('#').strip()
                 current_content = []
             else:
                 current_content.append(line)
-        
-        # Add last section
+                
         if current_section:
-            sections.append({
-                'title': current_section,
-                'content': '\n'.join(current_content).strip()
-            })
-        
-        return sections 
+            sections[current_section] = '\n'.join(current_content).strip()
+            
+        return sections
+    
+    def _detect_format(self, content: str) -> str:
+        """Detect documentation format"""
+        if re.search(r'^\s*#', content, re.MULTILINE):
+            return 'markdown'
+        elif re.search(r'^\s*=+\s*$', content, re.MULTILINE):
+            return 'rst'
+        return 'text' 
