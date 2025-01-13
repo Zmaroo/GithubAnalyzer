@@ -1,23 +1,37 @@
+"""Base parser class"""
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
-from ..models.base import ParseResult
+from pathlib import Path
+from typing import Optional
+from ..models import ParseResult
 
 class BaseParser(ABC):
     """Base class for all parsers"""
     
     def __init__(self):
-        self.current_file = None
-
+        """Initialize parser"""
+        self.current_file: Optional[str] = None
+    
     @abstractmethod
     def can_parse(self, file_path: str) -> bool:
-        """Check if this parser can handle the file"""
+        """Check if file can be parsed"""
         pass
-
+        
     @abstractmethod
     def parse(self, content: str) -> ParseResult:
-        """Parse content and return results"""
+        """Parse file content"""
         pass
-
-    def set_current_file(self, filepath: str) -> None:
-        """Set the current file being parsed"""
-        self.current_file = filepath 
+        
+    def parse_file(self, file_path: str, content: str) -> ParseResult:
+        """Parse file with path context"""
+        if not Path(file_path).exists():
+            return ParseResult(
+                ast=None,
+                semantic={},
+                errors=[f"File not found: {file_path}"],
+                success=False
+            )
+            
+        self.current_file = file_path
+        result = self.parse(content)
+        self.current_file = None  # Clear after parsing
+        return result 

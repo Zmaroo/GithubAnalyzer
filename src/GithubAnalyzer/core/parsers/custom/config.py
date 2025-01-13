@@ -36,8 +36,7 @@ class ConfigParser(BaseParser):
             )
             
         try:
-            file_path = self.current_file
-            if not file_path:
+            if not self.current_file:
                 return ParseResult(
                     ast=None,
                     semantic={},
@@ -45,7 +44,7 @@ class ConfigParser(BaseParser):
                     success=False
                 )
                 
-            extension = Path(file_path).suffix.lower()
+            extension = Path(self.current_file).suffix.lower()
             parser = self.parsers.get(extension)
             
             if not parser:
