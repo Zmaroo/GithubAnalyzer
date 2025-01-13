@@ -2,9 +2,11 @@
 import time
 import logging
 from functools import wraps
-from typing import Callable, Any, Optional
+from typing import Callable, Any, Optional, Type, TypeVar
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar('T')
 
 def retry(
     max_attempts: int = 3,
@@ -38,3 +40,44 @@ def retry(
             return None  # Should never reach here
         return wrapper
     return decorator 
+
+def singleton(cls: Type[T]) -> Type[T]:
+    """
+    Decorator to make a class a singleton.
+    
+    Args:
+        cls: The class to make singleton
+        
+    Returns:
+        The singleton class
+    """
+    instances = {}
+    
+    @wraps(cls)
+    def get_instance(*args: Any, **kwargs: Any) -> T:
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+    
+    return get_instance
+
+def cache_result(func: Callable) -> Callable:
+    """
+    Cache function results.
+    
+    Args:
+        func: Function to cache results for
+        
+    Returns:
+        Wrapped function with caching
+    """
+    cache = {}
+    
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        key = str(args) + str(sorted(kwargs.items()))
+        if key not in cache:
+            cache[key] = func(*args, **kwargs)
+        return cache[key]
+    
+    return wrapper 
