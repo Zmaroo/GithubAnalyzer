@@ -22,21 +22,41 @@ class TreeSitterParser(BaseParser):
     def _load_languages(self):
         """Load language support"""
         try:
-            # Load Python language using the installed package
-            PY_LANGUAGE = Language(tree_sitter_python.language(), 'python')
-            self.parser.set_language(PY_LANGUAGE)
+            # Load Python language using the language() function directly
+            # The Language constructor only takes one argument - the language object
+            PY_LANGUAGE = Language(tree_sitter_python.language())
+            self.parser.language = PY_LANGUAGE
         except Exception as e:
             logger.error(f"Failed to load language support: {str(e)}")
             raise RuntimeError(f"Failed to load language support: {str(e)}")
 
     def can_parse(self, file_path: str) -> bool:
         """Check if this parser can handle the given file"""
-        return Path(file_path).suffix in ['.py', '.js', '.java']
+        return Path(file_path).suffix in ['.py']
         
     def parse(self, content: str) -> ParseResult:
         """Parse content string directly"""
         try:
-            tree = self.parser.parse(bytes(content, 'utf-8'))
+            if not self.parser.language:
+                return ParseResult(
+                    ast=None,
+                    semantic={},
+                    success=False,
+                    errors=["Parser language not initialized"]
+                )
+
+            # Convert string to bytes for tree-sitter
+            encoded_content = bytes(content, 'utf-8')
+            tree = self.parser.parse(encoded_content)
+            
+            if tree is None:
+                return ParseResult(
+                    ast=None,
+                    semantic={},
+                    success=False,
+                    errors=["Failed to generate parse tree"]
+                )
+                
             converted_ast = self._convert_node(tree.root_node)
             semantic_info = self._extract_semantic_info(tree)
             
@@ -58,6 +78,14 @@ class TreeSitterParser(BaseParser):
     def parse_file(self, file_path: str, content: Optional[str] = None) -> ParseResult:
         """Parse file content"""
         try:
+            if not self.can_parse(file_path):
+                return ParseResult(
+                    ast=None,
+                    semantic={},
+                    success=False,
+                    errors=[f"Unsupported file type: {file_path}"]
+                )
+                
             if content is None:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
