@@ -1,51 +1,46 @@
-# GitHub Code Analysis Tool
+# Cursor rules for GitHub Analyzer project
+version: 1.0
 
-## Project Purpose
+# File patterns to analyze
+patterns:
+  python: "**/*.py"
+  yaml: "**/*.{yml,yaml}"
+  json: "**/*.json"
+  markdown: "**/*.md"
 
-This project provides a framework for deep code understanding that enables AI agents to comprehensively analyze and work with GitHub repositories. The framework is designed to be AI model agnostic, focusing on:
+# Analysis rules
+rules:
+  python:
+    max_line_length: 100
+    require_docstrings: true
+    complexity_threshold: 10
+    
+  yaml:
+    require_comments: true
+    max_depth: 5
+    
+  general:
+    ignore_patterns:
+      - "**/__pycache__/**"
+      - "**/.*"
+      - "**/venv/**"
+      - "**/build/**"
+      - "**/dist/**"
 
-- Deep code structure analysis and representation
-- Dependency and relationship mapping
-- Code context and semantic understanding
-- Framework and pattern recognition
-- Cross-repository knowledge integration
-
-Our ultimate goal is to enable AI agents to autonomously understand and work with codebases at a level that allows them to contribute meaningful code changes and participate in development.
-
-## Project Structure
-
-### Core Package (src/GithubAnalyzer/core/)
-
-- **parsers/**: Code parsing and AST analysis
-  - tree_sitter.py: Tree-sitter based parsing
-  - custom_parsers.py: Language-specific parsing logic
-  - base_parser.py: Abstract base parser class
-
-- **services/**: Core analysis services
-  - analyzer_service.py: Main analysis orchestration
-  - graph_analysis_service.py: Code graph analysis
-  - parser_service.py: Parser coordination
-  - database_service.py: Data persistence
-
-- **models/**: Data structures and types
-  - code_entities.py: Code structure representations
-  - relationships.py: Code relationship definitions
-  - analysis_results.py: Analysis output structures
-
-### Tests (tests/)
-
-- test_parsers/: Parser unit tests
-- test_services/: Service unit and integration tests
-- test_code_parser.py: Core parsing tests
-- run_tests.py: Test orchestration
-
-### Configuration
-
-- pyproject.toml: Project metadata and dependencies
-- setup.py: Package installation
-- requirements.txt: Development dependencies
-
-### Documentation
-
-- docs/: Project documentation
-- README.md: Project overview
+# Custom analysis settings
+settings:
+  enable_type_checking: true
+  enable_security_checks: true
+  enable_style_checks: true
+  
+# Documentation requirements
+documentation:
+  require_module_docs: true
+  require_class_docs: true
+  require_function_docs: true
+  
+# Testing requirements
+testing:
+  min_coverage: 80
+  require_unit_tests: true
+  require_integration_tests: true
