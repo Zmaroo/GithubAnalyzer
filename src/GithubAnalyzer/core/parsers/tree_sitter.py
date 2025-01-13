@@ -47,7 +47,8 @@ class TreeSitterParser:
             self.parser = Parser()
             self._init_languages()
             # Default to Python language
-            self.parser.language = self.LANGUAGE_MAP['.py']
+            PY_LANGUAGE = Language(tree_sitter_python.language())
+            self.parser.language = PY_LANGUAGE
             logger.info("Tree-sitter parser initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize tree-sitter: {e}")
