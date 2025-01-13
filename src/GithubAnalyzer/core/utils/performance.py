@@ -1,37 +1,25 @@
-"""Performance optimization utilities"""
-from typing import Any, Callable
-from functools import lru_cache
+"""Performance monitoring utilities"""
 import time
 import logging
-from concurrent.futures import ThreadPoolExecutor
+from functools import wraps
+from typing import Callable, Any
 from ..config.settings import settings
 
 logger = logging.getLogger(__name__)
 
 def measure_time(func: Callable) -> Callable:
-    """Measure execution time of function"""
-    def wrapper(*args, **kwargs):
-        start = time.time()
+    """Measure execution time of a function"""
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        start = time.perf_counter()
         result = func(*args, **kwargs)
-        duration = time.time() - start
-        logger.debug(f"{func.__name__} took {duration:.2f}s")
+        duration = time.perf_counter() - start
+        
+        logger.debug(f"{func.__name__} took {duration:.2f} seconds")
         return result
     return wrapper
 
-def batch_process(items: list, processor: Callable, batch_size: int = settings.BATCH_SIZE):
-    """Process items in batches"""
-    for i in range(0, len(items), batch_size):
-        batch = items[i:i + batch_size]
-        yield processor(batch)
-
-def parallel_process(items: list, processor: Callable, max_workers: int = 4):
-    """Process items in parallel"""
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        yield from executor.map(processor, items)
-
-@lru_cache(maxsize=1000)
-def cached_operation(func: Callable) -> Callable:
-    """Cache operation results"""
-    def wrapper(*args, **kwargs):
-        return func(*args, **kwargs)
-    return wrapper 
+def check_memory_usage(size: int) -> bool:
+    """Check if operation would exceed memory limit"""
+    # Simple memory check - could be more sophisticated
+    return size <= settings.memory_limit 
