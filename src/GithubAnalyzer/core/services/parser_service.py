@@ -35,3 +35,13 @@ class ParserService(BaseService):
             'success': False,
             'errors': ['No suitable parser found']
         } 
+
+    def shutdown(self) -> bool:
+        """Cleanup resources"""
+        try:
+            self.parsers = []
+            self.initialized = False
+            return True
+        except Exception as e:
+            logger.error(f"Failed to shutdown parser service: {e}")
+            return False 
