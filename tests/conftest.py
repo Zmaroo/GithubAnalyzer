@@ -21,9 +21,9 @@ def test_config():
         "batch_size": 10
     }
 
-@pytest.fixture(scope="session")
-def registry(test_config):
-    """Create test registry"""
+@pytest.fixture
+def registry():
+    """Create registry instance"""
     registry = AnalysisToolRegistry.create()
     yield registry
     registry.database_service.cleanup()
@@ -78,5 +78,5 @@ def complex_repo(tmp_path):
 
 @pytest.fixture
 def common_ops(registry):
-    """Get common operations interface"""
+    """Get common operations"""
     return registry.get_common_operations() 

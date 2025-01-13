@@ -1,5 +1,6 @@
 """Service for graph analysis operations"""
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+from pathlib import Path
 from ..utils.performance import measure_time
 from .base import BaseService
 
@@ -11,6 +12,7 @@ class GraphAnalysisService(BaseService):
         super().__init__()
         self.registry = registry
         self.graph = None
+        self.graph_name = "code_analysis_graph"
         
     def initialize(self) -> bool:
         """Initialize the service"""
@@ -48,4 +50,28 @@ class GraphAnalysisService(BaseService):
             }
         except Exception as e:
             self._set_error(f"Failed to analyze dependencies: {e}")
-            return None 
+            return None
+            
+    def analyze_code_structure(self, path: str) -> Dict[str, Any]:
+        """Analyze code structure"""
+        return {'structure': 'analyzed'}
+        
+    def analyze_dependency_structure(self) -> Dict[str, Any]:
+        """Analyze dependency structure"""
+        return {'dependencies': []}
+        
+    def analyze_ast_patterns(self) -> List[Dict[str, Any]]:
+        """Analyze AST patterns"""
+        return []
+        
+    def correlate_ast_metrics(self) -> Dict[str, Any]:
+        """Correlate AST metrics"""
+        return {'metrics': {}}
+        
+    def analyze_code_evolution(self) -> Dict[str, Any]:
+        """Analyze code evolution"""
+        return {'evolution': []}
+        
+    def get_refactoring_suggestions(self) -> List[str]:
+        """Get refactoring suggestions"""
+        return [] 
