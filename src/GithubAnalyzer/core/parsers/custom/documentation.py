@@ -1,11 +1,20 @@
 """Documentation parser for markdown and other documentation files"""
 import re
 from typing import Dict, Any
+from pathlib import Path
 from ..base import BaseParser
 from ...models import ParseResult
 
 class DocumentationParser(BaseParser):
     """Parser for documentation files"""
+    
+    def __init__(self):
+        super().__init__()
+        self.supported_extensions = {'.md', '.rst', '.txt'}
+    
+    def can_parse(self, file_path: str) -> bool:
+        """Check if file can be parsed"""
+        return Path(file_path).suffix.lower() in self.supported_extensions
     
     def parse(self, content: str) -> ParseResult:
         """Parse documentation content"""
