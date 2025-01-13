@@ -8,9 +8,11 @@ from .base import BaseService
 class DatabaseService(BaseService):
     """Service for database operations"""
     
-    def __init__(self):
+    def __init__(self, registry=None):
+        """Initialize database service"""
         super().__init__()
         self.config: Optional[DatabaseConfig] = None
+        self.registry = registry
         
     def initialize(self, config: DatabaseConfig) -> bool:
         """Initialize database connections"""
