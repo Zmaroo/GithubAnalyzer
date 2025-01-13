@@ -1,8 +1,16 @@
 """Database service for handling database operations"""
 from typing import Optional, Dict, Any, List
 from ..utils.decorators import singleton
-from ..models.database import DatabaseConfig, DatabaseError
+from ..models.database import (
+    DatabaseConfig, 
+    DatabaseError,
+    RepositoryState,
+    RepositoryInfo
+)
+from ..utils.logging import setup_logger
 from .base import BaseService
+
+logger = setup_logger(__name__)
 
 @singleton
 class DatabaseService(BaseService):
