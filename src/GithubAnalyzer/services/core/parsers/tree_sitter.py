@@ -2,41 +2,17 @@
 
 import importlib
 import logging
-import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from tree_sitter import Language, Node, Parser, Query, Tree, TreeCursor
 
-from GithubAnalyzer.models.core.errors import ParseError
-from GithubAnalyzer.models.core.parse import ParseResult
-from GithubAnalyzer.utils.logging import setup_logger
-
+from ....models.core.errors import ParseError
+from ....models.core.parse import ParseResult
+from ....utils.logging import setup_logger
 from .base import BaseParser
 
 logger = setup_logger(__name__)
-
-
-def is_binary_string(bytes_data: bytes, sample_size: int = 1024) -> bool:
-    """Check if a byte string appears to be binary.
-
-    Args:
-        bytes_data: The bytes to check
-        sample_size: Number of bytes to check
-
-    Returns:
-        True if the data appears to be binary
-    """
-    # Check for null bytes which indicate binary data
-    if b"\x00" in bytes_data[:sample_size]:
-        return True
-
-    # Try decoding as UTF-8
-    try:
-        bytes_data[:sample_size].decode("utf-8")
-        return False
-    except UnicodeDecodeError:
-        return True
 
 
 class TreeSitterParser(BaseParser):
@@ -81,38 +57,79 @@ class TreeSitterParser(BaseParser):
     QUERY_PATTERNS = {
         "python": """
             (function_definition
-              name: (identifier) @function_name)
+              name: (identifier) @function.def
+              parameters: (parameters) @function.params
+              body: (block) @function.body)
+            (class_definition
+              name: (identifier) @class.def
+              body: (block) @class.body)
+            (import_statement
+              name: (dotted_name) @import.module)
+            (call
+              function: (identifier) @function.call)
         """,
         "javascript": """
             (function_declaration
-              name: (identifier) @function_name)
+              name: (identifier) @function.def
+              body: (statement_block) @function.body)
             (method_definition
-              name: (property_identifier) @function_name)
+              name: (property_identifier) @function.def
+              body: (statement_block) @function.body)
+            (class_declaration
+              name: (identifier) @class.def
+              body: (class_body) @class.body)
             (arrow_function
-              name: (identifier) @function_name)
-            (variable_declarator
-              name: (identifier) @function_name
-              value: (function_expression))
-            (variable_declarator
-              name: (identifier) @function_name
-              value: (arrow_function))
+              parameters: (formal_parameters) @function.params
+              body: [(statement_block) (expression)] @function.body)
+            (import_statement
+              source: (string) @import.module)
         """,
         "java": """
             (method_declaration
-              name: (identifier) @function_name)
+              name: (identifier) @function.def
+              parameters: (formal_parameters) @function.params
+              body: (block) @function.body)
+            (class_declaration
+              name: (identifier) @class.def
+              body: (class_body) @class.body)
+            (import_declaration
+              name: (identifier) @import.module)
         """,
         "cpp": """
             (function_definition
               declarator: (function_declarator
-                declarator: (identifier) @function_name))
+                declarator: (identifier) @function.def)
+              body: (compound_statement) @function.body)
+            (class_specifier
+              name: (type_identifier) @class.def
+              body: (field_declaration_list) @class.body)
+            (namespace_definition
+              name: (identifier) @namespace.def
+              body: (declaration_list) @namespace.body)
         """,
         "rust": """
             (function_item
-              name: (identifier) @function_name)
+              name: (identifier) @function.def
+              parameters: (parameters) @function.params
+              body: (block) @function.body)
+            (impl_item
+              trait: (type_identifier) @impl.trait
+              type: (type_identifier) @impl.type)
+            (mod_item
+              name: (identifier) @module.def)
         """,
         "go": """
             (function_declaration
-              name: (identifier) @function_name)
+              name: (identifier) @function.def
+              parameters: (parameter_list) @function.params
+              result: (result_list)? @function.return
+              body: (block) @function.body)
+            (method_declaration
+              receiver: (parameter_list) @method.receiver
+              name: (field_identifier) @method.def
+              body: (block) @method.body)
+            (import_spec
+              path: (interpreted_string_literal) @import.module)
         """,
     }
 
@@ -125,6 +142,9 @@ class TreeSitterParser(BaseParser):
         self._languages: Dict[str, Any] = {}
         self._parsers: Dict[str, Parser] = {}
         self._queries: Dict[str, Query] = {}
+        self._query_cache: Dict[str, Dict[str, List[Node]]] = (
+            {}
+        )  # language -> pattern_type -> nodes
         self._encoding = "utf8"  # Always use UTF-8 as recommended
         self._timeout_micros = timeout_micros
         self._included_ranges = None
@@ -261,156 +281,369 @@ class TreeSitterParser(BaseParser):
 
         self.initialized = True
 
+    def _count_nodes(self, node: Node) -> int:
+        """Count nodes in the AST recursively."""
+        count = 1  # Count current node
+        for child in node.children:
+            count += self._count_nodes(child)
+        return count
+
+    def _traverse_tree_cursor(
+        self, cursor: TreeCursor, visit_fn: Callable[[Node], None]
+    ) -> None:
+        """Traverse the tree using Tree-sitter's cursor API efficiently."""
+        while True:
+            visit_fn(cursor.node)
+
+            if cursor.goto_first_child():
+                continue
+
+            if cursor.goto_next_sibling():
+                continue
+
+            retracing = True
+            while retracing:
+                if not cursor.goto_parent():
+                    return
+                if cursor.goto_next_sibling():
+                    retracing = False
+                    break
+
+    def _find_nodes_by_type(self, node: Node, node_type: str) -> List[Node]:
+        """Find all nodes of a specific type using efficient cursor traversal."""
+        nodes = []
+        cursor = node.walk()
+
+        def visit(node: Node) -> None:
+            if node.is_named and node.type == node_type:
+                if not node.has_error:
+                    nodes.append(node)
+                elif node.parent:
+                    # Add context about the error location
+                    field_name = node.parent.field_name_for_child(node.id)
+                    self._logger.debug(
+                        f"Found error node of type {node_type} in field {field_name}"
+                    )
+
+        self._traverse_tree_cursor(cursor, visit)
+        return nodes
+
+    def _find_error_nodes(self, node: Node) -> List[str]:
+        """Find error nodes in the AST using Tree-sitter's cursor methods.
+
+        Uses byte offsets for precise source mapping.
+        """
+        errors = []
+        cursor = node.walk()
+
+        def check_node(node: Node) -> None:
+            # Check for explicit syntax errors
+            if node.type == "ERROR":
+                start_byte, end_byte = node.start_byte, node.end_byte
+                start_point = node.start_point
+                errors.append(
+                    f"Syntax error at line {start_point[0] + 1}, "
+                    f"column {start_point[1] + 1} "
+                    f"(bytes {start_byte}-{end_byte}): Invalid syntax"
+                )
+                return
+
+            # Check for nodes containing errors
+            if node.has_error:
+                start_byte, end_byte = node.start_byte, node.end_byte
+                start_point = node.start_point
+                errors.append(
+                    f"Syntax error at line {start_point[0] + 1}, "
+                    f"column {start_point[1] + 1} "
+                    f"(bytes {start_byte}-{end_byte}): Invalid {node.type}"
+                )
+
+            # Special checks for function definitions
+            if node.type == "function_definition":
+                params = node.child_by_field_name("parameters")
+                body = node.child_by_field_name("body")
+
+                if not params or params.type == "ERROR":
+                    start_byte, end_byte = node.start_byte, node.end_byte
+                    start_point = node.start_point
+                    errors.append(
+                        f"Syntax error at line {start_point[0] + 1}, "
+                        f"column {start_point[1] + 1} "
+                        f"(bytes {start_byte}-{end_byte}): Missing or invalid function parameters"
+                    )
+
+                if not body or body.type == "ERROR":
+                    start_byte, end_byte = node.start_byte, node.end_byte
+                    start_point = node.start_point
+                    errors.append(
+                        f"Syntax error at line {start_point[0] + 1}, "
+                        f"column {start_point[1] + 1} "
+                        f"(bytes {start_byte}-{end_byte}): Missing or invalid function body"
+                    )
+
+                # Check indentation
+                if body and body.named_children:
+                    first_child = body.named_children[0]
+                    if first_child.start_point[1] <= node.start_point[1]:
+                        start_byte, end_byte = (
+                            first_child.start_byte,
+                            first_child.end_byte,
+                        )
+                        start_point = first_child.start_point
+                        errors.append(
+                            f"Syntax error at line {start_point[0] + 1}, "
+                            f"column {start_point[1] + 1} "
+                            f"(bytes {start_byte}-{end_byte}): Invalid indentation"
+                        )
+
+        # Use Tree-sitter's cursor methods for traversal
+        while True:
+            check_node(cursor.node)
+
+            if cursor.goto_first_child():
+                continue
+
+            if cursor.goto_next_sibling():
+                continue
+
+            while not cursor.goto_next_sibling():
+                if not cursor.goto_parent():
+                    return errors
+
+        return errors
+
+    def _find_nodes_by_query(
+        self, query: Query, tree: Tree, pattern_type: str, language: str
+    ) -> List[Node]:
+        """Find nodes in the tree that match the given query pattern type."""
+        # Check cache first
+        cache_key = f"{tree.root_node.id}:{pattern_type}"
+        if language in self._query_cache and cache_key in self._query_cache[language]:
+            return self._query_cache[language][cache_key]
+
+        nodes = []
+        try:
+            # Set limits to prevent hanging
+            query.set_match_limit(100)  # Limit in-progress matches
+            query.set_timeout_micros(1000000)  # 1 second timeout
+
+            # Get matches using Tree-sitter's built-in matches() method
+            matches = query.matches(tree.root_node)
+            for match in matches:
+                for capture in match.captures:
+                    if capture.name == pattern_type and not capture.node.has_error:
+                        nodes.append(capture.node)
+
+            # Cache the results
+            if language not in self._query_cache:
+                self._query_cache[language] = {}
+            self._query_cache[language][cache_key] = nodes
+
+        except Exception as e:
+            self._logger.warning(f"Error executing query: {str(e)}")
+
+        return nodes
+
+    def _check_node_for_errors(self, node: Node) -> List[str]:
+        """Check nodes for errors with enhanced context."""
+        errors = []
+        cursor = node.walk()
+
+        def visit(node: Node) -> None:
+            if node.type == "ERROR" or node.has_error:
+                start_point = node.start_point
+                error_msg = (
+                    f"Syntax error at line {start_point[0] + 1}, "
+                    f"column {start_point[1] + 1} "
+                    f"(bytes {node.start_byte}-{node.end_byte})"
+                )
+
+                # Enhanced context using parent relationship
+                if node.parent and node.parent.is_named:
+                    # Find the field name by checking each child
+                    field_name = None
+                    for child in node.parent.children:
+                        if child.id == node.id:
+                            field_name = node.parent.field_name_for_child(
+                                node.parent.children.index(child)
+                            )
+                            break
+
+                    error_msg += (
+                        f": Invalid {field_name or node.type} in {node.parent.type}"
+                    )
+                else:
+                    error_msg += f": Invalid {node.type}"
+
+                errors.append(error_msg)
+
+            # Check indentation using parent context
+            if node.is_named and node.type == "block":
+                if node.parent and node.parent.is_named:
+                    # Find the field name by checking each child
+                    field_name = None
+                    for child in node.parent.children:
+                        if child.id == node.id:
+                            field_name = node.parent.field_name_for_child(
+                                node.parent.children.index(child)
+                            )
+                            break
+
+                    if field_name == "body":
+                        first_child = next(
+                            (
+                                c
+                                for c in node.named_children
+                                if c.type not in ["comment", "newline"]
+                            ),
+                            None,
+                        )
+                        if (
+                            first_child
+                            and first_child.start_point[1] <= node.parent.start_point[1]
+                        ):
+                            errors.append(
+                                f"Indentation error at line {first_child.start_point[0] + 1}, "
+                                f"column {first_child.start_point[1] + 1} "
+                                f"(bytes {first_child.start_byte}-{first_child.end_byte})"
+                            )
+
+        self._traverse_tree_cursor(cursor, visit)
+        return errors
+
     def parse(self, code: str, language: str) -> ParseResult:
-        """Parse code using tree-sitter.
+        """Parse code using the specified language.
 
         Args:
-            code: The source code to parse.
-            language: The programming language of the code.
+            code: The code to parse.
+            language: The language to use for parsing.
 
         Returns:
-            ParseResult object containing parse results
+            A ParseResult object containing the parsed tree and metadata.
 
         Raises:
-            ParseError: If language is not supported or parsing fails
+            ParseError: If the language is not supported or if parsing fails.
         """
         if not self.initialized:
-            self.initialize()
+            raise ParseError("Parser not initialized. Call initialize() first.")
 
-        if language not in self._parsers:
+        if language not in self._languages:
             raise ParseError(f"Language {language} not supported")
 
-        try:
-            # Convert code to bytes only once
-            code_bytes = bytes(code, "utf8")
+        parser = self._get_parser(language)
+        tree = parser.parse(bytes(code, "utf8"))
 
-            # Check if binary
-            if is_binary_string(code_bytes):
-                return ParseResult(
-                    ast=None,
-                    language=language,
-                    is_valid=False,
-                    line_count=0,
-                    node_count=0,
-                    errors=["File appears to be binary (not a text file)"],
-                    metadata={"encoding": "utf8"},
-                )
+        # Count lines and nodes
+        line_count = len(code.splitlines())
+        node_count = self._count_nodes(tree.root_node)
 
-            parser = self._parsers[language]
+        # Find all errors in the tree
+        errors = self._check_node_for_errors(tree.root_node)
 
-            # Parse with timeout
-            start_time = time.time()
-            tree = parser.parse(code_bytes)
-            parse_time = time.time() - start_time
-
-            # Count lines and nodes
-            line_count = len(code.splitlines())
-            node_count = self._count_nodes(tree.root_node)
-
-            # Get error messages
-            errors = self._check_node_for_errors(tree.root_node)
-
-            # Check if the tree is valid
-            is_valid = not (
-                tree.root_node.type == "ERROR"
-                or tree.root_node.has_error
-                or any(
-                    child.type == "ERROR" or child.has_error
-                    for child in tree.root_node.children
-                )
-                or len(errors) > 0
+        # Check if the tree is valid - any ERROR nodes or errors make it invalid
+        is_valid = not (
+            tree.root_node.type == "ERROR"
+            or tree.root_node.has_error
+            or any(
+                child.type == "ERROR" or child.has_error
+                for child in tree.root_node.children
             )
+            or len(errors) > 0
+        )
 
-            # Find functions using Tree-sitter's query system
-            functions = []
-            if language in self._queries:
-                try:
-                    query = self._queries[language]
-                    matches = query.matches(tree.root_node)
-                    for match in matches:
-                        pattern_index, captures = match
-                        for capture_name, node in captures:
-                            if capture_name == "function_name" and not node.has_error:
-                                name = node.text.decode("utf8")
-                                if name not in functions:
-                                    functions.append(name)
-                except Exception as e:
-                    self._logger.warning(f"Query failed: {e}")
+        # Find functions using Tree-sitter's query system
+        functions = []
+        if language in self._queries:
+            try:
+                # Set limits to prevent hanging
+                query = self._queries[language]
+                query.set_match_limit(100)  # Limit in-progress matches
+                query.set_timeout_micros(1000000)  # 1 second timeout
 
-            # If query failed or no functions found, try cursor-based approach
-            if not functions:
-                functions = self._find_functions(tree)
+                # Get matches using Tree-sitter's built-in matches() method
+                matches = query.matches(tree.root_node)
+                for match in matches:
+                    for capture in match.captures:
+                        if (
+                            capture.name == "function_name"
+                            and not capture.node.has_error
+                        ):
+                            name = capture.node.text.decode("utf8")
+                            if name not in functions:
+                                functions.append(name)
+            except Exception as e:
+                self._logger.warning(f"Query failed: {e}")
 
-            # Build metadata
-            metadata = {
-                "raw_content": code,
-                "analysis": {"errors": errors, "warnings": [], "functions": functions},
-                "root_type": tree.root_node.type,
-                "encoding": "utf8",
-                "parse_time": parse_time,
-                "language": language,
-                "has_errors": not is_valid,
-            }
+        # If query failed or no functions found, try cursor-based approach
+        if not functions:
+            functions = self._find_functions(tree)
 
-            return ParseResult(
-                ast=tree,
-                language=language,
-                is_valid=is_valid,
-                line_count=line_count,
-                node_count=node_count,
-                errors=errors,
-                metadata=metadata,
-            )
-        except Exception as e:
-            return ParseResult(
-                ast=None,
-                language=language,
-                is_valid=False,
-                line_count=0,
-                node_count=0,
-                errors=[f"Failed to parse {language} code: {str(e)}"],
-                metadata={"encoding": "utf8"},
-            )
+        metadata = {
+            "raw_content": code,
+            "analysis": {"errors": errors, "warnings": [], "functions": functions},
+            "root_type": tree.root_node.type,
+            "encoding": "utf8",
+        }
 
-    def parse_file(self, file_path: str) -> ParseResult:
+        return ParseResult(
+            ast=tree,
+            language=language,
+            is_valid=is_valid,
+            line_count=line_count,
+            node_count=node_count,
+            errors=errors,
+            metadata=metadata,
+        )
+
+    def parse_file(self, file_path: Union[str, Path]) -> ParseResult:
         """Parse a file using tree-sitter.
 
         Args:
             file_path: Path to the file to parse.
 
         Returns:
-            ParseResult object containing parse results
+            ParseResult containing the parsed AST and metadata.
 
         Raises:
             ParseError: If file cannot be read or parsed.
         """
-        try:
-            with open(file_path, "rb") as f:
-                code_bytes = f.read()
+        file_path = Path(file_path)
 
-            # Check if binary
-            if is_binary_string(code_bytes):
-                raise ParseError(f"File {file_path} is not a text file")
+        # Validate file exists
+        if not file_path.exists():
+            raise ParseError(f"File {file_path} not found")
 
-            code = code_bytes.decode("utf-8")
-        except UnicodeDecodeError:
-            raise ParseError(f"File {file_path} is not a valid UTF-8 text file")
-        except Exception as e:
-            raise ParseError(f"Failed to read file {file_path}: {str(e)}")
-
+        # Detect language from file extension
         language = self._get_language_for_file(file_path)
-        if not language:
-            raise ParseError(f"Unsupported file extension: {Path(file_path).suffix}")
+        if language is None:
+            raise ParseError(f"Unsupported file extension: {file_path.suffix}")
 
-        return self.parse(code, language)
+        try:
+            # Check if file is binary
+            with open(file_path, "rb") as f:
+                content_bytes = f.read(1024)
+                if b"\x00" in content_bytes:
+                    raise ParseError(f"File {file_path} is not a text file")
+
+            # Read and parse file
+            with open(file_path, "r", encoding=self._encoding) as f:
+                content = f.read()
+
+            result = self.parse(content, language)
+            result.metadata["file_path"] = str(file_path)
+            return result
+
+        except UnicodeDecodeError:
+            raise ParseError(f"File {file_path} is not a text file")
+        except Exception as e:
+            raise ParseError(f"Failed to parse file {file_path}: {e}")
 
     def cleanup(self) -> None:
-        """Clean up parser resources explicitly."""
-        for parser in self._parsers.values():
-            parser.reset()
+        """Clean up parser resources."""
         self._parsers.clear()
-        self._queries.clear()
         self._languages.clear()
+        self._queries.clear()
+        self._query_cache.clear()
         self.initialized = False
 
     def _find_functions(self, tree: Tree) -> List[str]:
@@ -501,107 +734,3 @@ class TreeSitterParser(BaseParser):
             raise ParseError(f"Parser for {language} not initialized")
 
         return self._parsers[language]
-
-    def _count_nodes(self, node: Node) -> int:
-        """Count nodes in the AST using Tree-sitter's cursor.
-
-        Args:
-            node: The root node to start counting from.
-
-        Returns:
-            Total number of nodes in the tree.
-        """
-        cursor = node.walk()
-        count = 0
-        visited_children = False
-
-        while True:
-            if not visited_children:
-                count += 1
-                if not cursor.goto_first_child():
-                    visited_children = True
-            elif cursor.goto_next_sibling():
-                visited_children = False
-            elif not cursor.goto_parent():
-                break
-
-        return count
-
-    def _check_node_for_errors(self, node: Node) -> List[str]:
-        """Check a node and its children for errors using Tree-sitter's API.
-
-        Args:
-            node: The root node to check for errors.
-
-        Returns:
-            List of error messages found in the tree.
-        """
-        errors = []
-
-        def visit_node(node: Node) -> None:
-            """Visit a node and its children."""
-            # Check for ERROR nodes and nodes with errors
-            if node.type == "ERROR" or node.has_error:
-                start_point = node.start_point
-                error_msg = (
-                    f"Syntax error at line {start_point[0] + 1}, "
-                    f"column {start_point[1] + 1}"
-                )
-
-                # Check specific error cases
-                if node.parent and node.parent.type == "function_definition":
-                    if "(" not in node.text.decode("utf8"):
-                        error_msg += ": Missing parenthesis in function definition"
-                    else:
-                        error_msg += ": Invalid function definition"
-                else:
-                    error_msg += ": Invalid syntax"
-
-                errors.append(error_msg)
-
-            # Check for indentation errors in blocks
-            if (
-                node.type == "block"
-                and node.parent
-                and node.parent.type == "function_definition"
-            ):
-                if node.children:
-                    # Get the first non-whitespace child
-                    first_stmt = None
-                    for child in node.children:
-                        if child.type not in ["comment", "newline"]:
-                            first_stmt = child
-                            break
-
-                    if (
-                        first_stmt
-                        and first_stmt.start_point[1] <= node.parent.start_point[1]
-                    ):
-                        start_point = first_stmt.start_point
-                        errors.append(
-                            f"Syntax error at line {start_point[0] + 1}, "
-                            f"column {start_point[1] + 1}: Invalid indentation"
-                        )
-
-            # Check for unclosed strings
-            if node.type == "string" or node.type == "ERROR":
-                text = node.text.decode("utf8")
-                if text.count('"') % 2 == 1 or text.count("'") % 2 == 1:
-                    start_point = node.start_point
-                    errors.append(
-                        f"Syntax error at line {start_point[0] + 1}, "
-                        f"column {start_point[1] + 1}: Unclosed string literal"
-                    )
-
-            # Visit all named children first (more likely to contain errors)
-            for child in node.named_children:
-                visit_node(child)
-
-            # Then visit any remaining children
-            for child in node.children:
-                if child not in node.named_children:
-                    visit_node(child)
-
-        # Start traversal from the root
-        visit_node(node)
-        return errors

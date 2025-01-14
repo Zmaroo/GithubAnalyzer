@@ -117,3 +117,8 @@ _build/
 # Pre-commit
 .pre-commit-cache/
 .cache/pre-commit/
+
+# Project config files we want to ignore
+project_config/quality.yaml
+project_config/structure.yaml
+project_config/testing.yaml
