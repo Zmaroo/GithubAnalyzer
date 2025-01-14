@@ -10,8 +10,8 @@ FRAMEWORK_PATTERNS: Dict[str, List[str]] = {
         "asgi.py",
         "settings.py",
         "urls.py",
-        "models.py",
-        "views.py",
+        "**/models/__init__.py",  # Django models directory
+        "**/views/__init__.py",   # Django views directory
         "admin.py",
     ],
     "flask": ["app.py", "wsgi.py", "config.py", "requirements.txt"],
