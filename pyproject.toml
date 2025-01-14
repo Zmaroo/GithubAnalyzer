@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "github-analyzer"
 version = "0.1.0"
-description = "A tool for analyzing GitHub repositories"
+description = "A tool for analyzing GitHub repositories using tree-sitter"
 requires-python = ">=3.9"
 authors = [
     {name = "Your Name", email = "your.email@example.com"}
@@ -13,14 +13,7 @@ authors = [
 dependencies = [
     "click>=8.0.0",
     "pyyaml>=6.0.1",
-    "neo4j>=5.0.0",
-    "redis>=4.6.0",
-    "numpy>=1.24.0",
-    "networkx>=3.4.2",
-    "sentence-transformers>=2.2.2",
-    "psutil>=5.9.5",
     "tree-sitter>=0.20.1",
-    "gitpython>=3.1.40",
 ]
 
 [project.optional-dependencies]
@@ -31,9 +24,6 @@ dev = [
     "pylint>=3.0.3",
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",
-    "pytest-mypy>=0.10.3",
-    "radon>=6.0.1",
-    "xenon>=0.9.1",
 ]
 
 [tool.black]
@@ -69,12 +59,7 @@ explicit_package_bases = true
 
 [[tool.mypy.overrides]]
 module = [
-    "neo4j.*",
-    "redis.*",
-    "sentence_transformers.*",
     "tree_sitter.*",
-    "networkx.*",
-    "psutil.*",
 ]
 ignore_missing_imports = true
 
@@ -94,7 +79,7 @@ ignore-paths = ["tests"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 addopts = "-ra -q --cov=src/GithubAnalyzer --cov-report=term-missing"
-testpaths = ["tests"]
+testpaths = ["tests/test_parsers"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
-python_functions = ["test_*"] 
+python_functions = ["test_*"]

@@ -1,12 +1,12 @@
 """Parser service implementation."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union, cast
 
 from ...config.language_config import get_file_type_mapping, get_language_by_extension
+from ...models.analysis.ast import ParseResult
 from ...models.core.errors import ServiceError
-from ...models.core.parse import ParseResult
-from .base_service import BaseService
+from ..base import BaseService
 from .parsers.base import BaseParser
 from .parsers.config import ConfigParser
 from .parsers.documentation import DocumentationParser
@@ -33,7 +33,7 @@ class ParserService(BaseService):
         Args:
             config: Optional configuration dictionary.
         """
-        super().__init__(config)
+        super().__init__(config or {})
         self._parsers: Dict[str, BaseParser] = {}
         self._initialized = False
 
@@ -119,13 +119,19 @@ class ParserService(BaseService):
 
         # Try tree-sitter first for code parsing
         try:
-            return self._parsers["tree-sitter"].parse(content, language)
+            result = self._parsers["tree-sitter"].parse(content, language)
+            if not isinstance(result, ParseResult):
+                raise ServiceError("Parser returned invalid result type")
+            return result
         except Exception as e:
             # If tree-sitter fails, try other parsers based on content
             for parser_type, parser in self._parsers.items():
                 if parser_type != "tree-sitter":
                     try:
-                        return parser.parse(content, language)
+                        result = parser.parse(content, language)
+                        if not isinstance(result, ParseResult):
+                            continue
+                        return result
                     except:
                         continue
 
@@ -154,9 +160,19 @@ class ParserService(BaseService):
             # For tree-sitter parser, determine language from extension
             if isinstance(parser, TreeSitterParser):
                 language = get_language_by_extension(file_path.suffix)
-                return parser.parse_file(file_path, language=language)
+                if language is None:
+                    raise ServiceError(
+                        f"Unsupported file extension: {file_path.suffix}"
+                    )
+                result = parser.parse_file(file_path)
+                if not isinstance(result, ParseResult):
+                    raise ServiceError("Parser returned invalid result type")
+                return result
 
-            return parser.parse_file(file_path)
+            result = parser.parse_file(file_path)
+            if not isinstance(result, ParseResult):
+                raise ServiceError("Parser returned invalid result type")
+            return result
         except Exception as e:
             raise ServiceError(f"Failed to parse file: {str(e)}")
 

@@ -1,14 +1,65 @@
 """Analysis result models."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from ..core.base import BaseModel
 from ..core.errors import AnalysisError
-from .module import Module
-from .code import ClassInfo, FunctionInfo, ImportInfo
-from .metrics import CodeMetrics
-from .relationships import CodeDependency, CodeRelationship
+
+
+@dataclass
+class ImportInfo(BaseModel):
+    """Information about an import statement."""
+
+    name: str
+    alias: Optional[str] = None
+    is_from_import: bool = False
+    imported_names: List[str] = field(default_factory=list)
+    line_number: int = 0
+
+
+@dataclass
+class FunctionInfo(BaseModel):
+    """Information about a function."""
+
+    name: str
+    docstring: Optional[str] = None
+    parameters: List[str] = field(default_factory=list)
+    return_type: Optional[str] = None
+    is_async: bool = False
+    line_number: int = 0
+    complexity: float = 0.0
+
+
+@dataclass
+class ClassInfo(BaseModel):
+    """Information about a class."""
+
+    name: str
+    docstring: Optional[str] = None
+    base_classes: List[str] = field(default_factory=list)
+    methods: List[FunctionInfo] = field(default_factory=list)
+    attributes: List[str] = field(default_factory=list)
+    line_number: int = 0
+
+
+@dataclass
+class CodeMetrics(BaseModel):
+    """Basic code metrics."""
+
+    lines_of_code: int = 0
+    comment_lines: int = 0
+    blank_lines: int = 0
+    complexity: float = 0.0
+
+
+@dataclass
+class CodeDependency(BaseModel):
+    """Code dependency information."""
+
+    source: str
+    target: str
+    type: str = "import"
 
 
 @dataclass
@@ -16,7 +67,6 @@ class CodeAnalysis(BaseModel):
     """Code analysis results."""
 
     # Core information
-    module: Module
     file_path: str
     language: str
 
@@ -27,17 +77,13 @@ class CodeAnalysis(BaseModel):
 
     # Analysis results
     metrics: CodeMetrics = field(default_factory=CodeMetrics)
-    relationships: List[CodeRelationship] = field(default_factory=list)
     dependencies: List[CodeDependency] = field(default_factory=list)
-    patterns: List[str] = field(default_factory=list)
 
     # Issues and metadata
-    issues: List[str] = field(default_factory=list)
-    suggestions: List[str] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     info: List[str] = field(default_factory=list)
-    metadata: Dict[str, str] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     # Raw data
     ast: Optional[Dict] = None
@@ -59,12 +105,9 @@ class AnalysisResult(BaseModel):
     comment_lines: int = 0
     blank_lines: int = 0
     complexity: float = 0.0
-    maintainability: float = 0.0
 
     # Analysis metadata
     timestamp: float = 0.0
-    summary: Dict[str, str] = field(default_factory=dict)
-    patterns: List[str] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
-    metadata: Dict[str, str] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)

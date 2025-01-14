@@ -1,41 +1,53 @@
 """Documentation parser implementation."""
 
 import re
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-from ....models.core.errors import ParseError
-from ....models.core.parse import ParseResult
+from ....models.analysis.ast import ParseResult
+from ....models.core.errors import ParserError
 from .base import BaseParser
 
 
 class DocumentationParser(BaseParser):
     """Parser for code documentation."""
 
-    def _validate_config(self) -> None:
-        """Validate parser configuration."""
-        # No specific config needed for documentation parsing
+    def initialize(self, languages: Optional[List[str]] = None) -> None:
+        """Initialize the parser.
+
+        Args:
+            languages: Optional list of languages to initialize support for
+
+        Raises:
+            ParserError: If initialization fails
+        """
+        # No specific initialization needed for documentation parsing
         pass
 
-    def parse(self, content: str) -> ParseResult:
+    def parse(self, content: str, language: str) -> ParseResult:
         """Parse documentation content.
 
         Args:
             content: Content to parse
+            language: Language identifier for the content
 
         Returns:
             ParseResult containing documentation information
 
         Raises:
-            ParseError: If parsing fails
+            ParserError: If parsing fails
         """
         try:
             docstrings = self._extract_docstrings(content)
             comments = self._extract_comments(content)
 
             return ParseResult(
-                content=content,
+                ast=None,  # Documentation parser doesn't produce an AST
+                language=language,
+                is_valid=True,  # Documentation is always considered valid
                 line_count=len(content.splitlines()),
-                char_count=len(content),
+                node_count=len(docstrings) + len(comments),
+                errors=[],
                 metadata={
                     "type": "documentation",
                     "docstrings": docstrings,
@@ -46,7 +58,43 @@ class DocumentationParser(BaseParser):
                 },
             )
         except Exception as e:
-            raise ParseError(f"Failed to parse documentation: {str(e)}")
+            raise ParserError(f"Failed to parse documentation: {str(e)}")
+
+    def parse_file(self, file_path: Union[str, Path]) -> ParseResult:
+        """Parse a file.
+
+        Args:
+            file_path: Path to the file to parse
+
+        Returns:
+            ParseResult containing documentation information
+
+        Raises:
+            ParserError: If file cannot be read or parsed
+        """
+        file_path = Path(file_path)
+        if not file_path.exists():
+            raise ParserError(f"File {file_path} not found")
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            # Use file extension as language identifier
+            language = file_path.suffix.lstrip(".")
+            if not language:
+                language = "text"
+
+            result = self.parse(content, language)
+            result.metadata["file_path"] = str(file_path)
+            return result
+        except Exception as e:
+            raise ParserError(f"Failed to parse file {file_path}: {str(e)}")
+
+    def cleanup(self) -> None:
+        """Clean up parser resources."""
+        # No cleanup needed for documentation parser
+        pass
 
     def _extract_docstrings(self, content: str) -> List[Dict[str, Any]]:
         """Extract docstrings from content.

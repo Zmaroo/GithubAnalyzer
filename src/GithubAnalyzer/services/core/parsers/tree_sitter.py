@@ -7,8 +7,8 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 from tree_sitter import Language, Node, Parser, Query, Tree, TreeCursor
 
-from ....models.core.errors import ParseError
-from ....models.core.parse import ParseResult
+from ....models.analysis.ast import ParseResult
+from ....models.core.errors import ParserError
 from ....utils.logging import setup_logger
 from .base import BaseParser
 
@@ -142,12 +142,10 @@ class TreeSitterParser(BaseParser):
         self._languages: Dict[str, Any] = {}
         self._parsers: Dict[str, Parser] = {}
         self._queries: Dict[str, Query] = {}
-        self._query_cache: Dict[str, Dict[str, List[Node]]] = (
-            {}
-        )  # language -> pattern_type -> nodes
+        self._query_cache: Dict[str, Dict[str, List[Node]]] = {}
         self._encoding = "utf8"  # Always use UTF-8 as recommended
         self._timeout_micros = timeout_micros
-        self._included_ranges = None
+        self._included_ranges: Optional[List[tuple[Any, ...]]] = None
         self.initialized = False
         self._logger = logging.getLogger(__name__)
         self._logger.info("Initializing tree-sitter parsers")
@@ -174,7 +172,7 @@ class TreeSitterParser(BaseParser):
         for parser in self._parsers.values():
             parser.timeout_micros = timeout_micros
 
-    def set_included_ranges(self, ranges: Optional[List[tuple]]) -> None:
+    def set_included_ranges(self, ranges: Optional[List[tuple[Any, ...]]]) -> None:
         """Set the ranges of text that the parser will include when parsing."""
         self._included_ranges = ranges
         for parser in self._parsers.values():
@@ -275,7 +273,7 @@ class TreeSitterParser(BaseParser):
                 logger.warning("Failed to set language %s: %s", lang, str(e))
 
         if not loaded_languages:
-            raise ParseError(
+            raise ParserError(
                 "No languages could be loaded. Please ensure language packages are installed."
             )
 
@@ -406,9 +404,8 @@ class TreeSitterParser(BaseParser):
             if cursor.goto_next_sibling():
                 continue
 
-            while not cursor.goto_next_sibling():
-                if not cursor.goto_parent():
-                    return errors
+            if not cursor.goto_parent():
+                break
 
         return errors
 
@@ -522,13 +519,13 @@ class TreeSitterParser(BaseParser):
             A ParseResult object containing the parsed tree and metadata.
 
         Raises:
-            ParseError: If the language is not supported or if parsing fails.
+            ParserError: If the language is not supported or if parsing fails.
         """
         if not self.initialized:
-            raise ParseError("Parser not initialized. Call initialize() first.")
+            raise ParserError("Parser not initialized. Call initialize() first.")
 
         if language not in self._languages:
-            raise ParseError(f"Language {language} not supported")
+            raise ParserError(f"Language {language} not supported")
 
         parser = self._get_parser(language)
         tree = parser.parse(bytes(code, "utf8"))
@@ -605,25 +602,25 @@ class TreeSitterParser(BaseParser):
             ParseResult containing the parsed AST and metadata.
 
         Raises:
-            ParseError: If file cannot be read or parsed.
+            ParserError: If file cannot be read or parsed.
         """
         file_path = Path(file_path)
 
         # Validate file exists
         if not file_path.exists():
-            raise ParseError(f"File {file_path} not found")
+            raise ParserError(f"File {file_path} not found")
 
         # Detect language from file extension
         language = self._get_language_for_file(file_path)
         if language is None:
-            raise ParseError(f"Unsupported file extension: {file_path.suffix}")
+            raise ParserError(f"Unsupported file extension: {file_path.suffix}")
 
         try:
             # Check if file is binary
             with open(file_path, "rb") as f:
                 content_bytes = f.read(1024)
                 if b"\x00" in content_bytes:
-                    raise ParseError(f"File {file_path} is not a text file")
+                    raise ParserError(f"File {file_path} is not a text file")
 
             # Read and parse file
             with open(file_path, "r", encoding=self._encoding) as f:
@@ -634,9 +631,9 @@ class TreeSitterParser(BaseParser):
             return result
 
         except UnicodeDecodeError:
-            raise ParseError(f"File {file_path} is not a text file")
+            raise ParserError(f"File {file_path} is not a text file")
         except Exception as e:
-            raise ParseError(f"Failed to parse file {file_path}: {e}")
+            raise ParserError(f"Failed to parse file {file_path}: {e}")
 
     def cleanup(self) -> None:
         """Clean up parser resources."""
@@ -705,9 +702,13 @@ class TreeSitterParser(BaseParser):
 
                 if not cursor.goto_first_child():
                     visited_children = True
-            elif cursor.goto_next_sibling():
+                    continue
+
+            if cursor.goto_next_sibling():
                 visited_children = False
-            elif not cursor.goto_parent():
+                continue
+
+            if not cursor.goto_parent():
                 break
 
         return functions
@@ -722,15 +723,15 @@ class TreeSitterParser(BaseParser):
             Parser instance.
 
         Raises:
-            ParseError: If parser is not initialized or language not supported.
+            ParserError: If parser is not initialized or language not supported.
         """
         if not self.initialized:
-            raise ParseError("Parser not initialized")
+            raise ParserError("Parser not initialized")
 
         if language not in self._languages:
-            raise ParseError(f"Language {language} not supported")
+            raise ParserError(f"Language {language} not supported")
 
         if language not in self._parsers:
-            raise ParseError(f"Parser for {language} not initialized")
+            raise ParserError(f"Parser for {language} not initialized")
 
         return self._parsers[language]

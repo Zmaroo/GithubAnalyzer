@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from GithubAnalyzer.models.core.errors import ParseError
-from GithubAnalyzer.models.core.parse import ParseResult
+from GithubAnalyzer.models.analysis.ast import ParseResult
+from GithubAnalyzer.models.core.errors import ParserError
 
 
 class BaseParser(ABC):
@@ -19,7 +19,7 @@ class BaseParser(ABC):
             languages: Optional list of languages to initialize support for
 
         Raises:
-            ParseError: If initialization fails
+            ParserError: If initialization fails
         """
 
     @abstractmethod
@@ -34,7 +34,7 @@ class BaseParser(ABC):
             ParseResult containing AST and metadata
 
         Raises:
-            ParseError: If parsing fails
+            ParserError: If parsing fails
         """
 
     @abstractmethod
@@ -48,7 +48,7 @@ class BaseParser(ABC):
             ParseResult containing AST and metadata
 
         Raises:
-            ParseError: If parsing fails
+            ParserError: If parsing fails
         """
 
     @abstractmethod

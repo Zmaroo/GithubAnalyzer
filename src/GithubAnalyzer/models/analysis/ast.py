@@ -1,43 +1,22 @@
-"""Abstract Syntax Tree (AST) models."""
+"""AST models for code analysis."""
 
-from dataclasses import dataclass
-from typing import Any, Dict, List
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Union
 
 from ..core.base import BaseModel
 
 
 @dataclass
 class ParseResult(BaseModel):
-    """Result of parsing a file or content."""
+    """Result of parsing a file or code snippet."""
 
-    def __init__(
-        self,
-        ast,
-        language: str,
-        is_valid: bool,
-        line_count: int,
-        node_count: int,
-        errors: List[str],
-        metadata: Dict[str, Any],
-    ) -> None:
-        """Initialize parse result.
-
-        Args:
-            ast: The abstract syntax tree
-            language: Language identifier
-            is_valid: Whether the parse was successful
-            line_count: Number of lines parsed
-            node_count: Number of AST nodes
-            errors: List of error messages
-            metadata: Additional metadata
-        """
-        self.ast = ast
-        self.language = language
-        self.is_valid = is_valid
-        self.line_count = line_count
-        self.node_count = node_count
-        self.errors = errors
-        self.metadata = metadata
+    ast: Optional[Any]  # Tree-sitter AST or other parser-specific AST
+    language: str  # Language identifier
+    is_valid: bool  # Whether the parse was successful
+    line_count: int  # Number of lines in the source
+    node_count: int  # Number of AST nodes
+    errors: List[str]  # List of parsing errors
+    metadata: Dict[str, Any] = field(default_factory=dict)  # Additional metadata
 
     def __getitem__(self, key: str) -> Any:
         """Allow dictionary-style access to attributes."""
