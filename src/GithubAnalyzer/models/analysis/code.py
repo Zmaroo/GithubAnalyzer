@@ -1,4 +1,4 @@
-"""Code analysis models."""
+"""Code structure models."""
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -42,17 +42,3 @@ class ClassInfo(BaseModel):
     attributes: List[str] = field(default_factory=list)
     line_number: int = 0
     metrics: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class CodeAnalysis(BaseModel):
-    """Code analysis results."""
-
-    file_path: str
-    imports: List[ImportInfo] = field(default_factory=list)
-    functions: List[FunctionInfo] = field(default_factory=list)
-    classes: List[ClassInfo] = field(default_factory=list)
-    metrics: Dict[str, Any] = field(default_factory=dict)
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    info: List[str] = field(default_factory=list)

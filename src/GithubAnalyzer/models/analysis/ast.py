@@ -1,11 +1,13 @@
-"""Parse result models."""
+"""Abstract Syntax Tree (AST) models."""
 
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
+from ..core.base import BaseModel
+
 
 @dataclass
-class ParseResult:
+class ParseResult(BaseModel):
     """Result of parsing a file or content."""
 
     def __init__(
