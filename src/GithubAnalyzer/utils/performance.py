@@ -1,25 +1,76 @@
-"""Performance monitoring utilities"""
-import time
-import logging
-from functools import wraps
-from typing import Callable, Any
-from ..config.settings import settings
+"""Performance monitoring and measurement utilities."""
 
-logger = logging.getLogger(__name__)
+import functools
+import time
+from typing import Any, Callable, Dict
+
+import psutil
+
 
 def measure_time(func: Callable) -> Callable:
-    """Measure execution time of a function"""
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        start = time.perf_counter()
+    """Measure execution time of a function.
+
+    Args:
+        func: Function to measure.
+
+    Returns:
+        Wrapped function.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        start_time = time.time()
         result = func(*args, **kwargs)
-        duration = time.perf_counter() - start
-        
-        logger.debug(f"{func.__name__} took {duration:.2f} seconds")
+        end_time = time.time()
+        print(f"{func.__name__} took {end_time - start_time:.2f} seconds")
         return result
+
     return wrapper
 
-def check_memory_usage(size: int) -> bool:
-    """Check if operation would exceed memory limit"""
-    # Simple memory check - could be more sophisticated
-    return size <= settings.memory_limit 
+
+def monitor_memory(threshold_mb: float = 100.0) -> Callable:
+    """Monitor memory usage of a function.
+
+    Args:
+        threshold_mb: Memory threshold in MB.
+
+    Returns:
+        Decorator function.
+    """
+
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            process = psutil.Process()
+            start_mem = process.memory_info().rss / 1024 / 1024
+            result = func(*args, **kwargs)
+            end_mem = process.memory_info().rss / 1024 / 1024
+            used_mem = end_mem - start_mem
+            if used_mem > threshold_mb:
+                print(f"Warning: {func.__name__} used {used_mem:.1f}MB of memory")
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+def check_memory_usage() -> Dict[str, float]:
+    """Check current memory usage.
+
+    Returns:
+        Dict containing memory usage metrics in MB.
+    """
+    process = psutil.Process()
+    memory_info = process.memory_info()
+
+    return {
+        "rss": memory_info.rss / 1024 / 1024,  # Resident Set Size in MB
+        "vms": memory_info.vms / 1024 / 1024,  # Virtual Memory Size in MB
+        "shared": getattr(memory_info, "shared", 0)
+        / 1024
+        / 1024,  # Shared memory in MB
+        "data": getattr(memory_info, "data", 0)
+        / 1024
+        / 1024,  # Data segment memory in MB
+    }

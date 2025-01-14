@@ -1,31 +1,62 @@
-"""Base service class"""
+"""Base service implementation."""
+
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
-from ..dependency_container import DependencyContainer, ServiceConfig
-from ..utils.errors import ServiceError
+from typing import Any, Dict, Optional
+
+from GithubAnalyzer.models.core.errors import ServiceError
+
 
 class BaseService(ABC):
-    """Base class for all services"""
-    
-    def __init__(self, container: Optional[DependencyContainer] = None,
-                 config: Optional[Dict[str, Any]] = None):
-        self._container = container or DependencyContainer.get_instance()
-        self._config = config or {}
-        self.initialized = False
-        self._initialize()
-    
+    """Base class for all services."""
+
+    def __init__(self, config: Dict[str, Any]) -> None:
+        """Initialize the service.
+
+        Args:
+            config: Service configuration dictionary.
+
+        Raises:
+            ServiceError: If configuration is invalid.
+        """
+        self._initialized = False
+        self._config = self._validate_config(config)
+
     @abstractmethod
-    def _initialize(self) -> None:
-        """Initialize service"""
+    def _validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate the service configuration.
+
+        Args:
+            config: Configuration dictionary to validate.
+
+        Returns:
+            The validated configuration dictionary.
+
+        Raises:
+            ServiceError: If configuration is invalid.
+        """
+        if not isinstance(config, dict):
+            raise ServiceError("Configuration must be a dictionary")
+        return config
+
+    @abstractmethod
+    def initialize(self) -> None:
+        """Initialize the service.
+
+        Raises:
+            ServiceError: If initialization fails.
+        """
         pass
-    
-    def get_dependency(self, name: str) -> Any:
-        """Get a service dependency"""
-        service = self._container.get_service(name)
-        if not service:
-            raise ServiceError(f"Missing dependency: {name}")
-        return service
-        
-    def get_config_value(self, key: str, default: Any = None) -> Any:
-        """Get a configuration value"""
-        return self._config.get(key, default) 
+
+    @property
+    def initialized(self) -> bool:
+        """Check if service is initialized.
+
+        Returns:
+            True if service is initialized, False otherwise.
+        """
+        return self._initialized
+
+    @abstractmethod
+    def cleanup(self) -> None:
+        """Clean up service resources."""
+        pass

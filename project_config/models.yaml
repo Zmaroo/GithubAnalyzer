@@ -1,0 +1,46 @@
+version: 1.0
+
+# Base model requirements
+base_requirements:
+  - validation
+  - serialization
+  - error_handling
+  - type_hints
+  - immutability
+
+# Model types and components
+types:
+  core:
+    - repository
+    - module
+    - errors
+    - configuration
+  analysis:
+    - code
+    - relationships
+    - metrics
+    - patterns
+  storage:
+    - database
+    - graph
+    - cache
+
+# Model validation rules
+validation:
+  required_methods:
+    - validate
+    - to_dict
+    - from_dict
+  required_attributes:
+    - id
+    - created_at
+    - updated_at
+  immutable_fields:
+    - id
+    - created_at
+
+# Model relationships
+relationships:
+  max_depth: 3
+  require_type_hints: true
+  require_documentation: true 

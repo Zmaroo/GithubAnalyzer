@@ -1,45 +1,63 @@
-"""Application bootstrap and initialization"""
-from typing import Optional, Dict, Any, List
-from pathlib import Path
-from .registry import AnalysisToolRegistry
-from .config import ConfigValidator
-from .utils.logging import configure_logging
-from .models.database import DatabaseConfig
+"""Application bootstrap utilities."""
 
-class Bootstrap:
-    """Application bootstrap handler"""
-    
-    @classmethod
-    def initialize(cls, config_path: Optional[str] = None) -> AnalysisToolRegistry:
-        """Initialize application"""
-        # Configure logging first
-        configure_logging()
-        
-        # Load and validate config
-        errors = ConfigValidator.validate(config_path)
-        if errors:
-            cls._handle_config_errors(errors)
-            
-        # Initialize temp directories
-        cls._init_directories()
-        
+from typing import Any, Dict, Optional, cast
+
+from GithubAnalyzer.config import settings
+from GithubAnalyzer.models.core.errors import ConfigError, ServiceError
+from GithubAnalyzer.services.core.database_service import DatabaseService
+from GithubAnalyzer.utils.container import ServiceContainer
+from GithubAnalyzer.utils.logging import setup_logger
+
+logger = setup_logger(__name__)
+
+
+def init_services(config: Optional[Dict[str, Any]] = None) -> ServiceContainer:
+    """Initialize application services.
+
+    Args:
+        config: Optional configuration dictionary
+
+    Returns:
+        Initialized service container
+
+    Raises:
+        ConfigError: If service initialization fails
+    """
+    try:
+        container = ServiceContainer()
+
+        # Register core services
+        container.register_service_type("database", DatabaseService)
+
+        # Create services with configuration
+        database_config = (
+            config.get("database", settings.NEO4J_CONFIG)
+            if config
+            else settings.NEO4J_CONFIG
+        )
+        database = cast(
+            DatabaseService, container.create_service("database", database_config)
+        )
+
         # Initialize services
-        registry = AnalysisToolRegistry.create()
-        
-        return registry
-        
-    @classmethod
-    def _init_directories(cls) -> None:
-        """Initialize required directories"""
-        dirs = ['temp', 'logs', 'cache']
-        for dir_name in dirs:
-            path = Path(dir_name)
-            path.mkdir(exist_ok=True)
-            
-    @classmethod
-    def _handle_config_errors(cls, errors: List[ConfigError]) -> None:
-        """Handle configuration errors"""
-        critical = [e for e in errors if e.severity == "error"]
-        if critical:
-            error_msg = "\n".join(f"- {e.path}: {e.message}" for e in critical)
-            raise RuntimeError(f"Critical configuration errors:\n{error_msg}") 
+        database.initialize()
+
+        return container
+
+    except Exception as e:
+        logger.error(f"Failed to initialize services: {e}")
+        raise ConfigError(f"Service initialization failed: {e}")
+
+
+def cleanup_services(container: ServiceContainer) -> None:
+    """Clean up application services.
+
+    Args:
+        container: Service container to clean up
+    """
+    try:
+        if container.has_service("database"):
+            database = cast(DatabaseService, container.get_service("database"))
+            database.cleanup()
+    except Exception as e:
+        logger.error(f"Failed to cleanup services: {e}")

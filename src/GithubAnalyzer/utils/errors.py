@@ -1,35 +1,29 @@
-"""Centralized error handling"""
-from dataclasses import dataclass
-from typing import Optional, Dict, Any
+"""Utility error classes."""
 
-@dataclass
-class AnalysisError(Exception):
-    """Base error class"""
-    message: str
-    code: Optional[str] = None
-    details: Optional[Dict[str, Any]] = None
-    source: Optional[str] = None
 
-class ServiceError(AnalysisError):
-    """Base service error"""
-    pass
+class UtilityError(Exception):
+    """Base error class for utility operations."""
 
-class DatabaseError(ServiceError):
-    """Database errors"""
-    pass
 
-class ParserError(ServiceError):
-    """Parser errors"""
-    pass
+class ConfigError(UtilityError):
+    """Error raised when configuration is invalid."""
 
-class AnalyzerError(ServiceError):
-    """Analyzer errors"""
-    pass
 
-class GraphError(ServiceError):
-    """Graph analysis errors"""
-    pass
+class ValidationError(UtilityError):
+    """Error raised when validation fails."""
 
-class FrameworkError(ServiceError):
-    """Framework detection errors"""
-    pass 
+
+class FileError(UtilityError):
+    """Error raised when file operations fail."""
+
+
+class PerformanceError(UtilityError):
+    """Error raised when performance thresholds are exceeded."""
+
+
+class LoggingError(UtilityError):
+    """Error raised when logging operations fail."""
+
+
+class ContainerError(UtilityError):
+    """Error raised when container operations fail."""

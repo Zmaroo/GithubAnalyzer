@@ -1,30 +1,37 @@
-"""Service-specific errors"""
-from dataclasses import dataclass
-from typing import Optional, Dict, Any
+"""Service-related error classes."""
 
-@dataclass
+
 class ServiceError(Exception):
-    """Base service error"""
-    message: str
-    code: Optional[str] = None
-    details: Optional[Dict[str, Any]] = None
+    """Base error class for service operations."""
 
-class DatabaseError(ServiceError):
-    """Database operation errors"""
-    pass
 
-class GraphAnalysisError(ServiceError):
-    """Graph analysis errors"""
-    pass
+class ServiceNotFoundError(ServiceError):
+    """Error raised when a requested service is not found."""
 
-class FileParsingError(ServiceError):
-    """File parsing errors"""
-    pass
 
-class FrameworkError(ServiceError):
-    """Framework detection errors"""
-    pass
+class ServiceNotInitializedError(ServiceError):
+    """Error raised when attempting to use an uninitialized service."""
 
-class AnalyzerError(ServiceError):
-    """Code analysis errors"""
-    pass 
+
+class ServiceAlreadyRegisteredError(ServiceError):
+    """Error raised when attempting to register a service that is already registered."""
+
+
+class ServiceDependencyError(ServiceError):
+    """Error raised when a service dependency cannot be satisfied."""
+
+
+class ServiceInitializationError(ServiceError):
+    """Error raised when service initialization fails."""
+
+
+class ServiceConfigurationError(ServiceError):
+    """Error raised when service configuration is invalid."""
+
+
+class ServiceOperationError(ServiceError):
+    """Error raised when a service operation fails."""
+
+
+class ServiceCleanupError(ServiceError):
+    """Error raised when service cleanup fails."""

@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -23,94 +22,98 @@ wheels/
 
 # Virtual Environment
 venv/
+env/
 ENV/
 .env
 .venv
-YtSpace/
 
-# IDE
+# IDE specific files
 .idea/
 .vscode/
 *.swp
 *.swo
-.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-workspace
+*.sublime-project
 
-# Project specific
-temp/
-.pytest_cache/
-*.log
-logs/
-data/
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-neo4j/data/
-redis/data/
-
-# Cache
-.cache/
-.redis/
-__redis_cache__/
-.benchmarks/
-
-# Temporary files
-*.tmp
-*.temp
-*.bak
-*.swp
-*~
-
-# Documentation
-docs/_build/
-docs/generated/
-
-# Test coverage
+# Testing
 .coverage
 coverage.xml
 htmlcov/
 .pytest_cache/
+.tox/
+nosetests.xml
+coverage/
 
-# Jupyter Notebooks
-.ipynb_checkpoints
-*.ipynb
+# Documentation
+docs/_build/
+docs/api/
 
-# Local development
-local_settings.py
-docker-compose.override.yml
-docker-compose.local.yml
-
-# Secrets and Configuration
-.env*
+# Project specific
+*.log
+.DS_Store
 .env.local
 .env.*.local
-config.local.py
-secrets.yml
-*.pem
-*.key
+*.db
+*.sqlite3
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Project specific directories
-n8n_data/
-ollama/models/
-.cursor/
-
-# Node/npm (if using any JS tools)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Additional Python tooling
+# Cache directories
 .mypy_cache/
 .ruff_cache/
+.cache/
+
+# Temporary files
+tmp/
+temp/
+
+# Configuration files that might contain sensitive information
+config.local.yaml
+config.local.yml
+config.local.json
+
+# Graph database files (if using local Neo4j or similar)
+graph.db/
+
+# Python type checking
 .pytype/
+.pyre/
+.dmypy.json
+dmypy.json
+
+# Python package management
+pip-log.txt
+pip-delete-this-directory.txt
+requirements.local.txt
+requirements.dev.txt
+.requirements.txt.swp
+
+# Poetry/PyProject
+poetry.lock
+.poetry-cache/
+
+# Setuptools
+*.egg-info/
+.eggs/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Build artifacts
+dist/
+build/
+_build/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dylib
+*.dll
+
+# Cursor specific
+.cursor/
+
+# Pre-commit
+.pre-commit-cache/
+.cache/pre-commit/

@@ -1,1 +1,25 @@
-"""Configuration settings and constants"""
+"""Configuration module."""
+
+from .settings import (
+    CACHE_TTL,
+    ENABLE_SECURITY_CHECKS,
+    ENABLE_TYPE_CHECKING,
+    FRAMEWORK_CONFIDENCE_THRESHOLD,
+    FRAMEWORK_PATTERNS,
+    LOGGING,
+    MAX_FILE_SIZE,
+    NEO4J_CONFIG,
+    REDIS_CONFIG,
+)
+
+__all__ = [
+    "REDIS_CONFIG",
+    "NEO4J_CONFIG",
+    "MAX_FILE_SIZE",
+    "ENABLE_SECURITY_CHECKS",
+    "ENABLE_TYPE_CHECKING",
+    "FRAMEWORK_CONFIDENCE_THRESHOLD",
+    "FRAMEWORK_PATTERNS",
+    "CACHE_TTL",
+    "LOGGING",
+]

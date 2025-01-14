@@ -1,0 +1,46 @@
+version: 1.0
+
+# Service definitions and dependencies
+services:
+  database:
+    type: core
+    dependencies: []
+    config:
+      require_ssl: true
+      connection_pooling: true
+    health_check:
+      enabled: true
+      interval: 300
+      timeout: 30
+  
+  parser:
+    type: core
+    dependencies: []
+    config:
+      max_file_size: 1048576
+      require_type_hints: true
+  
+  analyzer:
+    type: analysis
+    dependencies: 
+      - parser
+      - graph_analysis
+    config:
+      enable_security_checks: true
+      enable_type_checking: true
+  
+  graph_analysis:
+    type: analysis
+    dependencies:
+      - database
+    config:
+      check_gds_patterns: true
+      validate_projections: true
+
+  framework:
+    type: framework
+    dependencies:
+      - analyzer
+    config:
+      enable_validation: true
+      enable_caching: true 

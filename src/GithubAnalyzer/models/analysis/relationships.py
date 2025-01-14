@@ -1,38 +1,56 @@
-"""Code relationship models"""
+"""Code relationship models."""
+
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Set, Optional
+from enum import Enum, auto
+from typing import Any, Dict, List, Optional
+
+from ..base import BaseModel
+
+
+class RelationshipType(Enum):
+    """Types of relationships between code elements."""
+
+    IMPORTS = auto()
+    INHERITS = auto()
+    CALLS = auto()
+    USES = auto()
+    CONTAINS = auto()
+    DEPENDS_ON = auto()
+    IMPLEMENTS = auto()
+    OVERRIDES = auto()
+
+
+class DependencyType(Enum):
+    """Types of dependencies between code elements."""
+
+    RUNTIME = auto()
+    DEVELOPMENT = auto()
+    OPTIONAL = auto()
+    TEST = auto()
+    BUILD = auto()
+
 
 @dataclass
-class CodeRelationship:
-    """Represents a relationship between code components"""
+class CodeRelationship(BaseModel):
+    """Relationship between code elements."""
+
     source: str
     target: str
-    type: str
-    properties: Dict[str, Any] = field(default_factory=dict)
+    type: RelationshipType
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    weight: float = 1.0
+    is_bidirectional: bool = False
+
 
 @dataclass
-class CodeRelationships:
-    """Collection of code relationships"""
-    imports: List[CodeRelationship] = field(default_factory=list)
-    calls: List[CodeRelationship] = field(default_factory=list)
-    inherits: List[CodeRelationship] = field(default_factory=list)
-    references: List[CodeRelationship] = field(default_factory=list)
-    dependencies: Set[str] = field(default_factory=set)
-    
-    def add_import(self, source: str, target: str, **properties):
-        """Add import relationship"""
-        self.imports.append(CodeRelationship(source, target, "IMPORTS", properties))
-        self.dependencies.add(target)
-    
-    def add_call(self, source: str, target: str, **properties):
-        """Add function call relationship"""
-        self.calls.append(CodeRelationship(source, target, "CALLS", properties))
-    
-    def add_inheritance(self, source: str, target: str, **properties):
-        """Add inheritance relationship"""
-        self.inherits.append(CodeRelationship(source, target, "INHERITS", properties))
-        self.dependencies.add(target)
-    
-    def add_reference(self, source: str, target: str, **properties):
-        """Add general reference relationship"""
-        self.references.append(CodeRelationship(source, target, "REFERENCES", properties)) 
+class CodeDependency(BaseModel):
+    """Dependency between code elements."""
+
+    source: str
+    target: str
+    type: DependencyType
+    version: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    is_direct: bool = True
+    is_dev: bool = False
+    is_optional: bool = False

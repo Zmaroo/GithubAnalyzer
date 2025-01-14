@@ -1,197 +1,137 @@
-"""Framework detection and analysis service"""
-from typing import Dict, Any, Optional, List, Set
-from dataclasses import dataclass
-from pathlib import Path
-from .configurable import ConfigurableService, FrameworkConfig
-from .errors import FrameworkError
-from ..utils.logging import setup_logger
+"""Framework detection service."""
 
-logger = setup_logger(__name__)
+import logging
+from typing import Any, Dict, List, Optional
 
-@dataclass
-class FrameworkMetrics:
-    """Framework detection metrics"""
-    frameworks_detected: int = 0
-    dependencies_scanned: int = 0
-    confidence_scores: Dict[str, float] = None
-    scan_time: float = 0.0
-    cache_hits: int = 0
+from ..analysis.analyzer_service import AnalyzerService
+from ..core.base_service import BaseService
+from ..core.errors import ServiceError
 
-    def __post_init__(self):
-        if self.confidence_scores is None:
-            self.confidence_scores = {}
 
-class FrameworkService(ConfigurableService):
-    """Service for framework detection and analysis"""
-    
-    def __init__(self, registry=None, config: Optional[FrameworkConfig] = None):
-        self.analyzer_service = None
-        self.metrics = FrameworkMetrics()
-        self._framework_cache: Dict[str, Dict[str, Any]] = {}
-        super().__init__(registry, config or FrameworkConfig())
-        
-    def _initialize(self, config: Optional[Dict[str, Any]] = None) -> None:
-        """Initialize framework service"""
+class FrameworkService(BaseService):
+    """Service for detecting and analyzing frameworks."""
+
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        """Initialize framework service.
+
+        Args:
+            config: Optional configuration dictionary
+        """
+        super().__init__(config)
+        self.logger = logging.getLogger(__name__)
+        self._analyzer: Optional[AnalyzerService] = None
+        self._initialized = False
+
+    def initialize(self) -> None:
+        """Initialize the framework service.
+
+        Raises:
+            ServiceError: If initialization fails
+        """
         try:
-            if config:
-                self._update_config(config)
-                
-            # Get analyzer service as required by cursorrules
-            self.analyzer_service = self.registry.get_service('analyzer')
-            if not self.analyzer_service:
-                raise FrameworkError("Required analyzer service not available")
-                
-            # Initialize framework patterns
-            self._init_framework_patterns()
-                
+            self._analyzer = AnalyzerService(self._config.get("analyzer", {}))
+            self._analyzer.initialize()
+            self._initialized = True
         except Exception as e:
-            raise FrameworkError(f"Failed to initialize framework service: {e}")
+            raise ServiceError(f"Failed to initialize framework service: {str(e)}")
 
-    def _init_framework_patterns(self) -> None:
-        """Initialize framework detection patterns"""
+    def detect_frameworks(self, content: str) -> Dict[str, Any]:
+        """Detect frameworks used in code.
+
+        Args:
+            content: Code content to analyze
+
+        Returns:
+            Dict[str, Any]: Framework detection results
+
+        Raises:
+            ServiceError: If detection fails
+        """
+        if not self._initialized:
+            raise ServiceError("Framework service not initialized")
+
         try:
-            self.patterns = self.service_config.framework_patterns
-            if not self.patterns:
-                raise FrameworkError("No framework patterns configured")
-        except Exception as e:
-            raise FrameworkError(f"Failed to initialize framework patterns: {e}")
+            if not self._analyzer:
+                raise ServiceError("Analyzer not initialized")
 
-    def _validate_requirements(self) -> bool:
-        """Validate service requirements from cursorrules"""
-        if not super()._validate_requirements():
-            return False
-            
-        config = self.service_config
-        
-        # Check analyzer service
-        if not self.analyzer_service:
-            logger.error("Required analyzer service not available")
-            return False
-            
-        # Check confidence threshold
-        if not 0 <= config.confidence_threshold <= 1:
-            logger.error("Invalid confidence threshold")
-            return False
-            
-        # Check framework patterns
-        if not config.framework_patterns:
-            logger.error("No framework patterns configured")
-            return False
-            
-        return True
-
-    def detect_frameworks(self, repo_path: str) -> Dict[str, Any]:
-        """Detect frameworks in repository"""
-        try:
-            if not self.initialized:
-                raise FrameworkError("Service not initialized")
-                
-            results = {
-                'frameworks': [],
-                'dependencies': [],
-                'confidence_scores': {}
-            }
-            
-            # Check cache first
-            cache_key = str(Path(repo_path).resolve())
-            if cache_key in self._framework_cache:
-                self.metrics.cache_hits += 1
-                return self._framework_cache[cache_key]
-            
-            # Scan for framework patterns
-            detected_patterns = self._scan_for_patterns(repo_path)
-            
-            # Analyze dependencies if enabled
-            if self.service_config.scan_dependencies:
-                dependencies = self._analyze_dependencies(repo_path)
-                results['dependencies'] = dependencies
-            
-            # Calculate confidence scores
-            for framework, patterns in detected_patterns.items():
-                confidence = self._calculate_confidence(patterns)
-                if confidence >= self.service_config.confidence_threshold:
-                    results['frameworks'].append(framework)
-                    results['confidence_scores'][framework] = confidence
-            
-            # Cache results
-            self._framework_cache[cache_key] = results
-            
-            # Update metrics
-            self.metrics.frameworks_detected = len(results['frameworks'])
-            
-            return results
-            
-        except Exception as e:
-            logger.error(f"Framework detection failed: {e}")
+            analysis = self._analyzer.analyze_code(content)
+            frameworks = self._detect_from_analysis(analysis)
             return {
-                'frameworks': [],
-                'dependencies': [],
-                'confidence_scores': {}
+                "frameworks": frameworks,
+                "confidence": self._calculate_confidence(frameworks),
+                "details": self._get_framework_details(frameworks),
             }
-
-    def _scan_for_patterns(self, repo_path: str) -> Dict[str, Set[str]]:
-        """Scan repository for framework patterns"""
-        try:
-            detected_patterns: Dict[str, Set[str]] = {}
-            
-            for framework, patterns in self.patterns.items():
-                detected_patterns[framework] = set()
-                for pattern in patterns:
-                    if self._check_pattern(repo_path, pattern):
-                        detected_patterns[framework].add(pattern)
-                        
-            return detected_patterns
-            
         except Exception as e:
-            logger.error(f"Pattern scanning failed: {e}")
-            return {}
+            raise ServiceError(f"Failed to detect frameworks: {str(e)}")
 
-    def _analyze_dependencies(self, repo_path: str) -> List[Dict[str, Any]]:
-        """Analyze project dependencies"""
-        try:
-            dependencies = []
-            
-            # Check common dependency files
-            dep_files = ['requirements.txt', 'package.json', 'Gemfile']
-            for dep_file in dep_files:
-                file_path = Path(repo_path) / dep_file
-                if file_path.exists():
-                    deps = self._parse_dependency_file(file_path)
-                    dependencies.extend(deps)
-                    
-            self.metrics.dependencies_scanned = len(dependencies)
-            return dependencies
-            
-        except Exception as e:
-            logger.error(f"Dependency analysis failed: {e}")
-            return []
+    def _detect_from_analysis(self, analysis: Dict[str, Any]) -> List[str]:
+        """Detect frameworks from code analysis.
 
-    def _calculate_confidence(self, detected_patterns: Set[str]) -> float:
-        """Calculate confidence score for framework detection"""
-        try:
-            if not detected_patterns:
-                return 0.0
-                
-            # Calculate based on number of patterns matched
-            total_patterns = len(self.patterns.get(next(iter(detected_patterns)), []))
-            if total_patterns == 0:
-                return 0.0
-                
-            return len(detected_patterns) / total_patterns
-            
-        except Exception as e:
-            logger.error(f"Confidence calculation failed: {e}")
-            return 0.0
+        Args:
+            analysis: Code analysis results
 
-    def _cleanup(self) -> None:
-        """Cleanup framework service resources"""
-        try:
-            self.analyzer_service = None
-            self._framework_cache.clear()
-            self.patterns = {}
-        except Exception as e:
-            logger.error(f"Failed to cleanup framework service: {e}")
+        Returns:
+            List[str]: Detected frameworks
+        """
+        frameworks = []
+        # Add framework detection logic based on imports, patterns, etc.
+        return frameworks
 
-    def get_metrics(self) -> FrameworkMetrics:
-        """Get framework detection metrics"""
-        return self.metrics 
+    def _calculate_confidence(self, frameworks: List[str]) -> float:
+        """Calculate confidence score for framework detection.
+
+        Args:
+            frameworks: List of detected frameworks
+
+        Returns:
+            float: Confidence score between 0 and 1
+        """
+        # Add confidence calculation logic
+        return 1.0 if frameworks else 0.0
+
+    def _get_framework_details(self, frameworks: List[str]) -> Dict[str, Any]:
+        """Get detailed information about detected frameworks.
+
+        Args:
+            frameworks: List of detected frameworks
+
+        Returns:
+            Dict[str, Any]: Framework details
+        """
+        details = {}
+        for framework in frameworks:
+            details[framework] = {
+                "version": self._detect_version(framework),
+                "features": self._detect_features(framework),
+            }
+        return details
+
+    def _detect_version(self, framework: str) -> str:
+        """Detect framework version.
+
+        Args:
+            framework: Framework name
+
+        Returns:
+            str: Detected version or empty string
+        """
+        # Add version detection logic
+        return ""
+
+    def _detect_features(self, framework: str) -> List[str]:
+        """Detect framework features being used.
+
+        Args:
+            framework: Framework name
+
+        Returns:
+            List[str]: Detected features
+        """
+        # Add feature detection logic
+        return []
+
+    def cleanup(self) -> None:
+        """Clean up framework service resources."""
+        if self._analyzer:
+            self._analyzer.cleanup()
+        self._initialized = False
