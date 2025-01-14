@@ -1,37 +1,33 @@
-"""Core error definitions"""
+"""Core error definitions for the application."""
 
 
 class BaseError(Exception):
-    """Base error class for all custom exceptions."""
+    """Base error class for all application errors."""
 
 
 class ConfigError(BaseError):
     """Error raised when configuration is invalid."""
 
 
-class DatabaseError(BaseError):
-    """Error raised when database operations fail."""
+class ServiceError(BaseError):
+    """Error raised when a service operation fails."""
 
 
-class ParseError(BaseError):
+class ParserError(BaseError):
     """Error raised when parsing operations fail."""
 
 
-class FrameworkError(BaseError):
-    """Error raised when framework operations fail."""
+class AnalysisError(BaseError):
+    """Error raised when analysis operations fail."""
 
 
-class ServiceError(BaseError):
-    """Error raised when service operations fail."""
-
-
-class ServiceNotFoundError(ServiceError):
-    """Error raised when a requested service is not found."""
+class StorageError(BaseError):
+    """Error raised when storage operations fail."""
 
 
 class ValidationError(BaseError):
     """Error raised when validation fails."""
 
 
-class AnalysisError(BaseError):
-    """Error raised when analysis operations fail."""
+class UtilityError(BaseError):
+    """Error raised when utility operations fail."""

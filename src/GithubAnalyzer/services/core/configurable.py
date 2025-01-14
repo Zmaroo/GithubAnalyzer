@@ -1,89 +1,68 @@
-"""Configurable service base class."""
+"""Base class for configurable services."""
 
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
-from GithubAnalyzer.models.core.errors import ServiceError
+from ...models.core.errors import ConfigError, ServiceError
 
 
 class ConfigurableService(ABC):
-    """Base class for configurable services."""
+    """Base class for services that require configuration."""
 
-    def __init__(self) -> None:
-        """Initialize the service."""
-        self._config: Dict[str, Any] = {}
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        """Initialize the configurable service.
+
+        Args:
+            config: Optional configuration dictionary.
+        """
+        self._config = self._validate_config(config or {})
         self._initialized = False
 
-    @property
-    def is_initialized(self) -> bool:
-        """Check if service is initialized."""
-        return self._initialized
-
-    def configure(self, config: Dict[str, Any]) -> None:
-        """Configure the service.
+    @abstractmethod
+    def _validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate and process configuration.
 
         Args:
-            config: Configuration dictionary
-
-        Raises:
-            ServiceError: If configuration is invalid
-        """
-        try:
-            self.validate_config(config)
-            self._config.update(config)
-        except Exception as e:
-            raise ServiceError(f"Invalid configuration: {str(e)}")
-
-    @abstractmethod
-    def validate_config(self, config: Dict[str, Any]) -> None:
-        """Validate configuration.
-
-        Args:
-            config: Configuration to validate
-
-        Raises:
-            ServiceError: If configuration is invalid
-        """
-
-    @abstractmethod
-    def start(self) -> None:
-        """Start the service.
-
-        Raises:
-            ServiceError: If service fails to start
-        """
-
-    @abstractmethod
-    def stop(self) -> None:
-        """Stop the service.
-
-        Raises:
-            ServiceError: If service fails to stop
-        """
-
-    def get_config(self, key: str, default: Optional[Any] = None) -> Any:
-        """Get configuration value.
-
-        Args:
-            key: Configuration key
-            default: Default value if key not found
+            config: Configuration dictionary to validate.
 
         Returns:
-            Configuration value
-        """
-        return self._config.get(key, default)
-
-    def set_config(self, key: str, value: Any) -> None:
-        """Set configuration value.
-
-        Args:
-            key: Configuration key
-            value: Configuration value
+            The validated configuration dictionary.
 
         Raises:
-            ServiceError: If configuration is invalid
+            ConfigError: If the configuration is invalid.
         """
-        config = self._config.copy()
-        config[key] = value
-        self.validate_config(config)
-        self._config[key] = value
+        raise NotImplementedError
+
+    @property
+    def config(self) -> Dict[str, Any]:
+        """Get the current configuration.
+
+        Returns:
+            The current configuration dictionary.
+        """
+        return self._config
+
+    @property
+    def initialized(self) -> bool:
+        """Check if the service is initialized.
+
+        Returns:
+            True if initialized, False otherwise.
+        """
+        return self._initialized
+
+    def update_config(self, config: Dict[str, Any]) -> None:
+        """Update the service configuration.
+
+        Args:
+            config: New configuration dictionary.
+
+        Raises:
+            ConfigError: If the new configuration is invalid.
+            ServiceError: If the service is initialized and cannot be reconfigured.
+        """
+        if self._initialized:
+            raise ServiceError(
+                "Cannot update configuration while service is initialized"
+            )
+        self._config = self._validate_config(config)

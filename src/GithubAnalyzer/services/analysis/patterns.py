@@ -1,9 +1,10 @@
 """Pattern detection and analysis utilities."""
 
-import importlib
-from typing import Dict, List
+from pathlib import Path
+from typing import Dict, List, Set
 
-from GithubAnalyzer.utils.logging import setup_logger
+from ...models.analysis.patterns import FRAMEWORK_PATTERNS, PATTERN_CATEGORIES, Pattern
+from ...utils.logging import setup_logger
 
 logger = setup_logger(__name__)
 
@@ -22,25 +23,38 @@ class PatternDetector:
         Returns:
             Dictionary of detected patterns by category.
         """
-        patterns = {"usage": [], "framework": [], "style": [], "architectural": []}
+        patterns = {category: [] for category in PATTERN_CATEGORIES}
 
-        # Implementation details...
+        try:
+            # Detect framework patterns
+            if framework_patterns := PatternDetector.detect_framework_patterns(
+                Path(file_path)
+            ):
+                patterns["framework"].extend(framework_patterns)
+
+            # Add other pattern detection methods here
+            # ...
+
+        except Exception as e:
+            logger.error(f"Error detecting patterns: {e}")
+
         return patterns
 
     @staticmethod
-    def detect_framework_patterns(parse_result: Dict) -> List[str]:
+    def detect_framework_patterns(file_path: Path) -> List[str]:
         """Detect framework usage patterns.
 
         Args:
-            parse_result: Parsed code result.
+            file_path: Path to the file being analyzed.
 
         Returns:
             List of detected framework patterns.
         """
-        patterns = []
+        detected = []
         try:
-            # Implementation details...
-            pass
+            for framework, patterns in FRAMEWORK_PATTERNS.items():
+                if file_path.name in patterns:
+                    detected.append(framework)
         except Exception as e:
             logger.error(f"Error detecting framework patterns: {e}")
-        return patterns
+        return detected

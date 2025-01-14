@@ -1,4 +1,8 @@
-"""Application settings and configuration."""
+"""Application settings and configuration.
+
+This is the single source of truth for all application configuration.
+All configuration values should be defined here and imported elsewhere.
+"""
 
 import os
 from pathlib import Path
@@ -10,6 +14,8 @@ PROJECT_ROOT = BASE_DIR.parent
 
 # Environment settings
 ENV = os.getenv("ENV", "development")
+DEBUG_MODE = ENV == "development"
+TESTING_MODE = ENV == "test"
 
 # Redis configuration
 REDIS_CONFIG: Dict[str, Any] = {
@@ -43,25 +49,16 @@ ENABLE_TYPE_CHECKING = bool(os.getenv("ENABLE_TYPE_CHECKING", True))
 FRAMEWORK_CONFIDENCE_THRESHOLD = float(
     os.getenv("FRAMEWORK_CONFIDENCE_THRESHOLD", "0.7")
 )
-FRAMEWORK_PATTERNS: Dict[str, List[str]] = {
-    "django": [
-        "manage.py",
-        "wsgi.py",
-        "asgi.py",
-        "settings.py",
-        "urls.py",
-        "models.py",
-        "views.py",
-        "admin.py",
-    ],
-    "flask": ["app.py", "wsgi.py", "config.py", "requirements.txt"],
-    "fastapi": ["main.py", "app.py", "api.py", "requirements.txt"],
-}
 
 # Cache settings
 CACHE_TTL = int(os.getenv("CACHE_TTL", "3600"))  # 1 hour
 
+# Parser settings
+PARSER_TIMEOUT = int(os.getenv("PARSER_TIMEOUT", "5000"))  # 5 seconds
+MAX_PARSE_SIZE = int(os.getenv("MAX_PARSE_SIZE", "5242880"))  # 5MB
+
 # Logging settings
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -70,18 +67,18 @@ LOGGING = {
     },
     "handlers": {
         "console": {
-            "level": "INFO",
+            "level": LOG_LEVEL,
             "class": "logging.StreamHandler",
             "formatter": "standard",
         },
         "file": {
-            "level": "INFO",
+            "level": LOG_LEVEL,
             "class": "logging.FileHandler",
-            "filename": "github_analyzer.log",
+            "filename": os.path.join(PROJECT_ROOT, "github_analyzer.log"),
             "formatter": "standard",
         },
     },
     "loggers": {
-        "": {"handlers": ["console", "file"], "level": "INFO", "propagate": True}
+        "": {"handlers": ["console", "file"], "level": LOG_LEVEL, "propagate": True}
     },
 }

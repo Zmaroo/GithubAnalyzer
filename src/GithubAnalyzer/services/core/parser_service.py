@@ -1,18 +1,31 @@
 """Parser service implementation."""
 
-from typing import Any, Dict, List, Optional, Type
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Type, Union
 
+from ...config.language_config import get_file_type_mapping, get_language_by_extension
 from ...models.core.errors import ServiceError
 from ...models.core.parse import ParseResult
 from .base_service import BaseService
 from .parsers.base import BaseParser
+from .parsers.config import ConfigParser
+from .parsers.documentation import DocumentationParser
+from .parsers.license import LicenseParser
 from .parsers.tree_sitter import TreeSitterParser
 
 
 class ParserService(BaseService):
     """Service for parsing code and files."""
 
-    SUPPORTED_PARSERS = {"tree-sitter": TreeSitterParser}
+    SUPPORTED_PARSERS = {
+        "tree-sitter": TreeSitterParser,
+        "config": ConfigParser,
+        "documentation": DocumentationParser,
+        "license": LicenseParser,
+    }
+
+    # File type mapping is now loaded from language_config
+    FILE_TYPE_MAPPING = get_file_type_mapping()
 
     def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
         """Initialize the parser service.
@@ -21,7 +34,7 @@ class ParserService(BaseService):
             config: Optional configuration dictionary.
         """
         super().__init__(config)
-        self._parser: Optional[BaseParser] = None
+        self._parsers: Dict[str, BaseParser] = {}
         self._initialized = False
 
     def _validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
@@ -39,12 +52,9 @@ class ParserService(BaseService):
         if not isinstance(config, dict):
             raise ServiceError("Configuration must be a dictionary")
 
+        # Default to tree-sitter if no parser type specified
         if "parser_type" not in config:
-            raise ServiceError("Missing required config key: parser_type")
-
-        parser_type = config["parser_type"]
-        if parser_type not in self.SUPPORTED_PARSERS:
-            raise ServiceError(f"Unsupported parser type: {parser_type}")
+            config["parser_type"] = "tree-sitter"
 
         return config
 
@@ -61,33 +71,35 @@ class ParserService(BaseService):
             raise ServiceError("Configuration is required")
 
         try:
-            self._parser = self._create_parser()
-            self._parser.initialize(languages)
+            # Initialize all parsers
+            for parser_type, parser_class in self.SUPPORTED_PARSERS.items():
+                self._parsers[parser_type] = parser_class()
+                if parser_type == "tree-sitter":
+                    # Only tree-sitter needs language initialization
+                    self._parsers[parser_type].initialize(languages)
+                else:
+                    self._parsers[parser_type].initialize()
+
             self._initialized = True
         except Exception as e:
-            raise ServiceError(f"Failed to initialize parser: {str(e)}")
+            raise ServiceError(f"Failed to initialize parsers: {str(e)}")
 
-    def _create_parser(self) -> BaseParser:
-        """Create a parser instance based on the configuration.
+    def _get_parser_for_file(self, file_path: Union[str, Path]) -> BaseParser:
+        """Get appropriate parser for a file."""
+        file_path = Path(file_path)
 
-        Returns:
-            The created parser instance.
+        # Check exact filename matches first
+        if file_path.name in self.FILE_TYPE_MAPPING:
+            parser_type = self.FILE_TYPE_MAPPING[file_path.name]
+            return self._parsers[parser_type]
 
-        Raises:
-            ServiceError: If parser creation fails.
-        """
-        parser_type = self._config.get("parser_type")
-        if not parser_type:
-            raise ServiceError("Parser type not specified")
+        # Then check file extension
+        if file_path.suffix in self.FILE_TYPE_MAPPING:
+            parser_type = self.FILE_TYPE_MAPPING[file_path.suffix]
+            return self._parsers[parser_type]
 
-        parser_class = self.SUPPORTED_PARSERS.get(parser_type)
-        if not parser_class:
-            raise ServiceError(f"Unsupported parser type: {parser_type}")
-
-        try:
-            return parser_class()
-        except Exception as e:
-            raise ServiceError(f"Failed to create parser: {str(e)}")
+        # Default to tree-sitter
+        return self._parsers["tree-sitter"]
 
     def parse(self, content: str, language: str) -> ParseResult:
         """Parse code content.
@@ -105,12 +117,22 @@ class ParserService(BaseService):
         if not self._initialized:
             raise ServiceError("Service not initialized")
 
+        # Try tree-sitter first for code parsing
         try:
-            return self._parser.parse(content, language)
+            return self._parsers["tree-sitter"].parse(content, language)
         except Exception as e:
+            # If tree-sitter fails, try other parsers based on content
+            for parser_type, parser in self._parsers.items():
+                if parser_type != "tree-sitter":
+                    try:
+                        return parser.parse(content, language)
+                    except:
+                        continue
+
+            # If all parsers fail, raise the original error
             raise ServiceError(f"Failed to parse content: {str(e)}")
 
-    def parse_file(self, file_path: str) -> ParseResult:
+    def parse_file(self, file_path: Union[str, Path]) -> ParseResult:
         """Parse a source code file.
 
         Args:
@@ -126,16 +148,24 @@ class ParserService(BaseService):
             raise ServiceError("Service not initialized")
 
         try:
-            return self._parser.parse_file(file_path)
+            file_path = Path(file_path)
+            parser = self._get_parser_for_file(file_path)
+
+            # For tree-sitter parser, determine language from extension
+            if isinstance(parser, TreeSitterParser):
+                language = get_language_by_extension(file_path.suffix)
+                return parser.parse_file(file_path, language=language)
+
+            return parser.parse_file(file_path)
         except Exception as e:
             raise ServiceError(f"Failed to parse file: {str(e)}")
 
     def cleanup(self) -> None:
         """Clean up parser resources."""
-        if self._parser:
-            self._parser.cleanup()
+        for parser in self._parsers.values():
+            parser.cleanup()
         self._initialized = False
-        self._parser = None
+        self._parsers.clear()
 
     @property
     def initialized(self) -> bool:
