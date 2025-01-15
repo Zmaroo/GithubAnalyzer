@@ -3,7 +3,12 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, Union, cast
 
-from ...config.language_config import get_file_type_mapping, get_language_by_extension
+from ...config.language_config import (
+    get_file_type_mapping,
+    get_language_by_extension,
+    PARSER_LANGUAGE_MAP,
+    TREE_SITTER_LANGUAGES
+)
 from ...models.analysis.ast import ParseResult
 from ...models.core.errors import ServiceError
 from .base_service import BaseService

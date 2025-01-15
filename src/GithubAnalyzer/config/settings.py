@@ -1,72 +1,56 @@
-"""Application settings and configuration.
+"""Application settings."""
 
-This is the single source of truth for all application configuration.
-All configuration values should be defined here and imported elsewhere.
-"""
-
-import os
+from dataclasses import dataclass
+from typing import Dict, Any
 from pathlib import Path
-from typing import Any, Dict
 
-# Base paths
-BASE_DIR = Path(__file__).resolve().parent.parent
+@dataclass
+class Settings:
+    """Application settings."""
+    parser_timeout: int = 5000
+    debug_mode: bool = False
+    testing_mode: bool = False
+    log_level: str = "INFO"
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Settings":
+        """Create settings from dictionary."""
+        return cls(**data)
+
+# Global settings instance
+settings = Settings()
+
+# Constants
+BASE_DIR = Path(__file__).parent.parent.parent
 PROJECT_ROOT = BASE_DIR.parent
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+DEBUG_MODE = False
+TESTING_MODE = False
+ENV = "development"
+LOG_LEVEL = "INFO"
+PARSER_TIMEOUT = 5000  # milliseconds
 
-# Environment settings
-ENV = os.getenv("ENV", "development")
-DEBUG_MODE = ENV == "development"
-TESTING_MODE = ENV == "test"
-
-# Parser settings
-PARSER_TIMEOUT = int(os.getenv("PARSER_TIMEOUT", "5000"))  # 5 seconds
-MAX_PARSE_SIZE = int(os.getenv("MAX_PARSE_SIZE", "5242880"))  # 5MB
-
-# Logging settings
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+# Logging configuration
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "standard": {"format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"},
-        "detailed": {
-            "format": "%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s"
-        }
+        "standard": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+        },
     },
     "handlers": {
-        "console": {
+        "default": {
             "level": LOG_LEVEL,
-            "class": "logging.StreamHandler",
             "formatter": "standard",
+            "class": "logging.StreamHandler",
         },
-        "file": {
-            "level": LOG_LEVEL,
-            "class": "logging.FileHandler",
-            "filename": os.path.join(PROJECT_ROOT, "github_analyzer.log"),
-            "formatter": "detailed",
-        },
-        "error_file": {
-            "level": "ERROR",
-            "formatter": "detailed",
-            "class": "logging.FileHandler",
-            "filename": os.path.join(PROJECT_ROOT, "logs", "error.log"),
-            "mode": "a",
-        }
     },
     "loggers": {
-        "GithubAnalyzer": {
-            "handlers": ["console", "file", "error_file"],
+        "": {
+            "handlers": ["default"],
             "level": LOG_LEVEL,
-            "propagate": False
-        },
-        "GithubAnalyzer.parsers": {
-            "handlers": ["console", "file", "error_file"],
-            "level": LOG_LEVEL,
-            "propagate": False
-        },
-        "tree_sitter": {
-            "handlers": ["file"],
-            "level": "WARNING",
-            "propagate": False
+            "propagate": True
         }
-    },
+    }
 }

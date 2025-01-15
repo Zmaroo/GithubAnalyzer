@@ -1,10 +1,10 @@
-"""Base service implementation."""
+"""Base service class."""
 
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
-from GithubAnalyzer.models.core.errors import ServiceError
-from GithubAnalyzer.utils.logging import get_logger
+from ...models.core.errors import ServiceError
+from ...utils.logging import get_logger
 
 
 class BaseService(ABC):

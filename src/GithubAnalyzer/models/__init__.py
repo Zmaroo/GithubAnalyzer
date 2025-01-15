@@ -2,14 +2,14 @@
 
 from .analysis.ast import ParseResult
 from .analysis.results import AnalysisResult
-from .core.base import BaseModel
-from .core.config.settings import Settings
-from .core.errors import ParserError
+from .core.errors import ServiceError, ParserError, FileOperationError
+from ..config.settings import Settings
 
 __all__ = [
     "AnalysisResult",
-    "BaseModel",
-    "ParseResult", 
+    "FileOperationError",
     "ParserError",
-    "Settings"
+    "ParseResult",
+    "ServiceError",
+    "Settings",
 ]

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 from ..models.core.errors import FileOperationError
-from ..config import settings
+from ..config.settings import settings, MAX_FILE_SIZE
 from ..config.language_config import PARSER_LANGUAGE_MAP
 
 

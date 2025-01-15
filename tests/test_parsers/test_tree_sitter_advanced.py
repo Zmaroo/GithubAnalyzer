@@ -175,17 +175,17 @@ def another_function():
 
 def test_error_recovery(parser: TreeSitterParser) -> None:
     """Test parser error recovery capabilities."""
-    content = """
-def valid_function():
+    content = """def valid_function():
     return 42
 
 def invalid_function)
     print("Hello")
 
 def another_valid():
-    pass
-"""
-    result = parser.parse(content, "python")
+    pass"""
+    # Ensure consistent line endings and no leading whitespace
+    normalized_content = "\n".join(line.strip() for line in content.splitlines())
+    result = parser.parse(normalized_content, "python")
 
     # Even with errors, we should get a parse tree
     assert result.ast is not None
