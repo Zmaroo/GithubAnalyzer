@@ -1,8 +1,0 @@
-# This file is in Markdown format and provides guidelines for Cursor's AI assistance
-# Do not treat this as a YAML file
-
-# Cursor Rules for GitHub Analyzer
-
-This project aims to be a tool that an AI model/agent can use to gain deep knowledge and insights about Github repositories and code bases.
-
-// ... existing code ...
