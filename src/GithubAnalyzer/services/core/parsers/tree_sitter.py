@@ -115,46 +115,42 @@ class TreeSitterParser(BaseParser):
             raise ParserError(f"Failed to initialize parser: {str(e)}")
 
     def parse(self, content: str, language: str) -> ParseResult:
-        """Parse source code content.
-        
-        Args:
-            content: Source code to parse
-            language: Programming language of the content
-            
-        Returns:
-            ParseResult containing AST and metadata
-            
-        Raises:
-            ParserError: If parsing fails
-        """
+        """Parse source code content."""
         if not self.initialized:
             raise ParserError("Parser not initialized")
-            
+
         if language not in self._parsers:
             raise ParserError(f"Language {language} not supported")
-            
+
         try:
-            tree = self._parsers[language].parse(
-                bytes(content, self._encoding)
-            )
+            # Parse content
+            parser = self._parsers[language]
+            tree = parser.parse(bytes(content, self._encoding))
             
-            is_valid = not tree.root_node.has_error
-            errors = self._get_syntax_errors(tree.root_node) if not is_valid else []
-            
+            # Initialize metadata
+            metadata = {
+                "encoding": self._encoding,
+                "raw_content": content,
+                "root_type": tree.root_node.type,
+                "analysis": {
+                    "functions": {},  # Initialize empty dict for functions
+                    "errors": self._get_errors(tree.root_node)  # Use _get_errors directly
+                }
+            }
+
+            # Extract functions even if there are errors
+            if tree.root_node:
+                functions = self._get_functions(tree.root_node, language)
+                metadata["analysis"]["functions"] = functions
+
             return ParseResult(
                 ast=tree,
-                language=language,
-                is_valid=is_valid,
-                line_count=len(content.splitlines()),
-                node_count=self._count_nodes(tree.root_node),
-                errors=errors,
-                metadata={
-                    "encoding": self._encoding,
-                    "raw_content": content,
-                    "root_type": tree.root_node.type,
-                    "analysis": self._analyze_tree(tree, language),
-                }
+                is_valid=not tree.root_node.has_error,
+                node_count=tree.root_node.descendant_count,
+                errors=self._get_errors(tree.root_node),  # This is fine as it's part of ParseResult
+                metadata=metadata
             )
+
         except Exception as e:
             raise ParserError(f"Failed to parse {language} content: {str(e)}")
 
@@ -211,13 +207,31 @@ class TreeSitterParser(BaseParser):
             count += self._count_nodes(child)
         return count
 
-    def _get_syntax_errors(self, node: Node) -> List[str]:
-        """Get syntax errors from AST."""
+    def _get_errors(self, node: Node) -> List[str]:
+        """Extract syntax errors from AST.
+        
+        According to tree-sitter docs:
+        - ERROR nodes represent syntax errors
+        - has_error indicates a node contains errors
+        - Missing nodes are inserted for error recovery
+        """
         errors = []
-        if node.has_error:
-            errors.append(f"Syntax error at line {node.start_point[0] + 1}")
-        for child in node.children:
-            errors.extend(self._get_syntax_errors(child))
+        cursor = node.walk()
+        
+        def visit(cursor: TreeCursor) -> None:
+            if cursor.node.type == "ERROR":
+                errors.append(f"Syntax error at line {cursor.node.start_point[0] + 1}")
+            elif cursor.node.is_missing:
+                errors.append(f"Missing node at line {cursor.node.start_point[0] + 1}")
+            
+            if cursor.goto_first_child():
+                visit(cursor)
+                cursor.goto_parent()
+            
+            if cursor.goto_next_sibling():
+                visit(cursor)
+        
+        visit(cursor)
         return errors
 
     def _analyze_tree(self, tree: Tree, language: str) -> Dict[str, Any]:
@@ -241,6 +255,23 @@ class TreeSitterParser(BaseParser):
         cursor = node.walk()
         
         def visit(cursor: TreeCursor) -> None:
+            logger.debug("Visiting node: %s at line %d", 
+                        cursor.node.type, cursor.node.start_point[0])
+            
+            # Skip error nodes but continue traversal
+            if cursor.node.type == "ERROR":
+                logger.debug("Found ERROR node, attempting to continue traversal")
+                if cursor.goto_next_sibling():
+                    visit(cursor)
+                return
+            
+            # Handle nodes that contain errors but might have valid children
+            if cursor.node.has_error:
+                # Still try to process this node if it looks like a function
+                if (language == "python" and cursor.node.type == "function_definition"):
+                    logger.debug("Processing function node with errors: %s", cursor.node.type)
+                    process_function_node(cursor.node)
+            
             # Language-specific function patterns
             if (
                 # Python
@@ -253,35 +284,27 @@ class TreeSitterParser(BaseParser):
                 (language in ["javascript", "typescript"] and
                     cursor.node.type in ["function_declaration", "function", "method_definition"])
             ):
-                
-                # Get function name, handling both normal and error cases
-                name_node = (cursor.node.child_by_field_name("name") or 
-                           (cursor.node.type == "def" and cursor.node.next_sibling))
+                logger.debug("Found potential function node: %s", cursor.node.type)
+                process_function_node(cursor.node)
+            
+            def process_function_node(node: Node) -> None:
+                """Process a potential function node, even if it contains errors."""
+                name_node = (node.child_by_field_name("name") or 
+                           (node.type == "def" and node.next_sibling))
                 
                 if name_node and name_node.type == "identifier":
                     functions[name_node.text.decode('utf8')] = {
-                        'start': cursor.node.start_point[0],
-                        'end': cursor.node.end_point[0]
+                        'start': node.start_point[0],
+                        'end': node.end_point[0]
                     }
             
-            # Continue traversal
+            # Continue traversal even after errors
             if cursor.goto_first_child():
                 visit(cursor)
                 cursor.goto_parent()
             
             if cursor.goto_next_sibling():
                 visit(cursor)
-        
-        try:
-            visit(cursor)
-        except Exception as e:
-            logger.debug(f"Error during tree traversal: {e}")
-            # Fall back to simple traversal if cursor fails
-            for child in node.children:
-                child_functions = self._get_functions(child, language)
-                functions.update(child_functions)
-        
-        return functions
 
     def _get_tree_depth(self, node: Node) -> int:
         """Calculate AST depth."""

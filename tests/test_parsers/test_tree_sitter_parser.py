@@ -9,6 +9,9 @@ from GithubAnalyzer.models.core.errors import ParserError
 from GithubAnalyzer.models.analysis.ast import ParseResult
 from GithubAnalyzer.services.core.parsers.tree_sitter import TreeSitterParser
 from GithubAnalyzer.config.language_config import TREE_SITTER_LANGUAGES
+from GithubAnalyzer.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 @pytest.fixture
 def parser() -> Generator[TreeSitterParser, None, None]:
@@ -55,26 +58,27 @@ def test_error_recovery(parser: TreeSitterParser) -> None:
         "python": """def valid_function():
     return 42
 
-def invalid_function)
+def invalid_function)  # Syntax error here
     print("Hello")
 
-def another_valid():
+def another_valid():  # Should still find this
     pass""",
         
         "javascript": """function valid() {
     return 42;
 }
 
-function invalid( {
+function invalid( {  # Syntax error here
     console.log("error");
 }
 
-function alsoValid() {
+function alsoValid() {  # Should still find this
     return true;
 }""",
     }
     
     for lang, content in test_cases.items():
+        logger.info(f"Testing error recovery for {lang}")
         result = parser.parse(content, lang)
         
         # Should get a parse tree even with errors
@@ -84,12 +88,18 @@ function alsoValid() {
         
         # Should find valid functions despite errors
         functions = result.metadata["analysis"]["functions"]
+        logger.info(f"Found functions: {functions}")
+        
         if lang == "python":
             assert "valid_function" in functions
             assert "another_valid" in functions
+            assert functions["valid_function"]["start"] == 0
+            assert functions["another_valid"]["start"] == 6
         elif lang == "javascript":
             assert "valid" in functions
             assert "alsoValid" in functions
+            assert functions["valid"]["start"] == 0
+            assert functions["alsoValid"]["start"] == 8
 
 def test_language_support(full_parser: TreeSitterParser) -> None:
     """Test support for all configured languages."""
