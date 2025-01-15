@@ -117,8 +117,7 @@ ignore-paths = ["tests"]
 minversion = "8.0"
 addopts = "-ra -q --cov=src/GithubAnalyzer --cov-report=term-missing"
 testpaths = [
-    "tests/test_parsers/test_tree_sitter.py",
-    "tests/test_parsers/test_tree_sitter_advanced.py"
+    "tests/test_parsers/test_tree_sitter_parser.py"
 ]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]

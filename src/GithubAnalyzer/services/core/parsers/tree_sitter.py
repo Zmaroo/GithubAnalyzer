@@ -27,22 +27,13 @@ class TreeSitterParser(BaseParser):
         self.initialized = False
 
     def initialize(self, languages: Optional[List[str]] = None) -> None:
-        """Initialize tree-sitter parsers.
-        
-        Args:
-            languages: Optional list of languages to initialize support for
-            
-        Raises:
-            ParserError: If initialization fails
-        """
+        """Initialize tree-sitter parsers."""
         try:
             logger.info("Initializing tree-sitter parsers")
-            # Start with core languages if none specified
             languages = languages or ["python", "javascript", "typescript"]
-            
+
             for lang in languages:
                 try:
-                    # Try to import the language module first
                     module_name = f"tree_sitter_{lang}"
                     try:
                         language_module = __import__(module_name)
@@ -51,14 +42,13 @@ class TreeSitterParser(BaseParser):
                             raise ParserError(f"Language {lang} not supported")
                         raise ParserError(f"Language {lang} not installed. Run: pip install {module_name}")
 
-                    # Handle TypeScript special case
-                    if lang == "typescript":
-                        try:
-                            # Get both TS and TSX parsers from typescript module
+                    # Handle special cases for different languages
+                    try:
+                        # TypeScript: Has both TS and TSX
+                        if lang == "typescript":
                             ts_language = TSLanguage(language_module.language_typescript())
                             tsx_language = TSLanguage(language_module.language_tsx())
                             
-                            # Create parsers for both
                             ts_parser = TSParser()
                             tsx_parser = TSParser()
                             
@@ -70,9 +60,44 @@ class TreeSitterParser(BaseParser):
                             self._parsers[lang] = ts_parser
                             self._parsers["tsx"] = tsx_parser
                             continue
-                        except AttributeError:
-                            raise ParserError("Failed to initialize TypeScript: no valid language loader found")
-                    
+
+                        # JavaScript handles JSX natively
+                        elif lang == "javascript":
+                            language = TSLanguage(language_module.language())
+                            parser = TSParser()
+                            parser.language = language
+                            self._languages[lang] = language
+                            self._parsers[lang] = parser
+                            continue
+
+                        # PHP: Requires get_language() call
+                        elif lang == "php":
+                            language = TSLanguage(language_module.get_language())
+                            parser = TSParser()
+                            parser.language = language
+                            self._languages[lang] = language
+                            self._parsers[lang] = parser
+                            continue
+
+                        # Ruby: May have embedded languages
+                        elif lang == "ruby":
+                            language = TSLanguage(language_module.get_parser())
+                            parser = TSParser()
+                            parser.language = language
+                            self._languages[lang] = language
+                            self._parsers[lang] = parser
+                            continue
+
+                    except AttributeError as e:
+                        # Try standard initialization if special case fails
+                        logger.debug(f"Special initialization failed for {lang}, trying standard: {e}")
+                        language = TSLanguage(language_module.language())
+                        parser = TSParser()
+                        parser.language = language
+                        self._languages[lang] = language
+                        self._parsers[lang] = parser
+                        continue
+
                     # Standard language initialization
                     language = TSLanguage(language_module.language())
                     parser = TSParser()
@@ -80,10 +105,10 @@ class TreeSitterParser(BaseParser):
                     
                     self._languages[lang] = language
                     self._parsers[lang] = parser
-                
+
                 except Exception as e:
                     raise ParserError(f"Failed to initialize language {lang}: {str(e)}")
-            
+
             self.initialized = True
             logger.info("Tree-sitter parsers initialized successfully")
         except Exception as e:
@@ -216,14 +241,22 @@ class TreeSitterParser(BaseParser):
         cursor = node.walk()
         
         def visit(cursor: TreeCursor) -> None:
-            # Check for both explicit function_definition and potential function patterns
-            if (cursor.node.type == "function_definition" or
-                (cursor.node.type == "def" and cursor.node.next_sibling and 
-                 cursor.node.next_sibling.type == "identifier")):
+            # Language-specific function patterns
+            if (
+                # Python
+                (language == "python" and (
+                    cursor.node.type == "function_definition" or
+                    (cursor.node.type == "def" and cursor.node.next_sibling and 
+                     cursor.node.next_sibling.type == "identifier")
+                )) or
+                # JavaScript/TypeScript
+                (language in ["javascript", "typescript"] and
+                    cursor.node.type in ["function_declaration", "function", "method_definition"])
+            ):
                 
                 # Get function name, handling both normal and error cases
                 name_node = (cursor.node.child_by_field_name("name") or 
-                            (cursor.node.type == "def" and cursor.node.next_sibling))
+                           (cursor.node.type == "def" and cursor.node.next_sibling))
                 
                 if name_node and name_node.type == "identifier":
                     functions[name_node.text.decode('utf8')] = {

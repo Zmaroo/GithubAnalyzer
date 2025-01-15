@@ -318,7 +318,7 @@ tree = parser.parse(read_source, encoding="utf8")
 new_tree = parser.parse(new_source, old_tree)
 ```
 
-### Error Recovery
+### Error Recovery Principles
 
 Tree-sitter attempts to recover from errors by:
 
@@ -343,12 +343,14 @@ if node.has_error:
 Tree-sitter provides two main mechanisms for handling large files:
 
 1. Timeout Control:
+
 ```python
 # Set timeout for long parses (in microseconds)
 parser.timeout_micros = 5000  # 5ms timeout
 ```
 
-2. Partial Parsing:
+1. Partial Parsing:
+
 ```python
 # Only parse specific ranges of a file
 parser.included_ranges = [(start_byte, end_byte)]
@@ -360,6 +362,7 @@ Tree-sitter doesn't define a specific threshold for "large" files. Instead:
 
 - It attempts to parse entire files by default
 - Use `included_ranges` when you want to parse specific sections:
+
   ```python
   # Example: Only parse first 1000 bytes
   parser.included_ranges = [(0, 1000)]
@@ -372,6 +375,7 @@ Tree-sitter doesn't define a specific threshold for "large" files. Instead:
   ```
 
 - Use `timeout_micros` to prevent hanging on complex files:
+
   ```python
   # Stop parsing if it takes more than 5ms
   parser.timeout_micros = 5000
@@ -612,18 +616,20 @@ def parse_file(file_path: Union[str, Path]) -> ParseResult:
 
 ### Error Recovery
 
-#### Error Recovery Principles
+#### Error Recovery Strategies
 
 Tree-sitter follows these key principles for error handling:
 
 1. Creates ERROR nodes for syntax errors:
+
 ```python
 if node.type == "ERROR":
     # This node represents a syntax error
     print(f"Error at line {node.start_point[0]}")
 ```
 
-2. Continues parsing after errors:
+1. Continues parsing after errors:
+
 ```python
 # Even with errors, parsing continues
 if node.has_error:
@@ -633,7 +639,8 @@ if node.has_error:
         process_valid_parts(child)
 ```
 
-3. Identifies valid constructs after errors:
+1. Identifies valid constructs after errors:
+
 ```python
 # Example: Finding valid functions even after syntax errors
 if (node.type == "function_definition" or
@@ -648,13 +655,15 @@ if (node.type == "function_definition" or
 Tree-sitter provides two ways to traverse the syntax tree:
 
 1. Direct child traversal:
+
 ```python
 # Simple but less reliable with errors
 for child in node.children:
     process_node(child)
 ```
 
-2. Cursor traversal (recommended):
+1. Cursor traversal (recommended):
+
 ```python
 # More reliable, especially with error nodes
 cursor = node.walk()
@@ -692,7 +701,271 @@ if node.type == "function_definition":
 ```
 
 Key points:
+
 - Use TreeCursor for reliable error node traversal
 - Get positions from parent nodes when possible
 - Always check node types before accessing fields
 - Have a fallback strategy for cursor traversal failures
+
+### Language Initialization
+
+#### Language-Specific Initialization
+
+Different languages expose their parsers in different ways:
+
+1. Standard Languages:
+```python
+# Most languages use the standard pattern
+language = Language(language_module.language())
+```
+
+2. TypeScript (Multiple Variants):
+```python
+# TypeScript provides both TS and TSX parsers
+ts_language = Language(language_module.language_typescript())
+tsx_language = Language(language_module.language_tsx())
+```
+
+3. JavaScript (Multiple Variants):
+```python
+# JavaScript provides both JS and JSX parsers
+js_language = Language(language_module.language())
+jsx_language = Language(language_module.language_jsx())
+```
+
+4. PHP (Custom Loader):
+```python
+# PHP uses get_language() instead of language()
+language = Language(language_module.get_language())
+```
+
+5. Ruby (Embedded Languages):
+```python
+# Ruby supports embedded languages and uses get_parser()
+language = Language(language_module.get_parser())
+```
+
+#### Language Variants and Embedded Support
+
+Some languages have special features:
+
+1. Multiple Syntax Variants:
+- TypeScript: TS and TSX for React
+- JavaScript: JS and JSX for React
+- C++: Different standards (C++11, C++14, etc.)
+
+2. Embedded Language Support:
+- Ruby: Can contain embedded JavaScript, CSS, etc.
+- PHP: Can contain HTML, JavaScript, CSS
+- HTML: Can contain JavaScript, CSS
+
+3. Special Initialization Requirements:
+```python
+def initialize_language(lang: str) -> None:
+    try:
+        module = __import__(f"tree_sitter_{lang}")
+        
+        # Handle special cases
+        if lang == "typescript":
+            return module.language_typescript()  # or language_tsx()
+        elif lang == "javascript":
+            return module.language()  # or language_jsx()
+        elif lang == "php":
+            return module.get_language()
+        elif lang == "ruby":
+            return module.get_parser()
+        
+        # Standard case
+        return module.language()
+    except AttributeError as e:
+        raise ParserError(f"Failed to initialize {lang}: {e}")
+```
+
+#### Best Practices for Language Support
+
+1. Always check for language-specific initialization methods
+2. Handle multiple variants when available
+3. Consider embedded language support
+4. Provide fallback for standard initialization
+5. Log initialization details for debugging
+
+### Tree Traversal with Errors
+
+Tree-sitter provides two ways to traverse the syntax tree:
+
+#### Cursor-Based Traversal
+
+TreeCursor is the recommended way to traverse syntax trees because:
+
+1. Maintains state about position in tree:
+```python
+cursor = node.walk()
+# Cursor remembers where it is in the tree
+if cursor.goto_first_child():
+    process_node(cursor.node)
+    cursor.goto_parent()  # Can return to parent
+```
+
+2. Ensures accurate current node access:
+```python
+def visit(cursor: TreeCursor) -> None:
+    # cursor.node always gives us the current node
+    current = cursor.node
+    print(f"At node: {current.type}")
+```
+
+3. Critical for error recovery:
+```python
+# Even when node relationships are broken by errors
+if cursor.node.has_error:
+    # Can still navigate reliably
+    if cursor.goto_next_sibling():
+        process_valid_node(cursor.node)
+```
+
+4. Reliable navigation through errors:
+```python
+# TreeCursor can navigate past error nodes
+def visit(cursor: TreeCursor) -> None:
+    if cursor.node.type == "ERROR":
+        # Skip error node but continue traversal
+        if cursor.goto_next_sibling():
+            visit(cursor)
+    else:
+        process_node(cursor.node)
+```
+
+1. Direct child traversal:
+
+```python
+# Simple but less reliable with errors
+for child in node.children:
+    process_node(child)
+```
+
+1. Cursor traversal (recommended):
+
+```python
+# More reliable, especially with error nodes
+cursor = node.walk()
+
+def visit(cursor: TreeCursor) -> None:
+    # Process current node
+    process_node(cursor.node)
+    
+    # Visit all children
+    if cursor.goto_first_child():
+        visit(cursor)
+        cursor.goto_parent()
+    
+    # Visit next sibling
+    if cursor.goto_next_sibling():
+        visit(cursor)
+
+visit(cursor)
+```
+
+#### Node Positions and Error Recovery
+
+When working with error nodes:
+
+```python
+# Get positions from the function node, not the name node
+if node.type == "function_definition":
+    name_node = node.child_by_field_name("name")
+    if name_node and name_node.type == "identifier":
+        function_info = {
+            'start': node.start_point[0],  # Use function node position
+            'end': node.end_point[0],
+            'name': name_node.text.decode('utf8')
+        }
+```
+
+Key points:
+
+- Use TreeCursor for reliable error node traversal
+- Get positions from parent nodes when possible
+- Always check node types before accessing fields
+- Have a fallback strategy for cursor traversal failures
+
+### Language Initialization
+
+#### Language-Specific Initialization
+
+Different languages expose their parsers in different ways:
+
+1. Standard Languages:
+```python
+# Most languages use the standard pattern
+language = Language(language_module.language())
+```
+
+2. TypeScript (Multiple Variants):
+```python
+# TypeScript provides both TS and TSX parsers
+ts_language = Language(language_module.language_typescript())
+tsx_language = Language(language_module.language_tsx())
+```
+
+3. JavaScript (Multiple Variants):
+```python
+# JavaScript provides both JS and JSX parsers
+js_language = Language(language_module.language())
+jsx_language = Language(language_module.language_jsx())
+```
+
+4. PHP (Custom Loader):
+```python
+# PHP uses get_language() instead of language()
+language = Language(language_module.get_language())
+```
+
+5. Ruby (Embedded Languages):
+```python
+# Ruby supports embedded languages and uses get_parser()
+language = Language(language_module.get_parser())
+```
+
+#### Language Variants and Embedded Support
+
+Some languages have special features:
+
+1. Multiple Syntax Variants:
+- TypeScript: TS and TSX for React
+- JavaScript: JS and JSX for React
+- C++: Different standards (C++11, C++14, etc.)
+
+2. Embedded Language Support:
+- Ruby: Can contain embedded JavaScript, CSS, etc.
+- PHP: Can contain HTML, JavaScript, CSS
+- HTML: Can contain JavaScript, CSS
+
+3. Special Initialization Requirements:
+```python
+def initialize_language(lang: str) -> None:
+    try:
+        module = __import__(f"tree_sitter_{lang}")
+        
+        # Handle special cases
+        if lang == "typescript":
+            return module.language_typescript()  # or language_tsx()
+        elif lang == "javascript":
+            return module.language()  # or language_jsx()
+        elif lang == "php":
+            return module.get_language()
+        elif lang == "ruby":
+            return module.get_parser()
+        
+        # Standard case
+        return module.language()
+    except AttributeError as e:
+        raise ParserError(f"Failed to initialize {lang}: {e}")
+```
+
+#### Best Practices for Language Support
+
+1. Always check for language-specific initialization methods
+2. Handle multiple variants when available
+3. Consider embedded language support
+4. Provide fallback for standard initialization
+5. Log initialization details for debugging
