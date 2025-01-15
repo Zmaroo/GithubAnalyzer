@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
-from tree_sitter import Language as TSLanguage, Parser as TSParser, Node, Tree
+from tree_sitter import Language as TSLanguage, Parser as TSParser, Node, Tree, TreeCursor
 
 from ....models.core.errors import ParserError, FileOperationError
 from ....models.analysis.ast import ParseResult
@@ -212,33 +212,41 @@ class TreeSitterParser(BaseParser):
         """Extract function definitions from AST."""
         functions = {}
         
-        # Use tree-sitter's cursor for more reliable traversal
+        # Use cursor for reliable traversal, even through error nodes
         cursor = node.walk()
-        reached_end = False
         
-        while not reached_end:
-            # Process current node
-            if cursor.node.type == "function_definition":
-                name_node = cursor.node.child_by_field_name("name")
+        def visit(cursor: TreeCursor) -> None:
+            # Check for both explicit function_definition and potential function patterns
+            if (cursor.node.type == "function_definition" or
+                (cursor.node.type == "def" and cursor.node.next_sibling and 
+                 cursor.node.next_sibling.type == "identifier")):
+                
+                # Get function name, handling both normal and error cases
+                name_node = (cursor.node.child_by_field_name("name") or 
+                            (cursor.node.type == "def" and cursor.node.next_sibling))
+                
                 if name_node and name_node.type == "identifier":
                     functions[name_node.text.decode('utf8')] = {
-                        'start': name_node.start_point[0],
-                        'end': name_node.end_point[0]
+                        'start': cursor.node.start_point[0],
+                        'end': cursor.node.end_point[0]
                     }
             
-            # Try to go to first child
+            # Continue traversal
             if cursor.goto_first_child():
-                continue
+                visit(cursor)
+                cursor.goto_parent()
             
-            # No children, try next sibling
             if cursor.goto_next_sibling():
-                continue
-            
-            # No siblings, go back up
-            while not cursor.goto_next_sibling():
-                if not cursor.goto_parent():
-                    reached_end = True
-                    break
+                visit(cursor)
+        
+        try:
+            visit(cursor)
+        except Exception as e:
+            logger.debug(f"Error during tree traversal: {e}")
+            # Fall back to simple traversal if cursor fails
+            for child in node.children:
+                child_functions = self._get_functions(child, language)
+                functions.update(child_functions)
         
         return functions
 

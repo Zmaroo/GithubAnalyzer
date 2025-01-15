@@ -340,16 +340,53 @@ if node.has_error:
 
 ### Performance Optimization
 
+Tree-sitter provides two main mechanisms for handling large files:
+
+1. Timeout Control:
 ```python
-# Set timeout for long parses
+# Set timeout for long parses (in microseconds)
 parser.timeout_micros = 5000  # 5ms timeout
-
-# Set included ranges for partial parsing
-parser.included_ranges = [(start_byte, end_byte)]
-
-# Reset parser if needed
-parser.reset()  # Important after timeout or before parsing new document
 ```
+
+2. Partial Parsing:
+```python
+# Only parse specific ranges of a file
+parser.included_ranges = [(start_byte, end_byte)]
+```
+
+#### Handling Large Files
+
+Tree-sitter doesn't define a specific threshold for "large" files. Instead:
+
+- It attempts to parse entire files by default
+- Use `included_ranges` when you want to parse specific sections:
+  ```python
+  # Example: Only parse first 1000 bytes
+  parser.included_ranges = [(0, 1000)]
+  
+  # Example: Parse multiple ranges
+  parser.included_ranges = [
+      (0, 1000),      # First 1000 bytes
+      (5000, 6000),   # Another section
+  ]
+  ```
+
+- Use `timeout_micros` to prevent hanging on complex files:
+  ```python
+  # Stop parsing if it takes more than 5ms
+  parser.timeout_micros = 5000
+  
+  # If parsing times out, you can:
+  # 1. Try again with a longer timeout
+  # 2. Use included_ranges to parse smaller sections
+  # 3. Use reset() to clear parser state
+  parser.reset()
+  ```
+
+Note: Unlike some other parsers, tree-sitter doesn't require a maximum file size limit
+since it can efficiently handle large files through timeouts and partial parsing.
+If you need to limit file sizes, it's better to do it at the file reading level
+rather than the parsing level.
 
 ### Incremental Parsing
 
@@ -572,3 +609,90 @@ def parse_file(file_path: Union[str, Path]) -> ParseResult:
     except Exception as e:
         raise ParserError(f"Failed to parse {file_path}: {e}")
 ```
+
+### Error Recovery
+
+#### Error Recovery Principles
+
+Tree-sitter follows these key principles for error handling:
+
+1. Creates ERROR nodes for syntax errors:
+```python
+if node.type == "ERROR":
+    # This node represents a syntax error
+    print(f"Error at line {node.start_point[0]}")
+```
+
+2. Continues parsing after errors:
+```python
+# Even with errors, parsing continues
+if node.has_error:
+    # Node or its children contain errors
+    # But we can still process valid parts
+    for child in node.children:
+        process_valid_parts(child)
+```
+
+3. Identifies valid constructs after errors:
+```python
+# Example: Finding valid functions even after syntax errors
+if (node.type == "function_definition" or
+    (node.type == "def" and node.next_sibling and 
+     node.next_sibling.type == "identifier")):
+    # Process function even if previous code had errors
+    process_function(node)
+```
+
+#### Tree Traversal with Errors
+
+Tree-sitter provides two ways to traverse the syntax tree:
+
+1. Direct child traversal:
+```python
+# Simple but less reliable with errors
+for child in node.children:
+    process_node(child)
+```
+
+2. Cursor traversal (recommended):
+```python
+# More reliable, especially with error nodes
+cursor = node.walk()
+
+def visit(cursor: TreeCursor) -> None:
+    # Process current node
+    process_node(cursor.node)
+    
+    # Visit all children
+    if cursor.goto_first_child():
+        visit(cursor)
+        cursor.goto_parent()
+    
+    # Visit next sibling
+    if cursor.goto_next_sibling():
+        visit(cursor)
+
+visit(cursor)
+```
+
+#### Node Positions and Error Recovery
+
+When working with error nodes:
+
+```python
+# Get positions from the function node, not the name node
+if node.type == "function_definition":
+    name_node = node.child_by_field_name("name")
+    if name_node and name_node.type == "identifier":
+        function_info = {
+            'start': node.start_point[0],  # Use function node position
+            'end': node.end_point[0],
+            'name': name_node.text.decode('utf8')
+        }
+```
+
+Key points:
+- Use TreeCursor for reliable error node traversal
+- Get positions from parent nodes when possible
+- Always check node types before accessing fields
+- Have a fallback strategy for cursor traversal failures
