@@ -16,14 +16,25 @@ class TreeSitterParser(BaseParser):
     """Parser implementation using tree-sitter."""
 
     def __init__(self) -> None:
-        """Basic setup."""
+        """Initialize the parser."""
         self._languages: Dict[str, Language] = {}
         self._parsers: Dict[str, Parser] = {}
+        self._queries: Dict[str, Dict[str, Any]] = {}
+        self._encoding = "utf8"
+        self._timeout_micros = None
+        self._included_ranges = None
         self.initialized = False
         self.logger = get_logger(__name__)
 
     def initialize(self, languages: Optional[List[str]] = None) -> None:
-        """Load language support."""
+        """Initialize tree-sitter parsers.
+        
+        Args:
+            languages: Optional list of languages to initialize support for
+            
+        Raises:
+            ParserError: If initialization fails
+        """
         try:
             self.logger.info("Initializing tree-sitter parsers")
             languages = languages or ["python"]
@@ -50,7 +61,7 @@ class TreeSitterParser(BaseParser):
             raise ParserError(f"Failed to initialize parser: {str(e)}")
 
     def parse(self, content: str, language: str) -> ParseResult:
-        """Basic parsing.
+        """Parse source code content.
         
         Args:
             content: Source code to parse
@@ -94,7 +105,7 @@ class TreeSitterParser(BaseParser):
             raise ParserError(f"Failed to parse {language} content: {str(e)}")
 
     def parse_file(self, file_path: Union[str, Path]) -> ParseResult:
-        """File parsing.
+        """Parse a source code file.
         
         Args:
             file_path: Path to the file to parse
@@ -127,9 +138,10 @@ class TreeSitterParser(BaseParser):
             raise ParserError(f"Failed to parse file {file_path}: {str(e)}")
 
     def cleanup(self) -> None:
-        """Resource cleanup."""
+        """Clean up parser resources."""
         self._parsers.clear()
         self._languages.clear()
+        self._queries.clear()
         self.initialized = False
 
     def _get_language_for_file(self, file_path: Union[str, Path]) -> Optional[str]:
@@ -153,15 +165,7 @@ class TreeSitterParser(BaseParser):
         return errors
 
     def _analyze_tree(self, tree: Tree, language: str) -> Dict[str, Any]:
-        """Tree analysis.
-        
-        Args:
-            tree: Parsed AST
-            language: Programming language of the content
-            
-        Returns:
-            Dictionary containing analysis results
-        """
+        """Analyze AST for additional information."""
         return {
             "functions": self._get_functions(tree.root_node, language),
             "errors": self._get_syntax_errors(tree.root_node),
