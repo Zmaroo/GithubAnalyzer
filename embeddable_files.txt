@@ -1,24 +1,26 @@
-+ # Build artifacts
-+ dist/
-+ build/
-+ *.pyc
-+ *.pyo
-+ 
-+ # Cache directories
-+ __pycache__/
-+ .pytest_cache/
-+ .mypy_cache/
-+ 
-+ # IDE specific
-+ .vscode/
-+ .idea/
-+ 
-+ # Temporary files
-+ *.swp
-+ *.swo
-+ *~
-+ 
-+ # Local development
-+ .env
-+ .venv/
-+ venv/ 
+# Documentation
+docs/parsers/tree_sitter.md
+dev_logs/CURRENT_STATUS.md
+README.md
+
+# Source Code
+src/GithubAnalyzer/config/*.py
+src/GithubAnalyzer/models/**/*.py
+src/GithubAnalyzer/services/**/*.py
+src/GithubAnalyzer/utils/*.py
+src/GithubAnalyzer/version.py
+src/GithubAnalyzer/py.typed
+tests/unit/*.py
+tests/integration/*.py
+tests/security/*.py
+tests/performance/*.py
+tests/test_parsers/*.py
+tests/conftest.py
+scripts/build_languages.py
+scripts/dev_setup.py
+
+# Configuration
+pyproject.toml
+pytest.ini
+requirements/*.txt
+.cursorrules 

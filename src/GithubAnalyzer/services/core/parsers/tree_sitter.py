@@ -3,14 +3,21 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from tree_sitter import Language, Node, Parser, Tree, TreeCursor
+from tree_sitter import Language, Node, Parser as TSParser, Tree, TreeCursor
 
 from ....models.analysis.ast import ParseResult
 from ....models.core.errors import ParserError
+from ....config.language_config import (
+    TREE_SITTER_LANGUAGES,
+    get_language_variant,
+)
 from ....utils.file_utils import get_file_type, is_binary_file, validate_file_path
-from ....utils.logging import get_logger
+from ....utils.logging import get_logger, configure_logging
 from .base import BaseParser
 
+# Configure application-level logging
+configure_logging()
+logger = get_logger("GithubAnalyzer.parsers.tree_sitter")
 
 class TreeSitterParser(BaseParser):
     """Parser implementation using tree-sitter."""
@@ -18,13 +25,12 @@ class TreeSitterParser(BaseParser):
     def __init__(self) -> None:
         """Initialize the parser."""
         self._languages: Dict[str, Language] = {}
-        self._parsers: Dict[str, Parser] = {}
+        self._parsers: Dict[str, TSParser] = {}
         self._queries: Dict[str, Dict[str, Any]] = {}
         self._encoding = "utf8"
         self._timeout_micros = None
         self._included_ranges = None
         self.initialized = False
-        self.logger = get_logger(__name__)
 
     def initialize(self, languages: Optional[List[str]] = None) -> None:
         """Initialize tree-sitter parsers.
@@ -36,27 +42,36 @@ class TreeSitterParser(BaseParser):
             ParserError: If initialization fails
         """
         try:
-            self.logger.info("Initializing tree-sitter parsers")
-            languages = languages or ["python"]
-            
-            build_dir = Path(__file__).parent.parent.parent.parent.parent / "build"
+            logger.info("Initializing tree-sitter parsers")
+            languages = languages or list(TREE_SITTER_LANGUAGES.keys())
             
             for lang in languages:
-                # Load built language
-                lang_path = build_dir / f"{lang}.so"
-                if not lang_path.exists():
-                    raise ParserError(f"Language {lang} not built. Run build_languages.py first")
-                
-                # Create parser
-                parser = Parser()
-                language = Language(str(lang_path), lang)
-                parser.set_language(language)
-                
-                self._languages[lang] = language
-                self._parsers[lang] = parser
+                if lang not in TREE_SITTER_LANGUAGES:
+                    raise ParserError(f"Language {lang} not supported")
+                try:
+                    # Get module name and variant
+                    module_name, variant = get_language_variant(lang)
+                    
+                    # Use tree-sitter's built-in language loading
+                    language_module = __import__(module_name)
+                    
+                    # Create parser
+                    parser = TSParser()
+                    if variant:
+                        language = Language(language_module.language(), variant)
+                    else:
+                        language = Language(language_module.language())
+                    parser.language = language
+                    
+                    self._languages[lang] = language
+                    self._parsers[lang] = parser
+                except ImportError:
+                    raise ParserError(f"Language {lang} not installed. Run: pip install {module_name}")
+                except Exception as e:
+                    raise ParserError(f"Failed to initialize language {lang}: {str(e)}")
             
             self.initialized = True
-            self.logger.info("Tree-sitter parsers initialized successfully")
+            logger.info("Tree-sitter parsers initialized successfully")
         except Exception as e:
             raise ParserError(f"Failed to initialize parser: {str(e)}")
 

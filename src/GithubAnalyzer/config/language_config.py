@@ -1,6 +1,12 @@
 """Language configuration and mappings."""
 
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
+
+# Tree-sitter language variants
+LANGUAGE_VARIANTS = {
+    "typescript": ["typescript", "tsx"],
+    "javascript": ["javascript", "jsx"],
+}
 
 # Tree-sitter supported languages and their file extensions
 TREE_SITTER_LANGUAGES = {
@@ -8,10 +14,11 @@ TREE_SITTER_LANGUAGES = {
     "python": ".py",
     "javascript": ".js",
     "typescript": ".ts",
+    "tsx": ".tsx",
+    "jsx": ".jsx",
     "java": ".java",
     "cpp": ".cpp",
     "c": ".c",
-    "rust": ".rs",
     "go": ".go",
     "ruby": ".rb",
     # Web languages
@@ -23,7 +30,7 @@ TREE_SITTER_LANGUAGES = {
     "bash": ".sh",
     # Additional languages
     "php": ".php",
-    "csharp": ".cs",
+    "c-sharp": ".cs",
     "scala": ".scala",
     "kotlin": ".kt",
     "lua": ".lua",
@@ -32,7 +39,9 @@ TREE_SITTER_LANGUAGES = {
     "markdown": ".md",
     "sql": ".sql",
     "arduino": ".ino",
-    "cmake": "CMakeLists.txt",
+    "cuda": ".cu",
+    "groovy": ".groovy",
+    "matlab": ".m",
 }
 
 # Special file mappings for non-code files
@@ -78,3 +87,20 @@ def get_language_by_extension(extension: str) -> str:
         if ext == extension:
             return lang
     raise ValueError(f"Unsupported file extension: {extension}")
+
+
+def get_language_variant(lang: str) -> Tuple[str, str]:
+    """Get language variant name if applicable.
+    
+    Args:
+        lang: Base language name
+        
+    Returns:
+        Tuple of (module_name, variant_name)
+    """
+    if lang in ["tsx", "jsx"]:
+        return (
+            f"tree_sitter_{lang.replace('sx', '')}",  # module name
+            lang  # variant name
+        )
+    return (f"tree_sitter_{lang}", "")  # No variant

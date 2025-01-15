@@ -28,6 +28,9 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "standard": {"format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"},
+        "detailed": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s:%(lineno)d: %(message)s"
+        }
     },
     "handlers": {
         "console": {
@@ -39,10 +42,31 @@ LOGGING = {
             "level": LOG_LEVEL,
             "class": "logging.FileHandler",
             "filename": os.path.join(PROJECT_ROOT, "github_analyzer.log"),
-            "formatter": "standard",
+            "formatter": "detailed",
         },
+        "error_file": {
+            "level": "ERROR",
+            "formatter": "detailed",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(PROJECT_ROOT, "logs", "error.log"),
+            "mode": "a",
+        }
     },
     "loggers": {
-        "": {"handlers": ["console", "file"], "level": LOG_LEVEL, "propagate": True}
+        "GithubAnalyzer": {
+            "handlers": ["console", "file", "error_file"],
+            "level": LOG_LEVEL,
+            "propagate": False
+        },
+        "GithubAnalyzer.parsers": {
+            "handlers": ["console", "file", "error_file"],
+            "level": LOG_LEVEL,
+            "propagate": False
+        },
+        "tree_sitter": {
+            "handlers": ["file"],
+            "level": "WARNING",
+            "propagate": False
+        }
     },
 }
