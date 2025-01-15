@@ -1,18 +1,18 @@
 """Advanced tests for the TreeSitterParser."""
 
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Generator
 
 import pytest
 from tree_sitter import Node, Tree, TreeCursor
 
-from GithubAnalyzer.models.core.errors import ParseError
-from GithubAnalyzer.models.core.parse import ParseResult
+from GithubAnalyzer.models.core.errors import ParserError
+from GithubAnalyzer.models.analysis.ast import ParseResult
 from GithubAnalyzer.services.core.parsers.tree_sitter import TreeSitterParser
 
 
 @pytest.fixture
-def parser() -> TreeSitterParser:
+def parser() -> Generator[TreeSitterParser, None, None]:
     """Create a TreeSitterParser instance."""
     parser = TreeSitterParser()
     parser.initialize(["python"])  # Initialize only Python for faster tests

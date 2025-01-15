@@ -25,21 +25,41 @@ def parser() -> TreeSitterParser:
 def test_parser_initialization(parser: TreeSitterParser) -> None:
     """Test basic initialization."""
     assert not parser.initialized
-    with pytest.raises(ParserError, match="Language python not installed. Run: pip install tree-sitter-python"):
-        parser.initialize(["python"])
+    parser.initialize(["python"])
+    assert parser.initialized
+    assert "python" in parser._languages
+    assert "python" in parser._parsers
 
 
 def test_parser_initialization_with_languages(parser: TreeSitterParser) -> None:
     """Test parser initialization with specific languages."""
     languages = ["python", "javascript", "typescript"]
-    with pytest.raises(ParserError, match="Language python not installed. Run: pip install tree-sitter-python"):
-        parser.initialize(languages)
+    parser.initialize(languages)
+    assert parser.initialized
+    assert all(lang in parser._languages for lang in languages)
+    assert all(lang in parser._parsers for lang in languages)
 
 
 def test_parser_initialization_invalid_language(parser: TreeSitterParser) -> None:
     """Test parser initialization with invalid language."""
-    with pytest.raises(ParserError, match="Language invalid_lang not installed"):
+    with pytest.raises(ParserError, match="Language invalid_lang not supported"):
         parser.initialize(["invalid_lang"])
+
+
+def test_typescript_initialization(parser: TreeSitterParser) -> None:
+    """Test TypeScript initialization with correct method."""
+    parser.initialize(["typescript"])
+    assert parser.initialized
+    assert "typescript" in parser._languages
+    assert "typescript" in parser._parsers
+
+
+def test_parser_cleanup(parser: TreeSitterParser) -> None:
+    """Test parser cleanup."""
+    parser.initialize(["python"])
+    assert parser.initialized
+    parser.cleanup()
+    assert not parser.initialized
 
 
 """Test basic initialization first."""

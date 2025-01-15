@@ -2,29 +2,23 @@
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+from tree_sitter import Language as TSLanguage, Parser as TSParser, Node, Tree
 
-from tree_sitter import Language, Node, Parser as TSParser, Tree, TreeCursor
-
+from ....models.core.errors import ParserError, FileOperationError
 from ....models.analysis.ast import ParseResult
-from ....models.core.errors import ParserError
-from ....config.language_config import (
-    TREE_SITTER_LANGUAGES,
-    get_language_variant,
-)
+from ....config.language_config import TREE_SITTER_LANGUAGES
 from ....utils.file_utils import get_file_type, is_binary_file, validate_file_path
-from ....utils.logging import get_logger, configure_logging
+from ....utils.logging import get_logger
 from .base import BaseParser
 
-# Configure application-level logging
-configure_logging()
-logger = get_logger("GithubAnalyzer.parsers.tree_sitter")
+logger = get_logger(__name__)
 
 class TreeSitterParser(BaseParser):
     """Parser implementation using tree-sitter."""
 
     def __init__(self) -> None:
         """Initialize the parser."""
-        self._languages: Dict[str, Language] = {}
+        self._languages: Dict[str, TSLanguage] = {}
         self._parsers: Dict[str, TSParser] = {}
         self._queries: Dict[str, Dict[str, Any]] = {}
         self._encoding = "utf8"
@@ -43,30 +37,50 @@ class TreeSitterParser(BaseParser):
         """
         try:
             logger.info("Initializing tree-sitter parsers")
-            languages = languages or list(TREE_SITTER_LANGUAGES.keys())
+            # Start with core languages if none specified
+            languages = languages or ["python", "javascript", "typescript"]
             
             for lang in languages:
-                if lang not in TREE_SITTER_LANGUAGES:
-                    raise ParserError(f"Language {lang} not supported")
                 try:
-                    # Get module name and variant
-                    module_name, variant = get_language_variant(lang)
+                    # Try to import the language module first
+                    module_name = f"tree_sitter_{lang}"
+                    try:
+                        language_module = __import__(module_name)
+                    except ImportError:
+                        if lang not in TREE_SITTER_LANGUAGES:
+                            raise ParserError(f"Language {lang} not supported")
+                        raise ParserError(f"Language {lang} not installed. Run: pip install {module_name}")
+
+                    # Handle TypeScript special case
+                    if lang == "typescript":
+                        try:
+                            # Get both TS and TSX parsers from typescript module
+                            ts_language = TSLanguage(language_module.language_typescript())
+                            tsx_language = TSLanguage(language_module.language_tsx())
+                            
+                            # Create parsers for both
+                            ts_parser = TSParser()
+                            tsx_parser = TSParser()
+                            
+                            ts_parser.language = ts_language
+                            tsx_parser.language = tsx_language
+                            
+                            self._languages[lang] = ts_language
+                            self._languages["tsx"] = tsx_language
+                            self._parsers[lang] = ts_parser
+                            self._parsers["tsx"] = tsx_parser
+                            continue
+                        except AttributeError:
+                            raise ParserError("Failed to initialize TypeScript: no valid language loader found")
                     
-                    # Use tree-sitter's built-in language loading
-                    language_module = __import__(module_name)
-                    
-                    # Create parser
+                    # Standard language initialization
+                    language = TSLanguage(language_module.language())
                     parser = TSParser()
-                    if variant:
-                        language = Language(language_module.language(), variant)
-                    else:
-                        language = Language(language_module.language())
                     parser.language = language
                     
                     self._languages[lang] = language
                     self._parsers[lang] = parser
-                except ImportError:
-                    raise ParserError(f"Language {lang} not installed. Run: pip install {module_name}")
+                
                 except Exception as e:
                     raise ParserError(f"Failed to initialize language {lang}: {str(e)}")
             
@@ -120,36 +134,38 @@ class TreeSitterParser(BaseParser):
             raise ParserError(f"Failed to parse {language} content: {str(e)}")
 
     def parse_file(self, file_path: Union[str, Path]) -> ParseResult:
-        """Parse a source code file.
-        
-        Args:
-            file_path: Path to the file to parse
-            
-        Returns:
-            ParseResult containing AST and metadata
-            
-        Raises:
-            ParserError: If parsing fails
-        """
+        """Parse a source code file."""
         try:
+            # Validate and normalize path
             path = validate_file_path(file_path)
+            if not isinstance(path, Path):
+                raise ParserError(f"Invalid file path: {file_path}")
+            
             if not path.exists():
                 raise ParserError(f"File not found: {path}")
-                
-            if is_binary_file(str(path)):
-                raise ParserError(f"File {path} is not a text file")
-                
+
+            try:
+                if is_binary_file(str(path)):
+                    raise ParserError(f"File {path} is not a text file")
+            except FileOperationError as e:
+                raise ParserError(str(e))
+
             language = self._get_language_for_file(path)
             if not language:
                 raise ParserError(f"Unsupported file extension: {path.suffix}")
-                
-            with open(path, 'r', encoding=self._encoding) as f:
-                content = f.read()
-                
+
+            try:
+                with open(path, 'r', encoding=self._encoding) as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                raise ParserError(f"File {path} is not a valid text file")
+
             result = self.parse(content, language)
             result.metadata["file_path"] = str(path)
             return result
         except Exception as e:
+            if isinstance(e, ParserError):
+                raise e
             raise ParserError(f"Failed to parse file {file_path}: {str(e)}")
 
     def cleanup(self) -> None:
@@ -181,27 +197,49 @@ class TreeSitterParser(BaseParser):
 
     def _analyze_tree(self, tree: Tree, language: str) -> Dict[str, Any]:
         """Analyze AST for additional information."""
+        root_node = tree.root_node
+        
         return {
-            "functions": self._get_functions(tree.root_node, language),
-            "errors": self._get_syntax_errors(tree.root_node),
+            "functions": self._get_functions(root_node, language),
+            "errors": self._get_syntax_errors(root_node),
             "metrics": {
-                "depth": self._get_tree_depth(tree.root_node),
-                "complexity": self._estimate_complexity(tree.root_node),
+                "depth": self._get_tree_depth(root_node),
+                "complexity": self._estimate_complexity(root_node),
             }
         }
 
-    def _get_functions(self, node: Node, language: str) -> Dict[str, Any]:
-        """Extract function information from AST."""
+    def _get_functions(self, node: Node, language: str) -> Dict[str, Dict[str, int]]:
+        """Extract function definitions from AST."""
         functions = {}
-        if language == "python" and node.type == "function_definition":
-            name_node = node.child_by_field_name("name")
-            if name_node:
-                functions[name_node.text.decode(self._encoding)] = {
-                    "start": node.start_point[0],
-                    "end": node.end_point[0],
-                }
-        for child in node.children:
-            functions.update(self._get_functions(child, language))
+        
+        # Use tree-sitter's cursor for more reliable traversal
+        cursor = node.walk()
+        reached_end = False
+        
+        while not reached_end:
+            # Process current node
+            if cursor.node.type == "function_definition":
+                name_node = cursor.node.child_by_field_name("name")
+                if name_node and name_node.type == "identifier":
+                    functions[name_node.text.decode('utf8')] = {
+                        'start': name_node.start_point[0],
+                        'end': name_node.end_point[0]
+                    }
+            
+            # Try to go to first child
+            if cursor.goto_first_child():
+                continue
+            
+            # No children, try next sibling
+            if cursor.goto_next_sibling():
+                continue
+            
+            # No siblings, go back up
+            while not cursor.goto_next_sibling():
+                if not cursor.goto_parent():
+                    reached_end = True
+                    break
+        
         return functions
 
     def _get_tree_depth(self, node: Node) -> int:

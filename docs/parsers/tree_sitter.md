@@ -65,20 +65,91 @@ This will install:
 
 Some languages require special handling:
 
-### TypeScript/JavaScript
+#### TypeScript/JavaScript Special Cases
+
+TypeScript and JavaScript have multiple language variants that need special handling:
 
 ```python
-# TypeScript has separate parsers for TS and TSX
-from tree_sitter import Language, Parser
+# TypeScript requires explicit language type
+import tree_sitter_typescript
 
-# For TypeScript
-TS_LANGUAGE = Language(tree_sitter_typescript.language(), "typescript")
-
-# For TSX
-TSX_LANGUAGE = Language(tree_sitter_typescript.language(), "tsx")
+# Initialize both TypeScript and TSX from the same module
+try:
+    # Get both TS and TSX parsers from typescript module
+    ts_language = Language(language_module.language_typescript())
+    tsx_language = Language(language_module.language_tsx())
+    
+    # Create parsers for both
+    ts_parser = TSParser()
+    tsx_parser = TSParser()
+    
+    ts_parser.language = ts_language
+    tsx_parser.language = tsx_language
+except AttributeError:
+    raise ParserError("Failed to initialize TypeScript: no valid language loader found")
 ```
 
-### Language Loading Patterns
+#### Language Initialization Strategy
+
+When initializing multiple languages, follow this pattern:
+
+```python
+def initialize(self, languages: Optional[List[str]] = None) -> None:
+    # Start with core languages if none specified
+    languages = languages or ["python", "javascript", "typescript"]
+    
+    for lang in languages:
+        try:
+            # 1. Import language module
+            module_name = f"tree_sitter_{lang}"
+            language_module = __import__(module_name)
+            
+            # 2. Handle special cases (like TypeScript)
+            if lang == "typescript":
+                # Initialize both TS and TSX
+                ...
+            
+            # 3. Standard initialization
+            language = Language(language_module.language())
+            parser = TSParser()
+            parser.language = language
+        except Exception as e:
+            raise ParserError(f"Failed to initialize language {lang}: {str(e)}")
+```
+
+#### Error Handling Best Practices
+
+1. Check language support before attempting import:
+
+```python
+try:
+    module_name = f"tree_sitter_{lang}"
+    language_module = __import__(module_name)
+except ImportError:
+    if lang not in TREE_SITTER_LANGUAGES:
+        raise ParserError(f"Language {lang} not supported")
+    raise ParserError(f"Language {lang} not installed. Run: pip install {module_name}")
+except AttributeError:
+    raise ParserError(f"Language {lang} installed but initialization failed")
+```
+
+1. Language Initialization Order:
+
+```python
+# Wrong - may succeed even if language not properly installed
+parser = Parser()
+parser.language = some_language
+
+# Correct - verify language loads first
+try:
+    language = Language(language_module.language())
+    parser = TSParser()
+    parser.language = language
+except (ImportError, AttributeError) as e:
+    raise ParserError(f"Language initialization failed: {e}")
+```
+
+### Language Loading Strategies
 
 There are three main patterns for loading languages:
 
@@ -91,24 +162,82 @@ PY_LANGUAGE = Language(tree_sitter_python.language())
 1. Named variant loading (TypeScript):
 
 ```python
-TS_LANGUAGE = Language(tree_sitter_typescript.language(), "typescript")
+TS_LANGUAGE = Language(tree_sitter_typescript.language_typescript())
 ```
 
 1. Multiple parser loading (some languages with variants):
 
 ```python
 # Example with multiple parsers
-parser.language = TS_LANGUAGE  # For .ts files
-tsx_parser.language = TSX_LANGUAGE  # For .tsx files
+ts_parser = Parser()
+ts_parser.language = Language(tree_sitter_typescript.language_typescript())
+
+tsx_parser = Parser()
+tsx_parser.language = Language(tree_sitter_typescript.language_tsx())
 ```
 
 ### Error Handling
 
+#### Parser Errors
+
+Tree-sitter provides several types of error handling:
+
+1. Parse Errors:
+
+```python
+try:
+    tree = parser.parse(bytes(source_code, "utf8"))
+    if tree.root_node.has_error:
+        # Handle syntax errors
+        print("Syntax errors found")
+except Exception as e:
+    print(f"Parse failed: {e}")
+```
+
+1. Node Error Detection:
+
+```python
+def check_errors(node):
+    # Check if node itself is an error
+    if node.is_error:
+        return True
+    
+    # Check if node contains errors
+    if node.has_error:
+        return True
+        
+    return False
+```
+
+1. Missing Nodes:
+
+```python
+# Missing nodes are inserted by the parser for error recovery
+if node.is_missing:
+    print(f"Missing node at {node.start_point}")
+```
+
+1. Extra Nodes:
+
+```python
+# Extra nodes represent things like whitespace
+if node.is_extra:
+    print(f"Extra node: {node.type}")
+```
+
+#### Common Error Types
+
+- `ParserError`: Base error for parsing failures
+- `ImportError`: When language module can't be imported
+- `AttributeError`: When language module doesn't provide expected methods
+- `ValueError`: For invalid inputs or configurations
+
 Common initialization errors:
 
-- `AttributeError: module has no attribute 'language'` - Language module not properly installed
+- `AttributeError: module has no attribute 'language'` - Language module not properly installed or requires special loading (e.g., TypeScript)
 - `ParserError: Language not supported` - Language not in configured list
 - `ImportError: No module named 'tree_sitter_<lang>'` - Language package not installed
+- `TypeError: __init__() takes exactly N arguments` - Incorrect language initialization
 
 ### Manual Language Installation
 
@@ -141,7 +270,27 @@ PY_LANGUAGE = Language(tree_sitter_python.language())
 
 # Create parser and set language
 parser = Parser()
-parser.set_language(PY_LANGUAGE)
+parser.language = PY_LANGUAGE
+```
+
+### Parser Configuration
+
+The Parser class supports several configuration options:
+
+```python
+parser = Parser()
+
+# Set timeout for parsing (in microseconds)
+parser.timeout_micros = 5000  # 5ms timeout
+
+# Set included ranges for partial parsing
+parser.included_ranges = [(start_byte, end_byte)]
+
+# Set logger for debugging
+parser.logger = custom_logger  # Added in version 0.24.0
+
+# Print DOT graphs for debugging
+parser.print_dot_graphs(file_descriptor)  # Added in version 0.24.0
 ```
 
 ### Parsing Options
@@ -163,6 +312,12 @@ def read_source(byte_offset, point):
 tree = parser.parse(read_source, encoding="utf8")
 ```
 
+1. Parse with previous tree (incremental parsing):
+
+```python
+new_tree = parser.parse(new_source, old_tree)
+```
+
 ### Error Recovery
 
 Tree-sitter attempts to recover from errors by:
@@ -170,6 +325,18 @@ Tree-sitter attempts to recover from errors by:
 - Creating ERROR nodes for invalid syntax
 - Continuing parsing after errors
 - Maintaining tree structure where possible
+
+Error nodes can be detected using:
+
+```python
+# Check if node represents a syntax error
+if node.is_error:
+    handle_error_node(node)
+
+# Check if node contains any syntax errors
+if node.has_error:
+    handle_node_with_errors(node)
+```
 
 ### Performance Optimization
 
@@ -179,6 +346,9 @@ parser.timeout_micros = 5000  # 5ms timeout
 
 # Set included ranges for partial parsing
 parser.included_ranges = [(start_byte, end_byte)]
+
+# Reset parser if needed
+parser.reset()  # Important after timeout or before parsing new document
 ```
 
 ### Incremental Parsing
@@ -186,6 +356,9 @@ parser.included_ranges = [(start_byte, end_byte)]
 When source code is edited:
 
 ```python
+# Get original tree
+old_tree = parser.parse(bytes(original_source, "utf8"))
+
 # Edit the tree
 tree.edit(
     start_byte=5,
@@ -198,6 +371,10 @@ tree.edit(
 
 # Parse with previous tree
 new_tree = parser.parse(new_source, old_tree)
+
+# Check what changed
+for changed_range in old_tree.changed_ranges(new_tree):
+    print(f"Changed range: {changed_range.start_point} to {changed_range.end_point}")
 ```
 
 ### Query Patterns
@@ -222,3 +399,176 @@ matches = query.matches(root_node)
 - [Tree-sitter Documentation](https://tree-sitter.github.io/tree-sitter/)
 - [py-tree-sitter README](https://github.com/tree-sitter/py-tree-sitter)
 - [Tree-sitter Playground](https://tree-sitter.github.io/tree-sitter/playground)
+
+### Language Loading Patterns
+
+#### Test Setup Best Practices
+
+When writing tests, ensure all required languages are initialized:
+
+```python
+@pytest.fixture
+def parser() -> Generator[TreeSitterParser, None, None]:
+    parser = TreeSitterParser()
+    # Initialize all languages needed for tests
+    parser.initialize([
+        "python", "javascript", "typescript",
+        "css", "yaml", "json", "bash", "cpp",
+        "java", "html"
+    ])
+    yield parser
+    parser.cleanup()
+```
+
+#### Language Support Verification
+
+Always verify language support before parsing:
+
+```python
+def parse(self, content: str, language: str) -> ParseResult:
+    if not self.initialized:
+        raise ParserError("Parser not initialized")
+    
+    if language not in self._parsers:
+        raise ParserError(f"Language {language} not supported")
+    
+    # Continue with parsing...
+```
+
+#### File Type Handling
+
+When parsing files, handle all error cases:
+
+```python
+def parse_file(self, file_path: Union[str, Path]) -> ParseResult:
+    try:
+        path = validate_file_path(file_path)
+        if not path.exists():
+            raise ParserError(f"File not found: {path}")
+        
+        if is_binary_file(str(path)):
+            raise ParserError(f"File {path} is not a text file")
+        
+        language = self._get_language_for_file(path)
+        if not language:
+            raise ParserError(f"Unsupported file extension: {path.suffix}")
+        
+        # Continue with parsing...
+    except Exception as e:
+        raise ParserError(f"Failed to parse file {file_path}: {str(e)}")
+```
+
+### Error Recovery and AST Analysis
+
+Tree-sitter provides robust error recovery capabilities, allowing partial analysis even when code contains syntax errors:
+
+```python
+def analyze_with_errors(content: str) -> Dict[str, Any]:
+    result = parser.parse(content, "python")
+    
+    # Even with errors, we get a parse tree
+    if result.ast is not None:
+        # Check for errors
+        if not result.is_valid:
+            print(f"Found {len(result.errors)} errors")
+        
+        # Extract valid functions even from invalid code
+        functions = result.metadata["analysis"]["functions"]
+        return functions
+```
+
+#### Function Analysis with Error Recovery
+
+When analyzing functions, handle error nodes properly:
+
+```python
+def get_functions(node: Node) -> Dict[str, Dict[str, int]]:
+    """Extract function definitions from AST."""
+    functions = {}
+    
+    # Handle error recovery - process nodes even with errors
+    if node.type == "function_definition":
+        # Get function name even if there are errors
+        name_node = node.child_by_field_name("name")
+        if name_node and name_node.type == "identifier":
+            functions[name_node.text.decode('utf8')] = {
+                'start': name_node.start_point[0],
+                'end': name_node.end_point[0]
+            }
+    
+    # Process all children, including error nodes
+    for child in node.children:
+        child_functions = get_functions(child)
+        functions.update(child_functions)
+    
+    return functions
+```
+
+#### AST Node Properties
+
+Important node properties for error handling:
+
+- `node.has_error`: True if node or any descendants contain errors
+- `node.is_error`: True if node itself is an error node
+- `node.is_missing`: True if node was inserted for error recovery
+- `node.child_by_field_name()`: Get child node by field name (more reliable than index)
+
+#### Best Practices for Error Recovery
+
+1. Don't skip error nodes during traversal
+2. Use field names instead of indices to access node children
+3. Validate node types before processing
+4. Handle partial ASTs gracefully
+
+### Language Initialization
+
+```python
+def initialize_languages(languages: Optional[List[str]] = None) -> None:
+    """Initialize parsers for multiple languages."""
+    # Start with core languages if none specified
+    languages = languages or ["python", "javascript", "typescript"]
+    
+    for lang in languages:
+        try:
+            # Import language module
+            module_name = f"tree_sitter_{lang}"
+            language_module = __import__(module_name)
+            
+            # Initialize parser
+            language = Language(language_module.language())
+            parser = Parser()
+            parser.language = language
+            
+        except ImportError:
+            raise ParserError(f"Language {lang} not installed")
+        except Exception as e:
+            raise ParserError(f"Failed to initialize {lang}: {e}")
+```
+
+### Handling File Types
+
+When parsing files, handle all error cases:
+
+```python
+def parse_file(file_path: Union[str, Path]) -> ParseResult:
+    try:
+        # Validate path
+        path = validate_file_path(file_path)
+        
+        # Check file type
+        if is_binary_file(str(path)):
+            raise ParserError(f"File {path} is not a text file")
+        
+        # Get language from extension
+        language = get_language_for_file(path)
+        if not language:
+            raise ParserError(f"Unsupported extension: {path.suffix}")
+        
+        # Parse content
+        with open(path, 'r', encoding='utf8') as f:
+            content = f.read()
+        return parse(content, language)
+        
+    except Exception as e:
+        raise ParserError(f"Failed to parse {file_path}: {e}")
+```

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from GithubAnalyzer.models.core.errors import ParseError
+from GithubAnalyzer.models.core.errors import ParserError
 from GithubAnalyzer.services.core.parsers.tree_sitter import TreeSitterParser
 
 
@@ -67,7 +67,7 @@ def test_path_traversal_prevention(parser, tmp_path):
     ]
 
     for path in malicious_paths:
-        with pytest.raises(ParseError):
+        with pytest.raises(ParserError):
             parser.parse_file(path)
 
 
@@ -77,7 +77,7 @@ def test_binary_file_handling(parser, tmp_path):
     with open(binary_file, "wb") as f:
         f.write(bytes(range(256)))
 
-    with pytest.raises(ParseError, match="is not a text file"):
+    with pytest.raises(ParserError, match="is not a text file"):
         parser.parse_file(str(binary_file))
 
 
@@ -88,7 +88,7 @@ def test_memory_exhaustion_prevention(parser):
 
     try:
         parser.parse(deep_nesting, "python")
-    except ParseError:
+    except ParserError:
         pass  # Either parsing fails or succeeds with reasonable memory usage
 
 
