@@ -1,24 +1,9 @@
 """Analysis models package."""
 
-from .code import ClassInfo, CodeAnalysis, FunctionInfo, ImportInfo
-from .metrics import CodeMetrics
-from .module import ModuleInfo
-from .relationships import (
-    CodeDependency,
-    CodeRelationship,
-    DependencyType,
-    RelationshipType,
-)
+from .ast import ParseResult
+from .results import AnalysisResult
 
 __all__ = [
-    "ClassInfo",
-    "CodeAnalysis",
-    "CodeDependency",
-    "CodeMetrics",
-    "CodeRelationship",
-    "DependencyType",
-    "FunctionInfo",
-    "ImportInfo",
-    "ModuleInfo",
-    "RelationshipType",
+    "ParseResult",
+    "AnalysisResult"
 ]

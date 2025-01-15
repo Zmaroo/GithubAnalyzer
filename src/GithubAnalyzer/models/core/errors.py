@@ -1,45 +1,44 @@
-"""Core error definitions for the application."""
-
+"""Core error definitions."""
 
 class BaseError(Exception):
-    """Base error class for all application errors."""
-
-
-class ConfigError(BaseError):
-    """Error raised when configuration is invalid."""
+    """Base error class for all custom exceptions."""
 
 
 class ServiceError(BaseError):
-    """Error raised when a service operation fails."""
+    """Error raised by services."""
 
 
-class ServiceNotFoundError(ServiceError):
-    """Error raised when a requested service is not found."""
+class ParserError(ServiceError):
+    """Error raised by parsers."""
 
 
-class ParserError(BaseError):
-    """Error raised when parsing operations fail."""
+class ConfigError(ServiceError):
+    """Error raised during configuration."""
 
 
-class AnalysisError(BaseError):
-    """Error raised when analysis operations fail."""
+class DatabaseError(ServiceError):
+    """Error raised by database operations."""
 
 
-class StorageError(BaseError):
-    """Error raised when storage operations fail."""
-
-
-class DatabaseError(StorageError):
-    """Error raised when database operations fail."""
-
-
-class ValidationError(BaseError):
-    """Error raised when validation fails."""
-
-
-class UtilityError(BaseError):
-    """Error raised when utility operations fail."""
+class FileOperationError(BaseError):
+    """Error raised during file operations."""
 
 
 class FrameworkError(BaseError):
-    """Error raised when framework-related operations fail."""
+    """Error raised by framework components."""
+
+
+class ServiceNotFoundError(FrameworkError):
+    """Error raised when a required service is not found."""
+
+
+__all__ = [
+    "BaseError",
+    "ServiceError",
+    "ParserError",
+    "ConfigError",
+    "DatabaseError",
+    "FileOperationError",
+    "FrameworkError",
+    "ServiceNotFoundError",
+]

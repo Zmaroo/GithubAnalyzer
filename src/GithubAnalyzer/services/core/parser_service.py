@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Type, Union, cast
 from ...config.language_config import get_file_type_mapping, get_language_by_extension
 from ...models.analysis.ast import ParseResult
 from ...models.core.errors import ServiceError
-from ..base import BaseService
+from .base_service import BaseService
 from .parsers.base import BaseParser
 from .parsers.config import ConfigParser
 from .parsers.documentation import DocumentationParser

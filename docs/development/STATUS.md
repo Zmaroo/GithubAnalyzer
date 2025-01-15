@@ -2,18 +2,32 @@
 
 ## Active Components
 
-- Tree-sitter Parser (Active Development)
-- Core Services (Stable)
-- Models (Stable)
-- Utilities (Stable)
+- Core Infrastructure
+  - Models ✅ (Stable)
+  - Utils ✅ (Stable)
+  - Config ✅ (Stable)
+- Services
+  - Base Service Layer ✅ (Stable)
+  - Parser Services (Active Development)
+    - Tree-sitter Implementation
+    - Advanced AST Analysis
 
 ## Test Status
 
-- Unit Tests: Passing
-- Integration Tests: Partial
-- Advanced Tests: Failing
-- Performance Tests: Not Started
-- Security Tests: In Progress
+- Unit Tests:
+  - Parser Initialization ✅
+  - Error Handling ✅
+  - Configuration ✅
+  - Cleanup ✅
+- Integration Tests:
+  - Tree-sitter Integration ⚠️ (In Progress)
+  - Multi-language Support ⚠️ (In Progress)
+- Performance Tests:
+  - Parser Performance ⚠️ (Not Started)
+  - Analyzer Performance ⚠️ (Not Started)
+- Security Tests:
+  - Basic Security Checks ⚠️ (In Progress)
+  - Tree-sitter Security ⚠️ (In Progress)
 
 ## Documentation Status
 

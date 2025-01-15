@@ -9,12 +9,13 @@ This is an enterprise-grade GitHub repository analyzer designed to provide AI as
 1. Review these files first:
    - docs/development/OVERVIEW.md (Project status)
    - dev_logs/2024_03_tree_sitter.md (Current development)
-   - docs/project_structure.md (Code organization)
+   - docs/development/GUIDELINES.md (Project structure & standards)
 
 2. Key Components:
-   - Tree-sitter Parser: src/GithubAnalyzer/services/core/parsers/tree_sitter.py
-   - Parser Service: src/GithubAnalyzer/services/core/parser_service.py
-   - Test Suite: tests/test_parsers/
+   - Models: Define data structures and errors
+   - Services: Implement core functionality
+   - Utils: Provide shared utilities
+   - Config: Handle application settings
 
 3. Current Development Focus:
    - Advanced Tree-sitter parsing

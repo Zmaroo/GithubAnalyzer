@@ -70,3 +70,25 @@ GithubAnalyzer is an enterprise-grade tool designed to provide deep, comprehensi
 - Focus on extensibility and maintainability
 - Strong typing and error handling
 - Comprehensive documentation
+
+### Component Responsibilities
+
+1. Models
+   - Define data structures
+   - Handle validation
+   - Define error types
+
+2. Services
+   - Implement business logic
+   - Handle resource management
+   - Provide clean interfaces
+
+3. Utils
+   - Share common functionality
+   - Handle cross-cutting concerns
+   - Provide infrastructure support
+
+4. Config
+   - Manage application settings
+   - Handle environment configuration
+   - Define feature flags

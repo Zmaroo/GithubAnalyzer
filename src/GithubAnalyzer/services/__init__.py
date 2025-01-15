@@ -1,6 +1,6 @@
 """Services package."""
 
-from .base import BaseService
+from .core.base_service import BaseService
 from .core.parser_service import ParserService
 from .core.parsers import (
     BaseParser,

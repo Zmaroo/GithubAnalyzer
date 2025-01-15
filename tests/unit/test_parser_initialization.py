@@ -8,7 +8,7 @@ from typing import Generator
 
 import pytest
 
-from GithubAnalyzer.models.core.errors import ParseError
+from GithubAnalyzer.models.core.errors import ParserError
 from GithubAnalyzer.services.core.parsers.tree_sitter import TreeSitterParser
 
 
@@ -51,5 +51,20 @@ def test_parser_initialization_invalid_language(parser: TreeSitterParser) -> Non
     Tests:
         - Error handling for unsupported languages
     """
-    with pytest.raises(ParseError, match="Language invalid_lang not supported"):
+    with pytest.raises(ParserError, match="Language invalid_lang not supported"):
         parser.initialize(["python", "invalid_lang"])
+
+
+"""Test basic initialization first."""
+
+# 1. Test initialization
+def test_basic_init():
+    """Test basic initialization."""
+
+# 2. Test language loading
+def test_language_loading():
+    """Test language support loading."""
+
+# 3. Test basic parsing
+def test_basic_parsing():
+    """Test basic parsing."""

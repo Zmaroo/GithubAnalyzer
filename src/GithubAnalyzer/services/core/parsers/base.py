@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from GithubAnalyzer.models.analysis.ast import ParseResult
 from GithubAnalyzer.models.core.errors import ParserError
+from GithubAnalyzer.services.core.base_service import BaseService
 
 
 class BaseParser(ABC):

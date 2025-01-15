@@ -1,0 +1,24 @@
++ # Build artifacts
++ dist/
++ build/
++ *.pyc
++ *.pyo
++ 
++ # Cache directories
++ __pycache__/
++ .pytest_cache/
++ .mypy_cache/
++ 
++ # IDE specific
++ .vscode/
++ .idea/
++ 
++ # Temporary files
++ *.swp
++ *.swo
++ *~
++ 
++ # Local development
++ .env
++ .venv/
++ venv/ 

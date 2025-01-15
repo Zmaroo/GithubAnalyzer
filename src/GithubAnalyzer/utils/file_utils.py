@@ -1,22 +1,14 @@
-"""File handling utilities."""
+"""File utility functions."""
 
-import fnmatch
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from GithubAnalyzer.config import settings
+from ..models.core.errors import FileOperationError
 
 
 def get_file_type(file_path: str) -> Optional[str]:
-    """Get the type of a file based on its extension.
-
-    Args:
-        file_path: Path to the file
-
-    Returns:
-        File type string or None if not recognized
-    """
+    """Get file type based on extension."""
     ext = os.path.splitext(file_path)[1].lower()
     type_map = {
         ".py": "python",
@@ -42,14 +34,7 @@ def get_file_type(file_path: str) -> Optional[str]:
 
 
 def is_binary_file(file_path: str) -> bool:
-    """Check if a file is binary.
-
-    Args:
-        file_path: Path to the file
-
-    Returns:
-        True if file is binary, False otherwise
-    """
+    """Check if file is binary."""
     try:
         with open(file_path, "tr") as f:
             f.read(1024)
@@ -120,3 +105,24 @@ def ensure_directory(directory: str) -> None:
         directory: Directory path to ensure exists
     """
     Path(directory).mkdir(parents=True, exist_ok=True)
+
+
+def validate_file_path(file_path: Union[str, Path]) -> Path:
+    """Validate and normalize file path."""
+    # New utility function for consistent path handling
+
+
+def get_parser_language(file_path: str) -> Optional[str]:
+    """Get the parser language for a file."""
+    file_type = get_file_type(file_path)
+    return PARSER_LANGUAGE_MAP.get(file_type)
+
+
+def validate_source_file(file_path: Union[str, Path]) -> Path:
+    """Validate a source file for parsing."""
+    path = validate_file_path(file_path)
+    if not path.exists():
+        raise FileOperationError(f"File not found: {path}")
+    if is_binary_file(str(path)):
+        raise FileOperationError(f"Cannot parse binary file: {path}")
+    return path

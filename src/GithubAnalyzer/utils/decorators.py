@@ -1,90 +1,68 @@
 """Utility decorators"""
 
-import logging
+import functools
 import time
-from functools import wraps
 from typing import Any, Callable, Optional, Type, TypeVar
 
-logger = logging.getLogger(__name__)
-
-T = TypeVar("T")
-
+T = TypeVar('T')
 
 def retry(
     max_attempts: int = 3,
     delay: float = 1.0,
-    backoff: float = 2.0,
-    exceptions: tuple = (Exception,),
+    exceptions: tuple[Type[Exception], ...] = (Exception,)
 ) -> Callable:
-    """Retry decorator with exponential backoff"""
+    """Retry a function on failure.
 
-    def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            attempt = 0
-            current_delay = delay
+    Args:
+        max_attempts: Maximum number of retry attempts
+        delay: Delay between retries in seconds
+        exceptions: Tuple of exceptions to catch
 
-            while attempt < max_attempts:
+    Returns:
+        Decorated function
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> T:
+            last_exception = None
+            for attempt in range(max_attempts):
                 try:
                     return func(*args, **kwargs)
                 except exceptions as e:
-                    attempt += 1
-                    if attempt == max_attempts:
-                        logger.error(f"Failed after {max_attempts} attempts: {e}")
-                        raise
-
-                    logger.warning(
-                        f"Attempt {attempt} failed: {e}. "
-                        f"Retrying in {current_delay:.1f}s"
-                    )
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-
-            return None  # Should never reach here
-
+                    last_exception = e
+                    if attempt < max_attempts - 1:
+                        time.sleep(delay)
+            raise last_exception  # type: ignore
         return wrapper
-
     return decorator
 
 
-def singleton(cls: Type[T]) -> Type[T]:
-    """
-    Decorator to make a class a singleton.
+def timeout(seconds: float) -> Callable:
+    """Timeout decorator.
 
     Args:
-        cls: The class to make singleton
+        seconds: Timeout in seconds
 
     Returns:
-        The singleton class
+        Decorated function
     """
-    instances = {}
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> T:
+            import signal
 
-    @wraps(cls)
-    def get_instance(*args: Any, **kwargs: Any) -> T:
-        if cls not in instances:
-            instances[cls] = cls(*args, **kwargs)
-        return instances[cls]
+            def handler(signum: int, frame: Optional[Any]) -> None:
+                raise TimeoutError(f"Function {func.__name__} timed out after {seconds} seconds")
 
-    return get_instance
+            # Set the timeout handler
+            signal.signal(signal.SIGALRM, handler)
+            signal.alarm(int(seconds))
 
-
-def cache_result(func: Callable) -> Callable:
-    """
-    Cache function results.
-
-    Args:
-        func: Function to cache results for
-
-    Returns:
-        Wrapped function with caching
-    """
-    cache = {}
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = str(args) + str(sorted(kwargs.items()))
-        if key not in cache:
-            cache[key] = func(*args, **kwargs)
-        return cache[key]
-
-    return wrapper
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                # Disable the alarm
+                signal.alarm(0)
+            return result
+        return wrapper
+    return decorator

@@ -3,7 +3,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
-from ...models.core.errors import ConfigError, ServiceError
+from GithubAnalyzer.models.core.errors import ConfigError, ServiceError
+from GithubAnalyzer.utils.logging import get_logger
 
 
 class ConfigurableService(ABC):
