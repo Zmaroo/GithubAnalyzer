@@ -4,6 +4,8 @@ This module contains tests for verifying proper initialization
 of the parser service component.
 """
 
+from typing import Generator
+
 import pytest
 
 from GithubAnalyzer.models.core.errors import ParseError
@@ -21,18 +23,12 @@ def parser() -> TreeSitterParser:
 
 
 def test_parser_initialization(parser: TreeSitterParser) -> None:
-    """Test that parser service initializes with correct configuration.
-
-    Tests:
-        - Service instantiation
-        - Default config loading
-        - Type hint validation setting
-    """
+    """Test basic initialization."""
     assert not parser.initialized
-    parser.initialize()
+    parser.initialize(["python"])  # Start with just Python
     assert parser.initialized
-    assert len(parser._parsers) > 0
-    assert len(parser._languages) > 0
+    assert "python" in parser._parsers
+    assert "python" in parser._languages
 
 
 def test_parser_initialization_with_languages(parser: TreeSitterParser) -> None:

@@ -1,32 +1,25 @@
-"""Base model definitions and interfaces."""
+"""Base model definitions"""
 
-from typing import Dict
+from dataclasses import asdict, dataclass
+from typing import Any, Dict
 
 
+@dataclass
 class BaseModel:
-    """Base class for all models."""
+    """Base model class for all models in the system."""
 
-    def to_dict(self) -> Dict:
+    def dict(self) -> Dict[str, Any]:
         """Convert model to dictionary.
 
         Returns:
-            Dictionary representation of the model.
+            Dictionary representation of the model
         """
-        return vars(self)
+        return asdict(self)
 
-    def from_dict(self, data: Dict) -> None:
-        """Update model from dictionary.
+    def __str__(self) -> str:
+        """Get string representation.
 
-        Args:
-            data: Dictionary data to update from.
+        Returns:
+            String representation of the model
         """
-        for key, value in data.items():
-            setattr(self, key, value)
-
-    def validate(self) -> None:
-        """Validate model state.
-
-        Raises:
-            ValueError: If model state is invalid.
-        """
-        pass
+        return f"{self.__class__.__name__}({self.dict()})"

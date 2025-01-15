@@ -5,6 +5,7 @@ of the parser service component.
 """
 
 from pathlib import Path
+from typing import Generator
 
 import pytest
 
@@ -13,27 +14,28 @@ from GithubAnalyzer.services.core.parsers.tree_sitter import TreeSitterParser
 
 
 @pytest.fixture
-def parser() -> TreeSitterParser:
+def parser() -> Generator[TreeSitterParser, None, None]:
     """Create a TreeSitterParser instance.
 
     Returns:
-        Initialized TreeSitterParser instance.
+        Generator yielding an initialized TreeSitterParser instance.
     """
     parser = TreeSitterParser()
-    parser.initialize()
+    parser.initialize(["python"])  # Only initialize Python for basic tests
     yield parser
     parser.cleanup()
 
 
 def test_parser_uninitialized_error() -> None:
-    """Test error handling when parser is not initialized."""
+    """Test error when parser not initialized."""
     parser = TreeSitterParser()
     with pytest.raises(ParseError, match="Parser not initialized"):
         parser.parse("def test(): pass", "python")
 
 
 def test_parser_invalid_language(parser: TreeSitterParser) -> None:
-    """Test error handling for invalid language."""
+    """Test invalid language handling."""
+    parser.initialize(["python"])
     with pytest.raises(ParseError, match="Language invalid_lang not supported"):
         parser.parse("some code", "invalid_lang")
 

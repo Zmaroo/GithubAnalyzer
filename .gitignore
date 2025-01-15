@@ -122,3 +122,14 @@ _build/
 project_config/quality.yaml
 project_config/structure.yaml
 project_config/testing.yaml
+
+# Logging
+*.log
+logs/*
+!logs/.gitkeep
+
+# Development logs and AI conversation history
+dev_logs/
+.ai_conversation_history.md
+.dev_notes.md
+.cursor-chat/

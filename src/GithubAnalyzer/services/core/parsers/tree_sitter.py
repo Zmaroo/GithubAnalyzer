@@ -1,18 +1,17 @@
 """Tree-sitter parser implementation."""
 
 import importlib
-import logging
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from tree_sitter import Language, Node, Parser, Query, Tree, TreeCursor
 
-from ....models.analysis.ast import ParseResult
-from ....models.core.errors import ParserError
-from ....utils.logging import setup_logger
+from ....models import ParseResult, ParserError
+from ....models.core.config.settings import Settings
+from ....utils.logging import get_logger
 from .base import BaseParser
 
-logger = setup_logger(__name__)
+logger = get_logger(__name__)
 
 
 class TreeSitterParser(BaseParser):
@@ -133,22 +132,18 @@ class TreeSitterParser(BaseParser):
         """,
     }
 
-    def __init__(self, timeout_micros: Optional[int] = None) -> None:
-        """Initialize the parser.
-
-        Args:
-            timeout_micros: Optional timeout in microseconds for parsing operations
-        """
+    def __init__(self) -> None:
+        """Initialize the parser."""
         self._languages: Dict[str, Any] = {}
         self._parsers: Dict[str, Parser] = {}
         self._queries: Dict[str, Query] = {}
         self._query_cache: Dict[str, Dict[str, List[Node]]] = {}
-        self._encoding = "utf8"  # Always use UTF-8 as recommended
-        self._timeout_micros = timeout_micros
+        self._encoding = "utf8"
+        self._timeout_micros = None
         self._included_ranges: Optional[List[tuple[Any, ...]]] = None
         self.initialized = False
-        self._logger = logging.getLogger(__name__)
-        self._logger.info("Initializing tree-sitter parsers")
+        self.logger = logger
+        self.logger.info("Initializing tree-sitter parsers")
 
     def __del__(self) -> None:
         """Clean up parser resources."""

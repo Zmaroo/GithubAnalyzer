@@ -1,39 +1,47 @@
-"""Logging utilities."""
+"""Logging configuration."""
 
 import logging
 import logging.config
+from pathlib import Path
 from typing import Optional
 
-from GithubAnalyzer.config import settings
+from ..models.core.config.settings import Settings
 
 
-def setup_logger(name: Optional[str] = None) -> logging.Logger:
-    """Set up and configure a logger.
-
+def configure_logging(settings: Optional[Settings] = None) -> None:
+    """Configure logging for the application.
+    
     Args:
-        name: Logger name. If None, returns root logger.
+        settings: Optional settings instance for custom configuration
+    """
+    log_level = getattr(settings, 'log_level', 'INFO') if settings else 'INFO'
+    log_format = '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+    
+    # Basic configuration
+    logging.basicConfig(
+        level=log_level,
+        format=log_format,
+        handlers=[
+            logging.StreamHandler(),  # Console handler
+            logging.FileHandler(  # File handler
+                filename=Path('logs/github_analyzer.log'),
+                encoding='utf-8',
+            )
+        ]
+    )
+    
+    # Set specific logger levels
+    logging.getLogger('tree_sitter').setLevel(logging.WARNING)
+    logging.getLogger('GithubAnalyzer').setLevel(log_level)
 
+
+def get_logger(name: str) -> logging.Logger:
+    """Get a logger instance.
+    
+    Args:
+        name: Logger name (usually __name__)
+        
     Returns:
         Configured logger instance
     """
-    # Configure logging if not already configured
-    if not logging.getLogger().handlers:
-        logging.config.dictConfig(settings.LOGGING)
-
-    # Get and return logger
-    logger = logging.getLogger(name) if name else logging.getLogger()
-    return logger
-
-
-def get_logger(name: Optional[str] = None) -> logging.Logger:
-    """Get a logger instance.
-
-    This is an alias for setup_logger for consistency with standard logging.
-
-    Args:
-        name: Logger name. If None, returns root logger.
-
-    Returns:
-        Logger instance
-    """
-    return setup_logger(name)
+    return logging.getLogger(name)
