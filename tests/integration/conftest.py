@@ -7,6 +7,6 @@ from GithubAnalyzer.services.core.parsers import TreeSitterParser
 def integration_parser():
     """Create parser for integration tests."""
     parser = TreeSitterParser()
-    parser.initialize(["python", "javascript", "typescript"])
+    parser.initialize(["python", "javascript", "typescript", "tsx"])
     yield parser
     parser.cleanup() 

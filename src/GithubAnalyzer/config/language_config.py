@@ -28,29 +28,21 @@ TREE_SITTER_LANGUAGES: Dict[str, Dict[str, Union[str, List[str]]]] = {
     },
     "typescript": {
         "lib": "tree-sitter-typescript",
-        "version": ">=0.23.2",
-        "queries": ["functions", "classes"],
-        "language_func": "language_typescript",
-        "function_query": """
-        (function_declaration
-          name: (identifier) @function.def)
-        (method_definition
-          name: (property_identifier) @function.def)
-        (arrow_function
-          name: (identifier) @function.def)
-        """
+        "queries": {
+            "functions": """
+                (function_declaration
+                  name: (identifier) @name) @function
+            """
+        }
     },
     "tsx": {
         "lib": "tree-sitter-typescript",
-        "version": ">=0.23.2",
-        "queries": ["functions", "classes"],
-        "language_func": "language_tsx",
-        "function_query": """
-        (function_declaration
-          name: (identifier) @function.def)
-        (method_definition
-          name: (property_identifier) @function.def)
-        """
+        "queries": {
+            "functions": """
+                (function_declaration
+                  name: (identifier) @name) @function
+            """
+        }
     },
     "java": {
         "lib": "tree-sitter-java",
@@ -66,6 +58,16 @@ TREE_SITTER_LANGUAGES: Dict[str, Dict[str, Union[str, List[str]]]] = {
         "lib": "tree-sitter-go",
         "version": ">=0.23.4",
         "queries": ["functions"]
+    },
+    "c": {
+        "lib": "tree-sitter-c",
+        "queries": {
+            "functions": """
+                (function_definition
+                  declarator: (function_declarator
+                    declarator: (identifier) @name)) @function
+            """
+        }
     }
 }
 

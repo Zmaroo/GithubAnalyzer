@@ -92,7 +92,26 @@ class TreeSitterParser(BaseParser):
             ;; Match method declarations
             (method_declaration
               name: (field_identifier) @name) @function
-        """
+        """,
+        "tsx": """
+            ;; Match function declarations
+            (function_declaration
+              name: (identifier) @name) @function
+
+            ;; Match arrow functions with variable declarations
+            (variable_declarator
+              name: (identifier) @name
+              value: (arrow_function)) @function
+
+            ;; Match class methods
+            (method_definition
+              name: (property_identifier) @name) @function
+
+            ;; Match public class fields with arrow functions
+            (public_field_definition
+              name: (property_identifier) @name
+              value: (arrow_function)) @function
+        """,
     }
 
     def __init__(self, encoding: str = "utf8", debug: bool = False):
@@ -294,10 +313,10 @@ class TreeSitterParser(BaseParser):
                 if not visited_children:
                     node = cursor.node
                     
-                    # Check for function definitions
-                    if node.type == "function_definition":
+                    # Check for function declarations/definitions
+                    if node.type in ["function_declaration", "function_definition", "method_definition"]:
                         name_node = node.child_by_field_name("name")
-                        if name_node and name_node.type == "identifier":
+                        if name_node and name_node.type in ["identifier", "property_identifier"]:
                             name = name_node.text.decode('utf8')
                             functions[name] = {
                                 'start': node.start_byte,
@@ -306,44 +325,69 @@ class TreeSitterParser(BaseParser):
                             if self._debug:
                                 logger.debug(f"Added function: {name}")
                     
+                    # Check for arrow functions
+                    elif node.type == "variable_declarator":
+                        name_node = node.child_by_field_name("name")
+                        value_node = node.child_by_field_name("value")
+                        if (name_node and name_node.type == "identifier" and 
+                            value_node and value_node.type == "arrow_function"):
+                            name = name_node.text.decode('utf8')
+                            functions[name] = {
+                                'start': node.start_byte,
+                                'end': node.end_byte
+                            }
+                            if self._debug:
+                                logger.debug(f"Added arrow function: {name}")
+                    
+                    # Check for class fields with arrow functions
+                    elif node.type == "public_field_definition":
+                        name_node = node.child_by_field_name("name")
+                        value_node = node.child_by_field_name("value")
+                        if (name_node and name_node.type == "property_identifier" and 
+                            value_node and value_node.type == "arrow_function"):
+                            name = name_node.text.decode('utf8')
+                            functions[name] = {
+                                'start': node.start_byte,
+                                'end': node.end_byte
+                            }
+                            if self._debug:
+                                logger.debug(f"Added class field function: {name}")
+                    
                     # Check for error nodes that might contain functions
                     elif node.type == "ERROR":
-                        # Look for def + identifier pattern in error node
-                        def_node = None
-                        name_node = None
-                        
-                        # Use cursor to traverse error node children
-                        error_cursor = node.walk()
-                        
-                        while True:
-                            child = error_cursor.node
-                            
+                        # Look for function-like patterns in error node
+                        for child in node.children:
+                            # Python-style function definition
                             if child.type == "def":
-                                def_node = child
-                            elif child.type == "identifier":
-                                name_node = child
-                                # Check if this is part of a call
-                                if child.parent and child.parent.type == "call":
-                                    name = child.text.decode('utf8')
-                                    if name not in functions:
+                                for sibling in child.next_sibling.children:
+                                    if sibling.type == "identifier":
+                                        name = sibling.text.decode('utf8')
                                         functions[name] = {
-                                            'start': def_node.start_byte if def_node else node.start_byte,
+                                            'start': child.start_byte,
                                             'end': node.end_byte
                                         }
                                         if self._debug:
                                             logger.debug(f"Added error recovery function: {name}")
-                            
-                            # Navigate error node tree
-                            if not error_cursor.goto_first_child():
-                                if not error_cursor.goto_next_sibling():
-                                    break
+                                        break
+                            # JavaScript/TypeScript function declaration
+                            elif child.type == "function_declaration":
+                                name_node = child.child_by_field_name("name")
+                                if name_node:
+                                    name = name_node.text.decode('utf8')
+                                    functions[name] = {
+                                        'start': child.start_byte,
+                                        'end': node.end_byte
+                                    }
+                                    if self._debug:
+                                        logger.debug(f"Added error recovery function: {name}")
                     
-                    # Navigate main tree
+                    # Navigate down
                     if cursor.goto_first_child():
                         continue
-                    
+                        
                     visited_children = True
                 
+                # Navigate sideways/up
                 if cursor.goto_next_sibling():
                     visited_children = False
                 else:
@@ -602,17 +646,7 @@ class TreeSitterParser(BaseParser):
             logger.warning(f"Error during tree traversal: {e}")
 
     def _load_language(self, lang: str) -> TSLanguage:
-        """Load a tree-sitter language module with version compatibility check.
-        
-        Args:
-            lang: Language identifier (e.g. 'python', 'javascript')
-            
-        Returns:
-            Initialized tree-sitter Language object
-            
-        Raises:
-            ParserError: If language module cannot be loaded or version incompatible
-        """
+        """Load a tree-sitter language module with version compatibility check."""
         try:
             # Get language config
             config = TREE_SITTER_LANGUAGES[lang]
@@ -623,51 +657,33 @@ class TreeSitterParser(BaseParser):
                 module_name = lib_name.replace("-", "_")
                 language_module = importlib.import_module(module_name)
                 
-                # Check version compatibility
-                if hasattr(language_module, "__version__"):
-                    lang_version = language_module.__version__
-                    ts_version = importlib.import_module("tree_sitter").__version__
+                # Create language object
+                try:
+                    # Handle special cases for typescript/tsx
+                    if lib_name == "tree-sitter-typescript":
+                        # TypeScript module exposes language functions in a submodule
+                        if lang == "typescript":
+                            language = TSLanguage(language_module.language_typescript())
+                        elif lang == "tsx":
+                            language = TSLanguage(language_module.language_tsx())
+                    else:
+                        # Standard language modules
+                        if "language_func" in config:
+                            language_func = getattr(language_module, config["language_func"])
+                            language = TSLanguage(language_func())
+                        else:
+                            language = TSLanguage(language_module.language())
+                        
+                    return language
                     
-                    # Compare major.minor versions
-                    lang_ver = tuple(map(int, lang_version.split(".")[:2]))
-                    ts_ver = tuple(map(int, ts_version.split(".")[:2]))
-                    
-                    if lang_ver > ts_ver:
-                        logger.warning(
-                            f"Language {lang} (v{lang_version}) is newer than tree-sitter "
-                            f"(v{ts_version}). This may cause compatibility issues. "
-                            f"Consider upgrading tree-sitter or downgrading {lang} package."
-                        )
+                except Exception as e:
+                    raise ParserError(f"Failed to initialize language {lang}: {str(e)}")
                 
             except ImportError as e:
                 raise ParserError(
                     f"Failed to import {lib_name}. Please install with: pip install {lib_name}"
-                ) from e
-            
-            # Create language object
-            try:
-                # Handle special cases for typescript/tsx
-                if "language_func" in config:
-                    language_func = getattr(language_module, config["language_func"])
-                    language = TSLanguage(language_func())
-                else:
-                    language = TSLanguage(language_module.language())
-                    
-                # Test query compatibility
-                try:
-                    # Try a simple query to verify compatibility
-                    test_query = language.query("(identifier) @id")
-                except Exception as e:
-                    raise ParserError(
-                        f"Language {lang} appears to be incompatible with current tree-sitter version. "
-                        f"Error: {str(e)}. Try: pip install {lib_name}=={ts_version}"
-                    )
-                    
-                return language
+                )
                 
-            except Exception as e:
-                raise ParserError(f"Failed to initialize language {lang}: {str(e)}") from e
-            
         except Exception as e:
             if isinstance(e, ParserError):
                 raise e

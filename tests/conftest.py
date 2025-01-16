@@ -24,7 +24,7 @@ def tree_sitter_parser() -> Generator[TreeSitterParser, None, None]:
     parser = TreeSitterParser()
     try:
         # Initialize with commonly used languages
-        parser.initialize(["python", "javascript", "typescript"])
+        parser.initialize(["python", "javascript", "typescript", "tsx"])
         yield parser
     finally:
         parser.cleanup()
