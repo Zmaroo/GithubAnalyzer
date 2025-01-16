@@ -1,198 +1,187 @@
 """Parser service implementation."""
-
+import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union, cast
+from typing import Dict, List, Optional, Union, Any
 
-from ...config.language_config import (
-    get_file_type_mapping,
-    get_language_by_extension,
-    PARSER_LANGUAGE_MAP,
-    TREE_SITTER_LANGUAGES
-)
-from ...models.analysis.ast import ParseResult
-from ...models.core.errors import ServiceError
-from .base_service import BaseService
-from .parsers.base import BaseParser
-from .parsers.config import ConfigParser
-from .parsers.documentation import DocumentationParser
-from .parsers.license import LicenseParser
-from .parsers.tree_sitter import TreeSitterParser
+from GithubAnalyzer.services.core.base_service import BaseService
+from GithubAnalyzer.models.core.errors import ServiceError, ParserError
+from GithubAnalyzer.models.analysis.ast import ParseResult
+from GithubAnalyzer.services.core.parsers.base import BaseParser
+from GithubAnalyzer.services.core.parsers.tree_sitter import TreeSitterParser
+from GithubAnalyzer.services.core.parsers.config import ConfigParser
+from GithubAnalyzer.services.core.parsers.documentation import DocumentationParser
+from GithubAnalyzer.services.core.parsers.license import LicenseParser
+from GithubAnalyzer.config.language_config import get_language_by_extension
 
+logger = logging.getLogger(__name__)
 
 class ParserService(BaseService):
-    """Service for parsing code and files."""
+    """Service for parsing source code files."""
 
-    SUPPORTED_PARSERS = {
-        "tree-sitter": TreeSitterParser,
-        "config": ConfigParser,
-        "documentation": DocumentationParser,
-        "license": LicenseParser,
+    # Map file extensions to parser types
+    FILE_TYPE_MAPPING = {
+        # Source code files
+        '.py': 'tree_sitter',
+        '.js': 'tree_sitter',
+        '.ts': 'tree_sitter',
+        '.tsx': 'tree_sitter',
+        '.jsx': 'tree_sitter',
+        '.java': 'tree_sitter',
+        '.cpp': 'tree_sitter',
+        '.c': 'tree_sitter',
+        '.go': 'tree_sitter',
+        
+        # Config files
+        '.yaml': 'config',
+        '.yml': 'config',
+        '.json': 'config',
+        '.toml': 'config',
+        
+        # Documentation
+        'README.md': 'documentation',
+        'LICENSE': 'license',
+        '.md': 'documentation',
+        '.rst': 'documentation'
     }
 
-    # File type mapping is now loaded from language_config
-    FILE_TYPE_MAPPING = get_file_type_mapping()
-
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        """Initialize the parser service.
-
-        Args:
-            config: Optional configuration dictionary.
-        """
-        super().__init__(config or {})
-        self._parsers: Dict[str, BaseParser] = {}
-        self._initialized = False
-
     def _validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate the service configuration.
-
+        """Validate service configuration.
+        
         Args:
             config: Configuration dictionary to validate.
-
+            
         Returns:
             The validated configuration dictionary.
-
-        Raises:
-            ServiceError: If the configuration is invalid.
         """
-        if not isinstance(config, dict):
-            raise ServiceError("Configuration must be a dictionary")
-
-        # Default to tree-sitter if no parser type specified
-        if "parser_type" not in config:
-            config["parser_type"] = "tree-sitter"
-
+        # No specific config validation needed for parser service
         return config
 
-    def initialize(self, languages: Optional[List[str]] = None) -> None:
-        """Initialize the parser service.
+    def cleanup(self) -> None:
+        """Clean up resources."""
+        # Clean up parsers
+        if hasattr(self, '_parsers'):
+            for parser in self._parsers.values():
+                if hasattr(parser, 'cleanup'):
+                    parser.cleanup()
+            self._parsers.clear()
 
-        Args:
-            languages: Optional list of languages to initialize parsers for.
-
-        Raises:
-            ServiceError: If initialization fails.
-        """
-        if not self._config:
-            raise ServiceError("Configuration is required")
-
-        try:
-            # Initialize all parsers
-            for parser_type, parser_class in self.SUPPORTED_PARSERS.items():
-                self._parsers[parser_type] = parser_class()
-                if parser_type == "tree-sitter":
-                    # Only tree-sitter needs language initialization
-                    self._parsers[parser_type].initialize(languages)
-                else:
-                    self._parsers[parser_type].initialize()
-
-            self._initialized = True
-        except Exception as e:
-            raise ServiceError(f"Failed to initialize parsers: {str(e)}")
-
-    def _get_parser_for_file(self, file_path: Union[str, Path]) -> BaseParser:
-        """Get appropriate parser for a file."""
-        file_path = Path(file_path)
-
-        # Check exact filename matches first
-        if file_path.name in self.FILE_TYPE_MAPPING:
-            parser_type = self.FILE_TYPE_MAPPING[file_path.name]
-            return self._parsers[parser_type]
-
-        # Then check file extension
-        if file_path.suffix in self.FILE_TYPE_MAPPING:
-            parser_type = self.FILE_TYPE_MAPPING[file_path.suffix]
-            return self._parsers[parser_type]
-
-        # Default to tree-sitter
-        return self._parsers["tree-sitter"]
-
-    def parse(self, content: str, language: str) -> ParseResult:
-        """Parse code content.
-
-        Args:
-            content: Source code content to parse.
-            language: Programming language of the content.
-
-        Returns:
-            ParseResult containing the parsed AST and metadata.
-
-        Raises:
-            ServiceError: If parsing fails.
-        """
-        if not self._initialized:
-            raise ServiceError("Service not initialized")
-
-        # Try tree-sitter first for code parsing
-        try:
-            result = self._parsers["tree-sitter"].parse(content, language)
-            if not isinstance(result, ParseResult):
-                raise ServiceError("Parser returned invalid result type")
-            return result
-        except Exception as e:
-            # If tree-sitter fails, try other parsers based on content
-            for parser_type, parser in self._parsers.items():
-                if parser_type != "tree-sitter":
-                    try:
-                        result = parser.parse(content, language)
-                        if not isinstance(result, ParseResult):
-                            continue
-                        return result
-                    except:
-                        continue
-
-            # If all parsers fail, raise the original error
-            raise ServiceError(f"Failed to parse content: {str(e)}")
+    def initialize(self) -> None:
+        """Initialize the service."""
+        self._parsers: Dict[str, BaseParser] = {}
+        
+        # Initialize tree-sitter parser
+        self._tree_sitter = TreeSitterParser()  # Store direct reference
+        self._tree_sitter.initialize()
+        self._parsers['tree_sitter'] = self._tree_sitter
+        
+        # Initialize other parsers
+        self._config_parser = ConfigParser()  # Store direct reference
+        self._doc_parser = DocumentationParser()  # Store direct reference
+        self._license_parser = LicenseParser()  # Store direct reference
+        
+        self._parsers['config'] = self._config_parser
+        self._parsers['documentation'] = self._doc_parser
+        self._parsers['license'] = self._license_parser
+        
+        self._initialized = True
 
     def parse_file(self, file_path: Union[str, Path]) -> ParseResult:
-        """Parse a source code file.
-
-        Args:
-            file_path: Path to the source code file.
-
-        Returns:
-            ParseResult containing the parsed AST and metadata.
-
-        Raises:
-            ServiceError: If parsing fails.
-        """
+        """Parse a source code file."""
         if not self._initialized:
             raise ServiceError("Service not initialized")
 
         try:
             file_path = Path(file_path)
             parser = self._get_parser_for_file(file_path)
-
+            
             # For tree-sitter parser, determine language from extension
             if isinstance(parser, TreeSitterParser):
-                language = get_language_by_extension(file_path.suffix)
+                # Remove leading dot and convert to lowercase
+                ext = file_path.suffix[1:].lower()
+                # Handle special cases
+                if ext == 'py':
+                    language = 'python'
+                elif ext == 'js':
+                    language = 'javascript'
+                else:
+                    language = get_language_by_extension(ext)
+                    
                 if language is None:
-                    raise ServiceError(
-                        f"Unsupported file extension: {file_path.suffix}"
-                    )
-                result = parser.parse_file(file_path)
-                if not isinstance(result, ParseResult):
-                    raise ServiceError("Parser returned invalid result type")
-                return result
-
-            result = parser.parse_file(file_path)
-            if not isinstance(result, ParseResult):
-                raise ServiceError("Parser returned invalid result type")
-            return result
+                    raise ServiceError(f"Unsupported file extension: {file_path.suffix}")
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return parser.parse(content, language)
+            
+            return parser.parse_file(file_path)
+            
         except Exception as e:
             raise ServiceError(f"Failed to parse file: {str(e)}")
 
-    def cleanup(self) -> None:
-        """Clean up parser resources."""
-        for parser in self._parsers.values():
-            parser.cleanup()
-        self._initialized = False
-        self._parsers.clear()
+    def parse_content(self, content: str, language: str, options: Optional[Dict[str, Any]] = None) -> ParseResult:
+        """Parse content directly."""
+        if not self._initialized:
+            raise ServiceError("Service not initialized")
+            
+        try:
+            parser = self._parsers['tree_sitter']
+            if options:
+                # Validate options
+                valid_options = {'debug', 'include_comments', 'timeout_micros'}
+                invalid_options = set(options.keys()) - valid_options
+                if invalid_options:
+                    raise ValueError(f"Invalid options: {invalid_options}")
+                    
+                # Apply options to parser
+                for key, value in options.items():
+                    if key == 'timeout_micros':
+                        parser.timeout_micros = value
+                    else:
+                        setattr(parser, f"_{key}", value)
+            try:
+                return parser.parse(content, language)
+            except KeyError:
+                raise ParserError(f"Unsupported language: {language}")
+        except Exception as e:
+            if isinstance(e, (ValueError, ParserError)):
+                raise
+            raise ServiceError(f"Failed to parse content: {str(e)}")
 
-    @property
-    def initialized(self) -> bool:
-        """Check if the service is initialized.
+    def parse_directory(self, directory: Union[str, Path]) -> List[ParseResult]:
+        """Parse all supported files in a directory."""
+        if not self._initialized:
+            raise ServiceError("Service not initialized")
+            
+        try:
+            directory = Path(directory)
+            results = []
+            
+            for file_path in directory.rglob('*'):
+                if file_path.is_file() and (file_path.suffix in self.FILE_TYPE_MAPPING or file_path.name in self.FILE_TYPE_MAPPING):
+                    try:
+                        result = self.parse_file(file_path)
+                        result.file_path = file_path
+                        results.append(result)
+                    except ServiceError:
+                        # Log error but continue parsing
+                        logger.warning(f"Failed to parse file: {file_path}")
+                        continue
+                        
+            return results
+        except Exception as e:
+            raise ServiceError(f"Failed to parse directory: {str(e)}")
 
-        Returns:
-            True if initialized, False otherwise.
-        """
-        return self._initialized
+    def _get_parser_for_file(self, file_path: Union[str, Path]) -> BaseParser:
+        """Get appropriate parser for a file."""
+        file_path = Path(file_path)
+        
+        # Check exact filename matches first
+        if file_path.name in self.FILE_TYPE_MAPPING:
+            parser_type = self.FILE_TYPE_MAPPING[file_path.name]
+            return self._parsers[parser_type]
+            
+        # Then check file extension
+        if file_path.suffix in self.FILE_TYPE_MAPPING:
+            parser_type = self.FILE_TYPE_MAPPING[file_path.suffix]
+            return self._parsers[parser_type]
+            
+        raise ParserError(f"No parser found for file: {file_path}")

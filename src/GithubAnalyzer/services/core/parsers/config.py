@@ -35,18 +35,7 @@ class ConfigParser(BaseParser):
         pass
 
     def parse(self, content: str, language: str) -> ParseResult:
-        """Parse configuration content.
-
-        Args:
-            content: Content to parse
-            language: Language identifier for the content
-
-        Returns:
-            ParseResult containing configuration information
-
-        Raises:
-            ParserError: If parsing fails
-        """
+        """Parse configuration content."""
         try:
             if language not in self.SUPPORTED_FORMATS:
                 raise ParserError(f"Unsupported config format: {language}")
@@ -70,47 +59,52 @@ class ConfigParser(BaseParser):
                     "type": "config",
                     "format": language,
                     "data": data,
-                },
+                }
             )
         except Exception as e:
             raise ParserError(f"Failed to parse config: {str(e)}")
 
     def parse_file(self, file_path: Union[str, Path]) -> ParseResult:
-        """Parse a configuration file.
-
-        Args:
-            file_path: Path to the file to parse
-
-        Returns:
-            ParseResult containing configuration information
-
-        Raises:
-            ParserError: If file cannot be read or parsed
-        """
-        file_path = Path(file_path)
-        if not file_path.exists():
-            raise ParserError(f"File {file_path} not found")
-
-        # Determine format from extension
-        ext = file_path.suffix.lower()
-        language = None
-        for fmt, exts in self.SUPPORTED_FORMATS.items():
-            if ext in exts:
-                language = fmt
-                break
-
-        if language is None:
-            raise ParserError(f"Unsupported config format: {ext}")
-
+        """Parse a configuration file."""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            result = self.parse(content, language)
-            result.metadata["file_path"] = str(file_path)
-            return result
+            file_path = Path(file_path)
+            content = file_path.read_text(encoding='utf-8')
+            
+            # Determine format from extension
+            format = file_path.suffix[1:].lower()
+            if format not in {'yaml', 'yml', 'json', 'toml'}:
+                raise ParserError(f"Unsupported config format: {format}")
+            
+            # Parse content based on format
+            if format in {'yaml', 'yml'}:
+                import yaml
+                data = yaml.safe_load(content)
+            elif format == 'json':
+                import json
+                data = json.loads(content)
+            elif format == 'toml':
+                import toml
+                data = toml.loads(content)
+            
+            # Create metadata with nested data structure
+            metadata = {
+                'type': 'config',
+                'format': format,
+                'data': data  # Keep data nested like in parse()
+            }
+            
+            return ParseResult(
+                ast=None,
+                language=format,
+                is_valid=True,
+                line_count=len(content.splitlines()),
+                node_count=len(str(data).split()),
+                errors=[],
+                metadata=metadata
+            )
+            
         except Exception as e:
-            raise ParserError(f"Failed to parse file {file_path}: {str(e)}")
+            raise ParserError(f"Failed to parse config file: {str(e)}")
 
     def cleanup(self) -> None:
         """Clean up parser resources."""
