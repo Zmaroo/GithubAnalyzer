@@ -1,156 +1,192 @@
 """Tree-sitter parser implementation."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-from tree_sitter import Language as TSLanguage, Parser as TSParser, Node, Tree, TreeCursor
+from typing import Any, Dict, List, Optional, Union, Generator
+from tree_sitter import Language as TSLanguage, Parser as TSParser, Node, Tree, TreeCursor, Query
+import logging
+import importlib
 
-from ....models.core.errors import ParserError, FileOperationError
-from ....models.analysis.ast import ParseResult
 from ....config.language_config import TREE_SITTER_LANGUAGES
+from ....models.analysis.ast import ParseResult
+from ....models.core.errors import ParserError, FileOperationError
 from ....utils.file_utils import get_file_type, is_binary_file, validate_file_path
-from ....utils.logging import get_logger
 from .base import BaseParser
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
+
+def tree_sitter_logger(msg: str) -> None:
+    """Logger function for Tree-sitter parsing."""
+    logger.debug(f"Tree-sitter: {msg}")
 
 class TreeSitterParser(BaseParser):
     """Parser implementation using tree-sitter."""
 
-    def __init__(self) -> None:
-        """Initialize the parser."""
-        self._languages: Dict[str, TSLanguage] = {}
-        self._parsers: Dict[str, TSParser] = {}
-        self._queries: Dict[str, Dict[str, Any]] = {}
-        self._encoding = "utf8"
-        self._timeout_micros = None
-        self._included_ranges = None
-        self.initialized = False
+    # Language-specific query patterns
+    _QUERY_PATTERNS = {
+        "python": """
+            ;; Match complete function definitions
+            (function_definition
+              name: (identifier) @function.name) @function.def
 
+            ;; Match error recovery cases
+            (ERROR
+              [(function_definition
+                name: (identifier) @function.name)
+               (expression_statement
+                 (call
+                   function: (identifier) @function.name))] @error.function)
+        """,
+        "javascript": """
+            ;; Match function declarations
+            (function_declaration
+              name: (identifier) @name) @function
+            
+            ;; Match method definitions
+            (method_definition
+              name: (property_identifier) @name) @function
+            
+            ;; Match error recovery cases
+            (ERROR
+              [(function_declaration
+                name: (identifier) @name)
+               (identifier) @name]) @error
+        """,
+        "typescript": """
+            ;; Match function declarations
+            (function_declaration
+              name: (identifier) @name) @function
+            
+            ;; Match method definitions
+            (method_definition
+              name: (property_identifier) @name) @function
+            
+            ;; Match arrow functions
+            (variable_declarator
+              name: (identifier) @name
+              value: (arrow_function)) @function
+        """,
+        "java": """
+            ;; Match method declarations
+            (method_declaration
+              name: (identifier) @name) @function
+            
+            ;; Match class declarations
+            (class_declaration
+              name: (identifier) @name) @class
+        """,
+        "cpp": """
+            ;; Match function definitions
+            (function_definition
+              declarator: (function_declarator
+                declarator: (identifier) @name)) @function
+            
+            ;; Match class definitions
+            (class_specifier
+              name: (type_identifier) @name) @class
+        """,
+        "go": """
+            ;; Match function declarations
+            (function_declaration
+              name: (identifier) @name) @function
+            
+            ;; Match method declarations
+            (method_declaration
+              name: (field_identifier) @name) @function
+        """
+    }
+
+    def __init__(self, encoding: str = "utf8", debug: bool = False):
+        """Initialize Tree-sitter parser."""
+        self.initialized = False
+        self._encoding = encoding
+        self._parsers: Dict[str, TSParser] = {}
+        self._languages: Dict[str, TSLanguage] = {}
+        self._debug = debug
+        self._queries: Dict[str, Query] = {}
+        
     def initialize(self, languages: Optional[List[str]] = None) -> None:
-        """Initialize tree-sitter parsers."""
+        """Initialize parsers for supported languages."""
         try:
             logger.info("Initializing tree-sitter parsers")
-            languages = languages or ["python", "javascript", "typescript"]
-
-            for lang in languages:
+            
+            # Use provided languages or all configured languages
+            langs_to_init = languages or TREE_SITTER_LANGUAGES.keys()
+            
+            for lang in langs_to_init:
+                if lang not in TREE_SITTER_LANGUAGES:
+                    logger.warning(f"Language {lang} not configured, skipping")
+                    continue
+                    
+                config = TREE_SITTER_LANGUAGES[lang]
                 try:
-                    module_name = f"tree_sitter_{lang}"
-                    try:
-                        language_module = __import__(module_name)
-                    except ImportError:
-                        if lang not in TREE_SITTER_LANGUAGES:
-                            raise ParserError(f"Language {lang} not supported")
-                        raise ParserError(f"Language {lang} not installed. Run: pip install {module_name}")
-
-                    # Handle special cases for different languages
-                    try:
-                        # TypeScript: Has both TS and TSX
-                        if lang == "typescript":
-                            ts_language = TSLanguage(language_module.language_typescript())
-                            tsx_language = TSLanguage(language_module.language_tsx())
-                            
-                            ts_parser = TSParser()
-                            tsx_parser = TSParser()
-                            
-                            ts_parser.language = ts_language
-                            tsx_parser.language = tsx_language
-                            
-                            self._languages[lang] = ts_language
-                            self._languages["tsx"] = tsx_language
-                            self._parsers[lang] = ts_parser
-                            self._parsers["tsx"] = tsx_parser
-                            continue
-
-                        # JavaScript handles JSX natively
-                        elif lang == "javascript":
-                            language = TSLanguage(language_module.language())
-                            parser = TSParser()
-                            parser.language = language
-                            self._languages[lang] = language
-                            self._parsers[lang] = parser
-                            continue
-
-                        # PHP: Requires get_language() call
-                        elif lang == "php":
-                            language = TSLanguage(language_module.get_language())
-                            parser = TSParser()
-                            parser.language = language
-                            self._languages[lang] = language
-                            self._parsers[lang] = parser
-                            continue
-
-                        # Ruby: May have embedded languages
-                        elif lang == "ruby":
-                            language = TSLanguage(language_module.get_parser())
-                            parser = TSParser()
-                            parser.language = language
-                            self._languages[lang] = language
-                            self._parsers[lang] = parser
-                            continue
-
-                    except AttributeError as e:
-                        # Try standard initialization if special case fails
-                        logger.debug(f"Special initialization failed for {lang}, trying standard: {e}")
-                        language = TSLanguage(language_module.language())
-                        parser = TSParser()
-                        parser.language = language
-                        self._languages[lang] = language
-                        self._parsers[lang] = parser
-                        continue
-
-                    # Standard language initialization
-                    language = TSLanguage(language_module.language())
+                    # Initialize parser
                     parser = TSParser()
+                    language = self._load_language(lang)
                     parser.language = language
                     
-                    self._languages[lang] = language
                     self._parsers[lang] = parser
-
+                    self._languages[lang] = language
+                    
+                    logger.debug(f"Initialized {lang} parser")
+                    
+                    # Initialize queries for this language
+                    self._initialize_queries(lang)
+                    logger.debug(f"Initialized {lang} queries")
+                    
                 except Exception as e:
-                    raise ParserError(f"Failed to initialize language {lang}: {str(e)}")
-
-            self.initialized = True
-            logger.info("Tree-sitter parsers initialized successfully")
-        except Exception as e:
-            raise ParserError(f"Failed to initialize parser: {str(e)}")
-
-    def parse(self, content: str, language: str) -> ParseResult:
-        """Parse source code content."""
-        if not self.initialized:
-            raise ParserError("Parser not initialized")
-
-        if language not in self._parsers:
-            raise ParserError(f"Language {language} not supported")
-
-        try:
-            # Parse content
-            parser = self._parsers[language]
-            tree = parser.parse(bytes(content, self._encoding))
+                    logger.error(f"Failed to initialize {lang}: {str(e)}")
+                    raise ParserError(f"Failed to initialize {lang}: {str(e)}")
             
-            # Initialize metadata
-            metadata = {
-                "encoding": self._encoding,
-                "raw_content": content,
-                "root_type": tree.root_node.type,
-                "analysis": {
-                    "functions": {},  # Initialize empty dict for functions
-                    "errors": self._get_errors(tree.root_node)  # Use _get_errors directly
-                }
-            }
+            self.initialized = True
+            logger.info("Tree-sitter parsers initialized")
+            
+        except Exception as e:
+            logger.error(f"Parser initialization failed: {str(e)}")
+            raise ParserError(f"Parser initialization failed: {str(e)}")
 
-            # Extract functions even if there are errors
-            if tree.root_node:
-                functions = self._get_functions(tree.root_node, language)
-                metadata["analysis"]["functions"] = functions
-
+    def parse(self, content: Union[str, bytes], language: str) -> ParseResult:
+        """Parse source code using tree-sitter."""
+        try:
+            # Get parser for language
+            parser = self._parsers[language]
+            
+            # Parse content
+            if isinstance(content, str):
+                content = content.encode('utf8')
+            
+            # Debug logging - just use our logger
+            if self._debug:
+                logger.debug(f"Tree-sitter [{language}]: Parsing content")
+            
+            tree = parser.parse(content)
+            if not tree:
+                raise ParserError("Parser failed to produce AST")
+            
+            # Debug print AST structure
+            if self._debug:
+                self._debug_print_ast(tree.root_node)
+            
+            # Get analysis results
+            analysis = self._analyze_tree(tree, language)
+            
+            # Convert content back to string for metadata
+            raw_content = content.decode('utf8') if isinstance(content, bytes) else content
+            
             return ParseResult(
                 ast=tree,
+                language=language,
                 is_valid=not tree.root_node.has_error,
+                line_count=len(content.splitlines()),
                 node_count=tree.root_node.descendant_count,
-                errors=self._get_errors(tree.root_node),  # This is fine as it's part of ParseResult
-                metadata=metadata
+                errors=self._get_syntax_errors(tree.root_node),
+                metadata={
+                    "encoding": self._encoding,
+                    "raw_content": raw_content,
+                    "root_type": tree.root_node.type,
+                    "analysis": analysis
+                }
             )
-
+            
         except Exception as e:
             raise ParserError(f"Failed to parse {language} content: {str(e)}")
 
@@ -247,64 +283,227 @@ class TreeSitterParser(BaseParser):
             }
         }
 
-    def _get_functions(self, node: Node, language: str) -> Dict[str, Dict[str, int]]:
-        """Extract function definitions from AST."""
+    def _get_functions(self, root_node: Node, language: str) -> Dict[str, Dict[str, int]]:
+        """Extract function definitions from AST using tree-sitter traversal."""
         functions = {}
+        cursor = root_node.walk()
+        visited_children = False
         
-        # Use cursor for reliable traversal, even through error nodes
-        cursor = node.walk()
-        
-        def visit(cursor: TreeCursor) -> None:
-            logger.debug("Visiting node: %s at line %d", 
-                        cursor.node.type, cursor.node.start_point[0])
-            
-            # Skip error nodes but continue traversal
-            if cursor.node.type == "ERROR":
-                logger.debug("Found ERROR node, attempting to continue traversal")
-                if cursor.goto_next_sibling():
-                    visit(cursor)
-                return
-            
-            # Handle nodes that contain errors but might have valid children
-            if cursor.node.has_error:
-                # Still try to process this node if it looks like a function
-                if (language == "python" and cursor.node.type == "function_definition"):
-                    logger.debug("Processing function node with errors: %s", cursor.node.type)
-                    process_function_node(cursor.node)
-            
-            # Language-specific function patterns
-            if (
-                # Python
-                (language == "python" and (
-                    cursor.node.type == "function_definition" or
-                    (cursor.node.type == "def" and cursor.node.next_sibling and 
-                     cursor.node.next_sibling.type == "identifier")
-                )) or
-                # JavaScript/TypeScript
-                (language in ["javascript", "typescript"] and
-                    cursor.node.type in ["function_declaration", "function", "method_definition"])
-            ):
-                logger.debug("Found potential function node: %s", cursor.node.type)
-                process_function_node(cursor.node)
-            
-            def process_function_node(node: Node) -> None:
-                """Process a potential function node, even if it contains errors."""
-                name_node = (node.child_by_field_name("name") or 
-                           (node.type == "def" and node.next_sibling))
+        try:
+            while True:
+                if not visited_children:
+                    node = cursor.node
+                    
+                    # Check for function definitions
+                    if node.type == "function_definition":
+                        name_node = node.child_by_field_name("name")
+                        if name_node and name_node.type == "identifier":
+                            name = name_node.text.decode('utf8')
+                            functions[name] = {
+                                'start': node.start_byte,
+                                'end': node.end_byte
+                            }
+                            if self._debug:
+                                logger.debug(f"Added function: {name}")
+                    
+                    # Check for error nodes that might contain functions
+                    elif node.type == "ERROR":
+                        # Look for def + identifier pattern in error node
+                        def_node = None
+                        name_node = None
+                        
+                        # Use cursor to traverse error node children
+                        error_cursor = node.walk()
+                        
+                        while True:
+                            child = error_cursor.node
+                            
+                            if child.type == "def":
+                                def_node = child
+                            elif child.type == "identifier":
+                                name_node = child
+                                # Check if this is part of a call
+                                if child.parent and child.parent.type == "call":
+                                    name = child.text.decode('utf8')
+                                    if name not in functions:
+                                        functions[name] = {
+                                            'start': def_node.start_byte if def_node else node.start_byte,
+                                            'end': node.end_byte
+                                        }
+                                        if self._debug:
+                                            logger.debug(f"Added error recovery function: {name}")
+                            
+                            # Navigate error node tree
+                            if not error_cursor.goto_first_child():
+                                if not error_cursor.goto_next_sibling():
+                                    break
+                    
+                    # Navigate main tree
+                    if cursor.goto_first_child():
+                        continue
+                    
+                    visited_children = True
                 
-                if name_node and name_node.type == "identifier":
-                    functions[name_node.text.decode('utf8')] = {
-                        'start': node.start_point[0],
-                        'end': node.end_point[0]
-                    }
+                if cursor.goto_next_sibling():
+                    visited_children = False
+                else:
+                    if not cursor.goto_parent():
+                        break
+                    visited_children = True
             
-            # Continue traversal even after errors
-            if cursor.goto_first_child():
-                visit(cursor)
-                cursor.goto_parent()
+            return functions
             
-            if cursor.goto_next_sibling():
-                visit(cursor)
+        except Exception as e:
+            logger.warning(f"Error in function extraction: {e}")
+            return {}
+
+    def _process_error_node(self, error_node: Node, functions: Dict[str, Dict[str, int]]) -> None:
+        """Process error node to find function definitions."""
+        try:
+            # Get all children and siblings
+            nodes_to_check = list(error_node.children)
+            
+            # Add siblings after error node
+            current = error_node
+            while current.next_sibling:
+                nodes_to_check.append(current.next_sibling)
+                current = current.next_sibling
+            
+            # Check each node
+            for node in nodes_to_check:
+                # Look for def keyword followed by a call node (error recovery case)
+                if node.type == "def" and node.next_sibling and node.next_sibling.type == "call":
+                    call_node = node.next_sibling
+                    name_node = call_node.child_by_field_name("function") or call_node.children[0]
+                    if name_node and name_node.type == "identifier":
+                        try:
+                            name = name_node.text.decode('utf8')
+                            functions[name] = {
+                                'start': name_node.start_byte,  # Use byte offsets
+                                'end': call_node.end_byte  # Use byte offsets
+                            }
+                            logger.debug(f"Added error-recovery function: {name}")
+                        except Exception as e:
+                            logger.warning(f"Error processing error-recovery function: {e}")
+                
+                # Python-style function
+                elif node.type == "function_definition":
+                    name_node = node.child_by_field_name("name")
+                    if name_node and name_node.type == "identifier":
+                        try:
+                            name = name_node.text.decode('utf8')
+                            functions[name] = {
+                                'start': name_node.start_byte,  # Use byte offsets
+                                'end': node.end_byte  # Use byte offsets
+                            }
+                            logger.debug(f"Added post-error function: {name}")
+                        except Exception as e:
+                            logger.warning(f"Error processing post-error function: {e}")
+                
+                # JavaScript/TypeScript style
+                elif node.type in ["function_declaration", "method_definition"]:
+                    name_node = node.child_by_field_name("name")
+                    if name_node and name_node.type in ["identifier", "property_identifier"]:
+                        try:
+                            name = name_node.text.decode('utf8')
+                            functions[name] = {
+                                'start': name_node.start_byte,  # Use byte offsets
+                                'end': node.end_byte  # Use byte offsets
+                            }
+                            logger.debug(f"Added post-error function: {name}")
+                        except Exception as e:
+                            logger.warning(f"Error processing post-error function: {e}")
+                            
+        except Exception as e:
+            logger.warning(f"Error processing error node: {e}")
+
+    def _fallback_function_extraction(self, root_node: Node) -> Dict[str, Dict[str, int]]:
+        """Fallback method using traversal when query fails."""
+        functions = {}
+        cursor = root_node.walk()
+        
+        if self._debug:
+            logger.debug("\nStarting fallback traversal:")
+            
+        try:
+            while True:
+                node = cursor.node
+                
+                # Check for function definitions
+                if node.type == "function_definition":
+                    name_node = node.child_by_field_name("name")
+                    if name_node and name_node.type == "identifier":
+                        try:
+                            name = name_node.text.decode('utf8')
+                            functions[name] = {
+                                'start': node.start_byte,
+                                'end': node.end_byte
+                            }
+                            if self._debug:
+                                logger.debug(f"Added function (fallback): {name}")
+                        except Exception as e:
+                            logger.warning(f"Error processing function name: {e}")
+                
+                # Navigate tree
+                if cursor.goto_first_child():
+                    continue
+                    
+                if cursor.goto_next_sibling():
+                    continue
+                    
+                while True:
+                    if not cursor.goto_parent():
+                        return functions
+                    if cursor.goto_next_sibling():
+                        break
+                    
+        except Exception as e:
+            logger.warning(f"Error in fallback traversal: {e}")
+            
+        return functions
+
+    def _get_node_context(self, node: Node) -> Dict[str, Any]:
+        """Get context information for a node."""
+        context = {
+            'line': node.start_point[0] + 1,
+            'column': node.start_point[1],
+            'type': node.type,
+            'parent_type': node.parent.type if node.parent else None,
+            'has_error': node.has_error,
+            'is_missing': node.is_missing,
+            'is_extra': getattr(node, 'is_extra', False)
+        }
+        
+        # Get surrounding tokens for context
+        if node.prev_sibling:
+            context['prev_token'] = node.prev_sibling.text.decode('utf-8') if node.prev_sibling.text else None
+        if node.next_sibling:
+            context['next_token'] = node.next_sibling.text.decode('utf-8') if node.next_sibling.text else None
+            
+        return context
+
+    def _is_valid_error_context(self, error_node: Node, name_node: Node) -> bool:
+        """Check if an error node and name node form a valid function definition context."""
+        # Check if the error node contains 'def' and is followed by the name
+        try:
+            if error_node.type != "ERROR":
+                return False
+                
+            # Check if 'def' is present in the error node
+            error_text = error_node.text.decode('utf-8')
+            if 'def' not in error_text:
+                return False
+                
+            # Check if the name node is in a reasonable position relative to 'def'
+            def_pos = error_node.start_byte + error_text.index('def')
+            name_pos = name_node.start_byte
+            
+            # Name should come after 'def' and be within a reasonable distance
+            return def_pos < name_pos and (name_pos - def_pos) < 50
+            
+        except Exception as e:
+            logger.warning(f"Error checking error context: {e}")
+            return False
 
     def _get_tree_depth(self, node: Node) -> int:
         """Calculate AST depth."""
@@ -320,3 +519,261 @@ class TreeSitterParser(BaseParser):
                 complexity += 1
             complexity += self._estimate_complexity(child)
         return complexity
+
+    def _debug_print_ast(self, node: Node, level: int = 0) -> None:
+        """Print AST structure for debugging."""
+        if not self._debug:
+            return
+        
+        indent = "  " * level
+        print(f"{indent}{node.type}: {node.text.decode('utf8') if node.text else ''}")
+        print(f"{indent}Start: {node.start_point}, End: {node.end_point}")
+        print(f"{indent}Error: {node.has_error}, Missing: {node.is_missing}")
+        
+        for child in node.children:
+            self._debug_print_ast(child, level + 1)
+
+    def _traverse_for_functions(self, cursor: TreeCursor, functions: Dict[str, Dict[str, int]]) -> None:
+        """Traverse AST using tree-sitter cursor to find functions, including in error states."""
+        try:
+            while True:
+                current = cursor.node
+
+                # Check for function definitions based on language
+                if current.type in ["function_definition", "function_declaration", "method_definition"]:
+                    name_node = current.child_by_field_name("name")
+                    if name_node and name_node.type in ["identifier", "property_identifier"]:
+                        try:
+                            name = name_node.text.decode('utf8')
+                            functions[name] = {
+                                'start': name_node.start_point[0],
+                                'end': current.end_point[0]
+                            }
+                            logger.debug(f"Added function: {name}")
+                        except Exception as e:
+                            logger.warning(f"Error processing function name: {e}")
+
+                # Handle error recovery
+                elif current.type == "ERROR":
+                    # Look for function indicators in error node
+                    for child in current.children:
+                        # Python-style functions
+                        if child.type == "def":
+                            next_sibling = child.next_sibling
+                            if next_sibling and next_sibling.type == "identifier":
+                                try:
+                                    name = next_sibling.text.decode('utf8')
+                                    functions[name] = {
+                                        'start': next_sibling.start_point[0],
+                                        'end': current.end_point[0]
+                                    }
+                                    logger.debug(f"Added error function: {name}")
+                                except Exception as e:
+                                    logger.warning(f"Error processing function in error state: {e}")
+                        # JavaScript/TypeScript style functions
+                        elif child.type == "function":
+                            for sibling in current.children:
+                                if sibling.type == "identifier":
+                                    try:
+                                        name = sibling.text.decode('utf8')
+                                        functions[name] = {
+                                            'start': sibling.start_point[0],
+                                            'end': current.end_point[0]
+                                        }
+                                        logger.debug(f"Added error function: {name}")
+                                    except Exception as e:
+                                        logger.warning(f"Error processing function in error state: {e}")
+
+                # Traverse tree
+                if cursor.goto_first_child():
+                    continue
+
+                if cursor.goto_next_sibling():
+                    continue
+
+                # No more siblings, go up until we can go to the next sibling
+                while True:
+                    if not cursor.goto_parent():
+                        return  # We've reached the root, we're done
+                    if cursor.goto_next_sibling():
+                        break
+
+        except Exception as e:
+            logger.warning(f"Error during tree traversal: {e}")
+
+    def _load_language(self, lang: str) -> TSLanguage:
+        """Load a tree-sitter language module with version compatibility check.
+        
+        Args:
+            lang: Language identifier (e.g. 'python', 'javascript')
+            
+        Returns:
+            Initialized tree-sitter Language object
+            
+        Raises:
+            ParserError: If language module cannot be loaded or version incompatible
+        """
+        try:
+            # Get language config
+            config = TREE_SITTER_LANGUAGES[lang]
+            lib_name = config["lib"]
+            
+            # Import the language module dynamically
+            try:
+                module_name = lib_name.replace("-", "_")
+                language_module = importlib.import_module(module_name)
+                
+                # Check version compatibility
+                if hasattr(language_module, "__version__"):
+                    lang_version = language_module.__version__
+                    ts_version = importlib.import_module("tree_sitter").__version__
+                    
+                    # Compare major.minor versions
+                    lang_ver = tuple(map(int, lang_version.split(".")[:2]))
+                    ts_ver = tuple(map(int, ts_version.split(".")[:2]))
+                    
+                    if lang_ver > ts_ver:
+                        logger.warning(
+                            f"Language {lang} (v{lang_version}) is newer than tree-sitter "
+                            f"(v{ts_version}). This may cause compatibility issues. "
+                            f"Consider upgrading tree-sitter or downgrading {lang} package."
+                        )
+                
+            except ImportError as e:
+                raise ParserError(
+                    f"Failed to import {lib_name}. Please install with: pip install {lib_name}"
+                ) from e
+            
+            # Create language object
+            try:
+                # Handle special cases for typescript/tsx
+                if "language_func" in config:
+                    language_func = getattr(language_module, config["language_func"])
+                    language = TSLanguage(language_func())
+                else:
+                    language = TSLanguage(language_module.language())
+                    
+                # Test query compatibility
+                try:
+                    # Try a simple query to verify compatibility
+                    test_query = language.query("(identifier) @id")
+                except Exception as e:
+                    raise ParserError(
+                        f"Language {lang} appears to be incompatible with current tree-sitter version. "
+                        f"Error: {str(e)}. Try: pip install {lib_name}=={ts_version}"
+                    )
+                    
+                return language
+                
+            except Exception as e:
+                raise ParserError(f"Failed to initialize language {lang}: {str(e)}") from e
+            
+        except Exception as e:
+            if isinstance(e, ParserError):
+                raise e
+            raise ParserError(f"Failed to load language {lang}: {str(e)}")
+
+    def _initialize_queries(self, lang: str) -> None:
+        """Initialize queries for a language."""
+        try:
+            config = TREE_SITTER_LANGUAGES[lang]
+            language = self._languages[lang]
+            
+            # Initialize function queries
+            try:
+                pattern = self._QUERY_PATTERNS.get(lang)
+                if pattern:
+                    self._queries[f"{lang}_functions"] = language.query(pattern)
+                    logger.debug(f"Initialized {lang} function queries")
+            except Exception as e:
+                logger.warning(f"Failed to create function queries for {lang}: {e}")
+                
+            # Initialize class queries if needed
+            if "class_query" in config:
+                try:
+                    self._queries[f"{lang}_classes"] = language.query(config["class_query"])
+                    logger.debug(f"Initialized {lang} class queries")
+                except Exception as e:
+                    logger.warning(f"Failed to create class queries for {lang}: {e}")
+                    
+        except Exception as e:
+            logger.warning(f"Failed to initialize queries for {lang}: {e}")
+
+    def _get_query_string(self, lang: str, query_name: str) -> Optional[str]:
+        """Get query string from config or default location."""
+        # First check if query is defined in config
+        config = TREE_SITTER_LANGUAGES[lang]
+        
+        # Check for language-specific query
+        if f"{query_name}_query" in config:
+            return config[f"{query_name}_query"]
+        
+        if isinstance(config.get("queries", None), Dict):
+            queries = config["queries"]
+            if query_name in queries:
+                return queries[query_name]
+        
+        # Default queries based on language
+        if query_name == "functions":
+            if lang in ["javascript", "typescript", "tsx"]:
+                return """
+                (function_declaration
+                  name: (identifier) @function.def)
+                (method_definition
+                  name: (property_identifier) @function.def)
+                """
+            return """
+            (function_definition
+              name: (identifier) @function.def)
+            """
+        elif query_name == "classes":
+            if lang in ["javascript", "typescript", "tsx"]:
+                return """
+                (class_declaration
+                  name: (identifier) @class.def)
+                """
+            return """
+            (class_definition
+              name: (identifier) @class.def)
+            """
+        
+        return None
+
+    def _get_syntax_errors(self, node: Node) -> List[str]:
+        """Get syntax errors from AST.
+        
+        Args:
+            node: Root node of AST
+            
+        Returns:
+            List of error messages
+        """
+        errors = []
+        cursor = node.walk()
+        
+        try:
+            while True:
+                if cursor.node.has_error:
+                    # Get error context
+                    error_line = cursor.node.start_point[0] + 1
+                    error_msg = f"Syntax error at line {error_line}"
+                    if error_msg not in errors:  # Avoid duplicates
+                        errors.append(error_msg)
+                
+                # Navigate tree
+                if cursor.goto_first_child():
+                    continue
+                    
+                if cursor.goto_next_sibling():
+                    continue
+                    
+                while True:
+                    if not cursor.goto_parent():
+                        return errors
+                    if cursor.goto_next_sibling():
+                        break
+                    
+        except Exception as e:
+            logger.warning(f"Error collecting syntax errors: {e}")
+            
+        return errors

@@ -1,36 +1,73 @@
 """Language configuration."""
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 # Supported tree-sitter languages from our dependencies
-TREE_SITTER_LANGUAGES = [
-    "python",
-    "javascript",
-    "typescript",
-    "java",
-    "cpp",
-    "go",
-    "ruby",
-    "php",
-    "c",
-    "c-sharp",
-    "scala",
-    "kotlin",
-    "lua",
-    "bash",
-    "html",
-    "css",
-    "json",
-    "yaml",
-    "toml",
-    "xml",
-    "markdown",
-    "sql",
-    "arduino",
-    "cuda",
-    "groovy",
-    "matlab"
-]
+TREE_SITTER_LANGUAGES: Dict[str, Dict[str, Union[str, List[str]]]] = {
+    "python": {
+        "lib": "tree-sitter-python",
+        "version": ">=0.23.6",
+        "queries": ["functions", "classes"],
+        "function_query": """
+        (function_definition
+          name: (identifier) @function.def)
+        """
+    },
+    "javascript": {
+        "lib": "tree-sitter-javascript",
+        "version": ">=0.23.1",
+        "queries": ["functions", "classes"],
+        "function_query": """
+        (function_declaration
+          name: (identifier) @function.def)
+        (method_definition
+          name: (property_identifier) @function.def)
+        (arrow_function
+          name: (identifier) @function.def)
+        """
+    },
+    "typescript": {
+        "lib": "tree-sitter-typescript",
+        "version": ">=0.23.2",
+        "queries": ["functions", "classes"],
+        "language_func": "language_typescript",
+        "function_query": """
+        (function_declaration
+          name: (identifier) @function.def)
+        (method_definition
+          name: (property_identifier) @function.def)
+        (arrow_function
+          name: (identifier) @function.def)
+        """
+    },
+    "tsx": {
+        "lib": "tree-sitter-typescript",
+        "version": ">=0.23.2",
+        "queries": ["functions", "classes"],
+        "language_func": "language_tsx",
+        "function_query": """
+        (function_declaration
+          name: (identifier) @function.def)
+        (method_definition
+          name: (property_identifier) @function.def)
+        """
+    },
+    "java": {
+        "lib": "tree-sitter-java",
+        "version": ">=0.23.5",
+        "queries": ["functions", "classes"]
+    },
+    "cpp": {
+        "lib": "tree-sitter-cpp",
+        "version": ">=0.23.4",
+        "queries": ["functions", "classes"]
+    },
+    "go": {
+        "lib": "tree-sitter-go",
+        "version": ">=0.23.4",
+        "queries": ["functions"]
+    }
+}
 
 # Map file types to parser languages
 PARSER_LANGUAGE_MAP: Dict[str, str] = {
