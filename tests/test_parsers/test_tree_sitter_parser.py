@@ -340,3 +340,356 @@ def test_tsx_support(full_parser: TreeSitterParser) -> None:
             assert "handleClick" in functions
         elif case_name == "error_component":
             assert "ValidComponent" in functions 
+
+def test_parser_initialization_errors():
+    """Test error handling during parser initialization."""
+    from tree_sitter import Parser, Query
+    
+    parser = TreeSitterParser()
+    parser.initialize(["python"])  # Initialize Python first
+    
+    # Test invalid language - should skip and continue
+    parser.initialize(["not_a_real_language"])
+    assert "not_a_real_language" not in parser._parsers
+    
+    # Test invalid query pattern - use tree-sitter's native query API
+    python_language = parser._parsers["python"].language
+    with pytest.raises(Exception):  # Tree-sitter raises generic Exception for invalid queries
+        Query(python_language, "(invalid_query")  # Use Query constructor directly
+
+def test_parser_cleanup():
+    """Test proper cleanup of parser resources."""
+    parser = TreeSitterParser()
+    parser.initialize(["python"])
+    
+    # Verify initialization
+    assert "python" in parser._parsers
+    assert parser._queries
+    
+    # Test cleanup
+    parser.cleanup()
+    assert not parser._parsers
+    assert not parser._queries
+
+def test_parser_configuration():
+    """Test parser configuration options."""
+    parser = TreeSitterParser()
+    parser.initialize(["python"])
+    
+    # Test debug mode - should add debug info to AST output
+    parser._debug = True
+    result = parser.parse("def test(): pass", "python")
+    assert result.metadata["root_type"] == "module"  # Debug mode shows AST structure
+    assert "test" in result.metadata["analysis"]["functions"]  # Debug mode logs functions
+    
+    # Test encoding handling
+    test_code = "def test(): pass"
+    result = parser.parse(test_code.encode('utf8'), "python")
+    assert result.metadata["encoding"] == "utf8"
+
+def test_error_handling():
+    """Test various error conditions."""
+    parser = TreeSitterParser()
+    parser.initialize(["python"])
+    
+    # Test parsing None content - tree-sitter requires bytestring or callable
+    ts_parser = parser._parsers["python"]
+    with pytest.raises(TypeError):
+        ts_parser.parse(None)
+    
+    # Test invalid language - should raise KeyError for missing parser
+    with pytest.raises(KeyError):
+        _ = parser._parsers["invalid"]
+    
+    # Test corrupted parser state - should raise ParserError
+    parser._parsers["python"] = None
+    with pytest.raises(ParserError):
+        parser.parse("def test(): pass", "python")
+
+def test_query_handling():
+    """Test query creation and handling."""
+    parser = TreeSitterParser()
+    
+    # Use tree-sitter's native query API
+    query_str = """
+    (function_definition
+      name: (identifier) @function.def)
+    """
+    
+    parser.initialize(["python"])
+    python_parser = parser._parsers.get("python")
+    assert python_parser is not None
+    
+    # Test query execution
+    code = "def test(): pass"
+    result = parser.parse(code, "python")
+    assert result.ast is not None
+    
+    # Verify function was found
+    functions = result.metadata["analysis"]["functions"]
+    assert "test" in functions
+
+def test_node_analysis():
+    """Test detailed node analysis."""
+    parser = TreeSitterParser()
+    parser.initialize(["python"])
+    
+    code = """
+    def outer():
+        def inner():
+            pass
+        class Inner:
+            def method(self):
+                pass
+    """
+    
+    result = parser.parse(code, "python")
+    functions = result.metadata["analysis"]["functions"]
+    
+    assert "outer" in functions
+    assert "inner" in functions
+    assert "method" in functions 
+
+def test_debug_ast_printing(caplog):
+    """Test debug AST printing functionality."""
+    parser = TreeSitterParser()
+    parser.initialize(["python"])
+    parser._debug = True
+    
+    code = """
+    def test():
+        x = 1
+        return x
+    """
+    
+    with caplog.at_level(logging.DEBUG):
+        result = parser.parse(code, "python")
+        
+    # Tree-sitter debug output includes node types and function detection
+    debug_messages = [record.message for record in caplog.records]
+    assert any("Tree-sitter [python]: Parsing content" in msg for msg in debug_messages)
+    assert any("Added function: test" in msg for msg in debug_messages)
+
+def test_complex_analysis():
+    """Test analysis of complex code structures."""
+    parser = TreeSitterParser()
+    parser.initialize(["python"])
+    
+    code = """
+    class TestClass:
+        def __init__(self):
+            self.x = 42
+            
+        @property
+        def value(self):
+            return self.x
+            
+        @classmethod
+        def factory(cls):
+            return cls()
+            
+        async def async_method(self):
+            await something()
+    """
+    
+    result = parser.parse(code, "python")
+    functions = result.metadata["analysis"]["functions"]
+    
+    # Test method detection
+    assert "__init__" in functions
+    assert "value" in functions
+    assert "factory" in functions
+    assert "async_method" in functions
+    
+    # Test decorators don't interfere
+    assert "@property" not in functions
+    assert "@classmethod" not in functions
+
+def test_error_recovery_modes():
+    """Test different error recovery scenarios."""
+    parser = TreeSitterParser()
+    parser.initialize(["python"])
+    
+    test_cases = {
+        "missing_paren": (
+            "def test(:\n    pass",
+            True,  # Should recover
+            True   # Should have errors
+        ),
+        "incomplete_class": (
+            "class Test\ndef method(self):",  # Missing colon
+            True,  # Should recover
+            True   # Should have errors
+        ),
+        "severe_error": (
+            "def @#$ test))",
+            False,  # Should not recover
+            True   # Should have errors
+        )
+    }
+    
+    for case_name, (code, should_recover, should_have_errors) in test_cases.items():
+        result = parser.parse(code, "python")
+        if should_recover:
+            assert result.ast is not None
+            # Check for errors using tree-sitter's node properties
+            root_node = result.ast.root_node
+            assert root_node.has_error == should_have_errors, f"Expected has_error={should_have_errors} for {case_name}"
+            
+            # Find error nodes using tree-sitter's cursor
+            cursor = root_node.walk()
+            error_found = False
+            
+            while cursor.goto_first_child() or cursor.goto_next_sibling():
+                if cursor.node.is_error or cursor.node.has_error:
+                    error_found = True
+                    break
+            
+            assert error_found == should_have_errors, f"Expected to find error nodes: {should_have_errors}"
+        else:
+            assert not result.is_valid
+
+def test_node_traversal():
+    """Test detailed node traversal and analysis."""
+    parser = TreeSitterParser()
+    parser.initialize(["python"])
+    
+    code = """
+    def outer():
+        x = 1
+        def inner():
+            y = 2
+            return x + y
+        return inner
+    
+    class Test:
+        def method(self):
+            pass
+    """
+    
+    result = parser.parse(code, "python")
+    
+    # Test node relationships
+    root = result.ast.root_node
+    assert root.type == "module"
+    
+    # Find function definitions
+    functions = []
+    cursor = result.ast.walk()
+    
+    def visit_node():
+        node = cursor.node
+        if node.type == "function_definition":
+            functions.append(node.child_by_field_name("name").text.decode('utf8'))
+        return True
+        
+    cursor.goto_first_child()
+    while cursor:
+        visit_node()
+        if not cursor.goto_first_child():
+            while not cursor.goto_next_sibling():
+                if not cursor.goto_parent():
+                    cursor = None
+                    break
+                    
+    assert set(functions) == {"outer", "inner", "method"} 
+
+def test_parser_error_handling():
+    """Test various parser error conditions."""
+    parser = TreeSitterParser()
+    parser.initialize(["python"])
+    
+    # Test missing language
+    with pytest.raises(ParserError):
+        parser.parse("def test(): pass", "nonexistent")
+    
+    # Test invalid source code type
+    with pytest.raises(TypeError):
+        parser.parse(123, "python")  # Not a string or bytes
+    
+    # Test empty content
+    result = parser.parse("", "python")
+    assert result.ast is not None
+    assert result.ast.root_node.type == "module"
+    assert len(result.ast.root_node.children) == 0
+
+def test_parser_metadata():
+    """Test parser metadata handling."""
+    parser = TreeSitterParser()
+    parser.initialize(["python"])
+    
+    code = """
+    def test():
+        '''Doc string'''
+        pass
+    
+    class Example:
+        def method(self):
+            pass
+    """
+    
+    result = parser.parse(code, "python")
+    metadata = result.metadata
+    
+    # Check metadata fields
+    assert "encoding" in metadata
+    assert "raw_content" in metadata
+    assert "root_type" in metadata
+    assert "analysis" in metadata
+    assert "functions" in metadata["analysis"]
+    assert "errors" in metadata["analysis"]
+    
+    # Check function analysis
+    functions = metadata["analysis"]["functions"]
+    assert "test" in functions
+    assert "method" in functions
+    
+    # Check byte offsets
+    assert functions["test"]["start"] < functions["method"]["start"]
+
+def test_parser_debug_mode():
+    """Test parser debug mode functionality."""
+    parser = TreeSitterParser()
+    parser.initialize(["python"])
+    parser._debug = True
+    
+    with caplog.at_level(logging.DEBUG):
+        result = parser.parse("""
+        def test():
+            if True:
+                return 42
+        """, "python")
+        
+        # Check debug logs
+        assert any("Parsing content" in msg for msg in caplog.records)
+        assert any("function_definition" in msg for msg in caplog.records)
+        assert any("Added function: test" in msg for msg in caplog.records)
+        
+        # Check debug metadata
+        assert result.metadata.get("debug_enabled")
+        assert "node_count" in result.metadata
+        assert "parse_time" in result.metadata
+
+def test_parser_query_cache():
+    """Test query caching mechanism."""
+    parser = TreeSitterParser()
+    parser.initialize(["python"])
+    
+    # First parse should create query
+    result1 = parser.parse("def test(): pass", "python")
+    assert "python_functions" in parser._queries
+    
+    # Get the cached query
+    cached_query = parser._queries["python_functions"]
+    
+    # Second parse should use cached query
+    result2 = parser.parse("def another(): pass", "python")
+    assert parser._queries["python_functions"] is cached_query
+    
+    # Clear queries
+    parser._queries = {}
+    assert not parser._queries
+    
+    # Should recreate query
+    result3 = parser.parse("def third(): pass", "python")
+    assert "python_functions" in parser._queries 
