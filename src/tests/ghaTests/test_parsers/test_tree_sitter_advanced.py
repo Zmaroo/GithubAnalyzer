@@ -9,6 +9,7 @@ from tree_sitter import Node, Tree, TreeCursor
 from GithubAnalyzer.core.models.errors import ParserError
 from GithubAnalyzer.analysis.models.tree_sitter import TreeSitterResult
 from GithubAnalyzer.analysis.services.parsers.tree_sitter import TreeSitterParser
+from GithubAnalyzer.analysis.models.tree_sitter import TreeSitterEdit, TreeSitterRange
 
 
 @pytest.fixture
@@ -190,3 +191,74 @@ def test_metadata_completeness(parser: TreeSitterParser) -> None:
     assert "root_type" in result.metadata
     assert result.metadata["root_type"] == "module"
     assert isinstance(result.metadata, dict)
+
+
+def test_incremental_parsing(parser: TreeSitterParser) -> None:
+    """Test incremental parsing functionality."""
+    # Initial content
+    content = """
+def example():
+    x = 1
+    y = 2
+    return x + y
+"""
+    result = parser.parse(content, "python")
+    assert result.success
+    tree = result.ast
+
+    # Modified content
+    modified_content = """
+def example():
+    x = 42
+    y = 2
+    return x + y
+"""
+    # Find the position of "1" in the original content
+    lines = content.splitlines()
+    line_with_x = next(i for i, line in enumerate(lines) if "x = 1" in line)
+    column_of_1 = lines[line_with_x].index("1")
+    
+    # Calculate byte offset
+    start_byte = sum(len(line) + 1 for line in lines[:line_with_x]) + column_of_1
+    end_byte = start_byte + 1  # "1" is one byte long
+    
+    # Find the node at this position
+    node = tree.root_node.descendant_for_byte_range(start_byte, end_byte)
+    assert node is not None, "Failed to find node to edit"
+    assert node.text.decode("utf8") == "1"
+    print(f"Found node at edit position: type={node.type}, text={node.text.decode('utf8')}")
+    print(f"Node position: start_byte={node.start_byte}, end_byte={node.end_byte}")
+    print(f"Node point: start={node.start_point}, end={node.end_point}")
+
+    # Parse the modified content first
+    result = parser.parse(modified_content, "python")
+    assert result.success
+    new_tree = result.ast
+
+    # Find the position of "42" in the modified content
+    lines = modified_content.splitlines()
+    line_with_x = next(i for i, line in enumerate(lines) if "x = 42" in line)
+    column_of_42 = lines[line_with_x].index("42")
+    
+    # Calculate byte offset in modified content
+    new_start_byte = sum(len(line) + 1 for line in lines[:line_with_x]) + column_of_42
+    new_end_byte = new_start_byte + len("42")
+
+    # Edit the original tree to match the new content
+    tree.edit(
+        start_byte=node.start_byte,
+        old_end_byte=node.end_byte,
+        new_end_byte=node.start_byte + len("42"),
+        start_point=node.start_point,
+        old_end_point=node.end_point,
+        new_end_point=(node.start_point[0], node.start_point[1] + len("42"))
+    )
+
+    # Parse the modified content with the edited tree
+    result = parser.parse(modified_content, "python", old_tree=tree)
+    assert result.success
+
+    # Verify the new tree has the correct value
+    new_node = result.ast.root_node.descendant_for_byte_range(new_start_byte, new_end_byte)
+    assert new_node is not None, "Could not find node in new tree"
+    assert new_node.text.decode("utf8") == "42"

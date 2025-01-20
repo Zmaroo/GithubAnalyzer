@@ -150,12 +150,13 @@ class TreeSitterParser(BaseService):
 
     @retry(max_attempts=2)
     @timer(name="parse")
-    def parse(self, content: Union[str, bytes], language: str) -> TreeSitterResult:
+    def parse(self, content: Union[str, bytes], language: str, old_tree: Optional[Tree] = None) -> TreeSitterResult:
         """Parse content using tree-sitter.
         
         Args:
             content: Content to parse
             language: Language to use for parsing
+            old_tree: Optional previous tree for incremental parsing
             
         Returns:
             TreeSitterResult containing AST and metadata
@@ -185,7 +186,10 @@ class TreeSitterParser(BaseService):
             if self._config.debug:
                 logger.debug("[tree-sitter] debug: Starting parse")
                 
-            tree = parser.parse(content)
+            if old_tree is not None:
+                tree = parser.parse(content, old_tree=old_tree)
+            else:
+                tree = parser.parse(content)
             
             if self._config.debug:
                 logger.debug("[tree-sitter] debug: Parse complete")
@@ -201,6 +205,11 @@ class TreeSitterParser(BaseService):
                 errors.append(error)
                 logger.warning(f"Syntax error in {language} content: {error.message} at line {error.line}, column {error.column}")
             
+            # Get reparsed ranges if incremental parsing was used
+            reparsed_ranges = []
+            if old_tree is not None:
+                reparsed_ranges = old_tree.changed_ranges(tree)
+            
             # Create result
             result = TreeSitterResult(
                 tree=tree,
@@ -211,7 +220,8 @@ class TreeSitterParser(BaseService):
                 metadata={
                     "root_type": tree.root_node.type,
                     "byte_length": len(content),
-                    "line_count": content.count(b"\n") + 1
+                    "line_count": content.count(b"\n") + 1,
+                    "reparsed_ranges": [TreeSitterRange.from_tree_sitter(r) for r in reparsed_ranges] if reparsed_ranges else None
                 }
             )
             
