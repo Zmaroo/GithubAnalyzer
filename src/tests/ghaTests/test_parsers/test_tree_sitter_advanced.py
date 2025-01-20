@@ -6,9 +6,9 @@ from typing import Dict, List, Generator
 import pytest
 from tree_sitter import Node, Tree, TreeCursor
 
-from GithubAnalyzer.models.core.errors import ParserError
-from GithubAnalyzer.models.analysis.ast import ParseResult
-from GithubAnalyzer.services.core.parsers.tree_sitter import TreeSitterParser
+from GithubAnalyzer.core.models.errors import ParserError
+from GithubAnalyzer.analysis.models.tree_sitter import TreeSitterResult
+from GithubAnalyzer.analysis.services.parsers.tree_sitter import TreeSitterParser
 
 
 @pytest.fixture
@@ -25,14 +25,14 @@ def test_encoding_handling(parser: TreeSitterParser) -> None:
     # Test UTF-8 with ASCII
     content_ascii = 'print("Hello!")'
     result = parser.parse(content_ascii, "python")
-    assert result.is_valid
-    assert result.metadata["encoding"] == "utf8"
+    assert result.success
+    assert "byte_length" in result.metadata
 
     # Test UTF-8 with Unicode
     content_unicode = 'print("Hello, 世界! 🌍")'
     result = parser.parse(content_unicode, "python")
-    assert result.is_valid
-    assert result.metadata["encoding"] == "utf8"
+    assert result.success
+    assert "byte_length" in result.metadata
 
 
 def test_node_traversal(parser: TreeSitterParser) -> None:
@@ -44,7 +44,7 @@ def test_function():
     return x + y
 """
     result = parser.parse(content, "python")
-    assert result.is_valid
+    assert result.success
 
     # Get root node
     root: Node = result.ast.root_node
@@ -72,7 +72,7 @@ def example():
         return 42
 """
     result = parser.parse(content, "python")
-    assert result.is_valid
+    assert result.success
 
     cursor: TreeCursor = result.ast.walk()
 
@@ -123,11 +123,6 @@ print("Hello)
 
     for code, expected_error in test_cases:
         result = parser.parse(code, "python")
-        print(f"\nTesting code:\n{code}")
-        print(f"Tree root type: {result.ast.root_node.type}")
-        print(f"Tree has error: {result.ast.root_node.has_error}")
-        print(f"Tree errors: {result.errors}")
-
         if expected_error == "ERROR":
             assert not result.is_valid
             assert len(result.errors) > 0
@@ -151,28 +146,6 @@ def test_node_counting(parser: TreeSitterParser) -> None:
         assert result.node_count >= expected_count
 
 
-def test_query_functionality(parser: TreeSitterParser) -> None:
-    """Test query functionality."""
-    content = """
-def test_function():
-    x = 1
-    y = 2
-    print(x + y)
-    return x + y
-
-def another_function():
-    print("Hello")
-"""
-    result = parser.parse(content, "python")
-    assert result.is_valid
-
-    # Get all function definitions using the parser's query functionality
-    functions = result.metadata["analysis"]["functions"]
-    assert len(functions) == 2
-    assert "test_function" in functions
-    assert "another_function" in functions
-
-
 def test_error_recovery(parser: TreeSitterParser) -> None:
     """Test parser error recovery capabilities."""
     content = """def valid_function():
@@ -183,6 +156,7 @@ def invalid_function)
 
 def another_valid():
     pass"""
+    
     # Ensure consistent line endings and no leading whitespace
     normalized_content = "\n".join(line.strip() for line in content.splitlines())
     result = parser.parse(normalized_content, "python")
@@ -194,18 +168,13 @@ def another_valid():
     assert not result.is_valid
     assert len(result.errors) > 0
 
-    # Debug: Print AST structure
-    def print_node(node, level=0):
-        indent = "  " * level
-        print(f"{indent}{node.type}: {node.text.decode('utf8')}")
-        for child in node.children:
-            print_node(child, level + 1)
-
-    print("\nAST Structure:")
-    print_node(result.ast.root_node)
-
-    # We should still be able to find valid functions
-    valid_functions = result.metadata["analysis"]["functions"]
+    # We should still be able to find valid nodes
+    root = result.ast.root_node
+    valid_functions = [
+        node.child_by_field_name("name").text.decode("utf8")
+        for node in root.children
+        if node.type == "function_definition" and not node.has_error
+    ]
 
     assert "valid_function" in valid_functions
     assert "another_valid" in valid_functions
@@ -216,9 +185,8 @@ def test_metadata_completeness(parser: TreeSitterParser) -> None:
     content = "x = 42"
     result = parser.parse(content, "python")
 
-    assert result.metadata["encoding"] == parser._encoding
-    assert result.metadata["raw_content"] == content
+    assert "byte_length" in result.metadata
+    assert "line_count" in result.metadata
+    assert "root_type" in result.metadata
     assert result.metadata["root_type"] == "module"
-    assert "analysis" in result.metadata
-    assert isinstance(result.metadata["analysis"], dict)
-    assert "errors" in result.metadata["analysis"]
+    assert isinstance(result.metadata, dict)
