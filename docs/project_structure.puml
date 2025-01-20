@@ -1,0 +1,128 @@
+@startuml GithubAnalyzer Structure
+
+' Styling
+skinparam componentStyle uml2
+skinparam backgroundColor white
+skinparam monochrome true
+
+package "GithubAnalyzer" {
+    ' Core Layer
+    package "Core" {
+        package "Models" {
+            component [base.py] as BM
+            component [errors.py] as EM
+            component [file.py] as FM
+            component [ast.py] as AST
+        }
+        
+        package "Services" {
+            component [base_service.py] as BS
+            component [file_service.py] as FS
+            component [parser_service.py] as PS
+            
+            package "Parsers" {
+                component [base.py] as BP
+                component [config_parser.py] as CP
+            }
+        }
+
+        package "Config" {
+            component [settings.py] as SET
+            component [parser_config.py] as PCF
+            component [language_config.py] as LCF
+        }
+
+        package "Utils" {
+            component [context_manager.py] as CM
+            component [decorators.py] as DC
+            component [logging.py] as LG
+        }
+    }
+
+    ' Analysis Layer
+    package "Analysis" {
+        package "Models" {
+            component [results.py] as AR
+            component [tree_sitter.py] as TSM
+        }
+        
+        package "Services" {
+            package "Parsers" {
+                component [tree_sitter.py] as TS
+                component [documentation.py] as DP
+                component [license.py] as LP
+            }
+            component [parser_registry.py] as PR
+        }
+    }
+
+    ' Common Layer
+    package "Common" {
+        package "Services" {
+            component [cache_service.py] as CS
+        }
+    }
+
+    ' Core Dependencies
+    BS --> EM : uses
+    BS --> LG : uses
+    FS --> FM : uses
+    PS --> AST : uses
+    BP --> FM : uses
+    BP --> EM : uses
+    CP --> PCF : uses
+
+    ' Analysis Dependencies
+    TS --> AST : uses
+    TS --> TSM : uses
+    DP --> AST : uses
+    LP --> AST : uses
+    PR --> PS : uses
+    PR --> TS : uses
+    PR --> DP : uses
+    PR --> LP : uses
+
+    ' Common Usage
+    PS --> CS : uses
+    FS --> CS : uses
+    TS --> CS : uses
+    DP --> CS : uses
+    LP --> CS : uses
+
+    ' Infrastructure Usage
+    CS --> CM : uses
+    CS --> LG : uses
+    PCF --> SET : uses
+    LCF --> SET : uses
+
+    ' Parser Inheritance
+    BP <|-- CP : extends
+    BP <|-- TS : extends
+    BP <|-- DP : extends
+    BP <|-- LP : extends
+
+    ' Service Inheritance
+    BS <|-- FS : extends
+    BS <|-- PS : extends
+
+    ' Notes
+    note right of Core
+        Core layer provides fundamental models,
+        interfaces, services, configuration and utilities.
+        No dependencies on Analysis layer.
+    end note
+
+    note right of Analysis
+        Analysis layer implements specialized parsers
+        and analysis services. Can depend on Core
+        and Common layers.
+    end note
+
+    note right of Common
+        Common layer provides shared services
+        used by both Core and Analysis layers.
+        No dependencies on either layer.
+    end note
+}
+
+@enduml 

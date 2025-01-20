@@ -1,0 +1,96 @@
+@startuml Parser Service Dependencies
+
+' Color coding
+' #lightgreen = implemented and used
+' #lightyellow = needs review/update
+' #pink = needs implementation/unused
+
+package "Services" {
+    package "Core" {
+        [base_service.py] as BS #lightgreen
+        [parser_service.py] as PS #lightgreen
+        [file_service.py] as FS #lightgreen
+        
+        package "Parsers" {
+            [base.py] as BP #lightgreen
+            [tree_sitter.py] as TS #lightgreen
+            [config_parser.py] as CP #lightgreen
+            [documentation.py] as DP #lightyellow
+            [license.py] as LP #lightyellow
+        }
+    }
+}
+
+package "Models" {
+    package "Core" {
+        [errors.py] as ERR #lightgreen
+        [file.py] as FM #lightgreen
+    }
+    package "Analysis" {
+        [ast.py] as AST #lightgreen
+    }
+}
+
+package "Config" {
+    [language_config.py] as LC #lightgreen
+    [parser_config.py] as PC #lightgreen
+}
+
+package "Utils" {
+    [context_manager.py] as CM #pink
+    [file_utils.py] as FU #pink
+    [decorators.py] as DC #pink
+    [logging.py] as LOG #lightgreen
+}
+
+' Service Dependencies
+BS --> LOG : uses logging
+PS --> FS : uses
+PS --> BP : uses
+TS --> FS : uses
+CP --> PC : uses config
+
+' Model Usage
+FS --> FM : uses models
+PS --> FM : uses models
+TS --> FM : uses models
+PS --> AST : uses
+TS --> AST : produces
+
+' Error Handling
+PS --> ERR : uses
+FS --> ERR : uses
+TS --> ERR : uses
+CP --> ERR : uses
+
+' Parser Inheritance
+BP <|-- TS : extends
+BP <|-- CP : extends
+BP <|-- DP : extends
+BP <|-- LP : extends
+
+' Base Service Inheritance
+BS <|-- PS : extends
+BS <|-- FS : extends
+
+note right of FS
+  Handles all file operations
+  and type detection
+end note
+
+note right of FM
+  File-related data models
+  (FileInfo, FileType, etc)
+end note
+
+note right of PS
+  Orchestrates parsing using
+  appropriate parsers
+end note
+
+note right of FU
+  Deprecated: Functionality
+  moved to FileService
+end note
+
+@enduml 

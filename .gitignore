@@ -59,6 +59,9 @@ docs/api/
 *.db
 *.sqlite3
 
+# Tree-sitter
+.tree-sitter-language-pack-repo/
+
 # Cache directories
 .mypy_cache/
 .ruff_cache/

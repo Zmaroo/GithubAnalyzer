@@ -1,7 +1,0 @@
-tree-sitter==0.23.2
-tree-sitter-python==0.23.2
-tree-sitter-javascript==0.23.1
-tree-sitter-typescript==0.23.2
-tree-sitter-tsx==0.23.2
-tree-sitter-c==0.23.2
-# ... other language packages with matching versions 
