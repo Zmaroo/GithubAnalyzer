@@ -1,7 +1,7 @@
 """Integration test configuration."""
 
 import pytest
-from GithubAnalyzer.services.core.parsers import TreeSitterParser
+from GithubAnalyzer.analysis.services.parsers import TreeSitterParser
 
 @pytest.fixture(scope="session")
 def integration_parser():

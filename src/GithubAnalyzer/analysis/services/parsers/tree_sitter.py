@@ -84,7 +84,7 @@ class TreeSitterParser(BaseService):
             if not self._config.debug:
                 return
                 
-            logger.debug(f"[tree-sitter] {message}")
+            logger.debug("[tree-sitter] debug: %s", message)
             
         # Store callback to prevent garbage collection
         self._log_callback = log_callback
@@ -96,40 +96,33 @@ class TreeSitterParser(BaseService):
             enabled: Whether to enable debug logging
         """
         self._config.debug = enabled
-        for binding in self._language_bindings.values():
-            parser = binding.parser
-            # Set tree-sitter v24 logger
-            parser.logger = self._log_callback if enabled else None
-
+        
     def initialize(self, languages: Optional[List[str]] = None) -> None:
-        """Initialize parsers for specified languages.
+        """Initialize the parser with specified languages.
         
         Args:
-            languages: List of language names to initialize parsers for
+            languages: List of languages to initialize. If None, uses configured languages.
             
         Raises:
-            ParserError: If a language is not found or initialization fails
+            ParserError: If initialization fails
         """
         try:
-            # Initialize file and cache services
-            self._file_service.initialize()
-            self._cache.initialize()
-
-            # Track successful initializations
+            logger.info("Initializing parser with languages: %s", languages or self._config.languages)
+            
+            # Use provided languages or fall back to configured ones
+            languages_to_init = languages or self._config.languages
+            
+            # Track which languages were initialized
             initialized_languages = []
-
-            # Initialize parsers for each language
-            for language in languages or []:
+            
+            for language in languages_to_init:
                 try:
                     # Get language binding and parser
                     binding = get_binding(language)
                     language_obj = get_language(language)
                     parser = get_parser(language)
                     
-                    # Set up logger if debug mode is enabled
-                    if self._config.debug:
-                        parser.logger = self._log_callback
-                    
+                    # Store language binding
                     self._language_bindings[language] = TreeSitterLanguageBinding(
                         name=language,
                         binding=binding,
@@ -138,15 +131,12 @@ class TreeSitterParser(BaseService):
                     )
                     
                     initialized_languages.append(language)
+                    logger.debug("[tree-sitter] Initialized language: %s", language)
                     
-                    if self._config.debug:
-                        logger.debug(f"Initialized parser for {language}")
                 except Exception as e:
-                    logger.warning(f"Failed to initialize {language} parser: {str(e)}")
-                    # Only raise if no languages were initialized
-                    if not initialized_languages:
-                        raise ParserError(f"Language not found: {language}")
-
+                    logger.warning("Failed to initialize language %s: %s", language, e)
+                    continue
+            
             # Set initialized if at least one language was initialized
             if initialized_languages:
                 self._initialized = True
@@ -184,10 +174,6 @@ class TreeSitterParser(BaseService):
             binding = self._language_bindings[language]
             parser = binding.parser
             
-            # Set logger based on debug mode
-            if self._config.debug:
-                parser.set_logger(self._log_callback)
-            
             # Convert content to bytes if needed
             if isinstance(content, str):
                 content = content.encode()
@@ -196,7 +182,13 @@ class TreeSitterParser(BaseService):
             logger.info(f"Parsing {language} content ({len(content)} bytes)")
             
             # Parse content
+            if self._config.debug:
+                logger.debug("[tree-sitter] debug: Starting parse")
+                
             tree = parser.parse(content)
+            
+            if self._config.debug:
+                logger.debug("[tree-sitter] debug: Parse complete")
             
             # Check for syntax errors
             errors = []
