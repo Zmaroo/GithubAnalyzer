@@ -1,6 +1,13 @@
-"""Parser-specific configurations."""
-
+"""Configuration for parsers."""
+from enum import Enum
 from typing import Dict, List, Optional, Union
+
+class ConfigFormat(Enum):
+    """Supported configuration file formats."""
+    YAML = "yaml"
+    JSON = "json"
+    TOML = "toml"
+    INI = "ini"
 
 # Configuration file format mappings
 CONFIG_FILE_FORMATS: Dict[str, Dict[str, List[str]]] = {
@@ -84,14 +91,7 @@ def get_parser_for_file(file_path: str) -> Optional[str]:
     return None
 
 def get_config_format(file_path: str) -> Optional[str]:
-    """Get the specific configuration format for a file.
-
-    Args:
-        file_path: Path to the configuration file
-
-    Returns:
-        Configuration format identifier or None if not a config file
-    """
+    """Get the specific configuration format for a file."""
     lower_path = file_path.lower()
     for format_type, info in CONFIG_FILE_FORMATS.items():
         if any(lower_path.endswith(ext) for ext in info["extensions"]):

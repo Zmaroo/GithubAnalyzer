@@ -1,0 +1,3 @@
+def test_layer_separation():
+    """Test proper layer separation"""
+    # ... existing code ... 

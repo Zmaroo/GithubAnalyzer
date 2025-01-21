@@ -7,6 +7,7 @@ authors = [
 ]
 dependencies = [
     "python-json-logger>=2.0.0",
+    "PyYAML>=6.0",
 ]
 requires-python = ">=3.11"
 readme = "README.md"
@@ -15,3 +16,35 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+log_cli = true
+log_cli_level = "INFO"
+addopts = "-v --cov=src.GithubAnalyzer --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/GithubAnalyzer"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+]
+
+[dependency-groups]
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov",
+]
+dev = [
+    "pytest-cov>=6.0.0",
+]

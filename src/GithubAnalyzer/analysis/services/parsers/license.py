@@ -4,13 +4,13 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from ....models.core.ast import ParseResult
-from ....models.core.errors import ParserError
-from ....models.core.file import FileInfo, FileType
-from ...core.parsers.base import BaseParser
-from ...common.cache_service import CacheService
-from ....utils.context_manager import ContextManager
-from ....utils.decorators import retry, timeout, timer
+from src.GithubAnalyzer.core.models.ast import ParseResult
+from src.GithubAnalyzer.core.models.errors import ParserError
+from src.GithubAnalyzer.core.models.file import FileInfo, FileType
+from src.GithubAnalyzer.core.services.parsers.base import BaseParser
+from src.GithubAnalyzer.common.services.cache_service import CacheService
+from src.GithubAnalyzer.core.utils.context_manager import ContextManager
+from src.GithubAnalyzer.core.utils.decorators import retry, timeout, timer
 
 
 class LicenseParser(BaseParser):
@@ -24,6 +24,9 @@ class LicenseParser(BaseParser):
         "ISC": r"ISC License",
         "Mozilla": r"Mozilla Public License",
     }
+
+    def __init__(self):
+        super().__init__()
 
     def initialize(self, languages: Optional[List[str]] = None) -> None:
         """Initialize the parser.

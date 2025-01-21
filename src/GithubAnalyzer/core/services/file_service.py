@@ -6,20 +6,24 @@ import fnmatch
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
+import logging
 
 from ..models.errors import FileOperationError, ConfigError
 from ..models.file import FileInfo, FileType, FileFilterConfig
-from .base_service import BaseService
+from src.GithubAnalyzer.core.services.base_service import BaseService
 
+# Configure module logger
+logger = logging.getLogger(__name__)
 
 class FileService(BaseService):
     """Service for file operations."""
 
-    def __init__(self, filter_config: Optional[FileFilterConfig] = None):
+    def __init__(self, filter_config: Optional[FileFilterConfig] = None, cache_service=None):
         """Initialize file service.
         
         Args:
             filter_config: Optional configuration for file filtering
+            cache_service: Optional cache service
         """
         super().__init__()
         self._filter_config = filter_config
@@ -30,6 +34,7 @@ class FileService(BaseService):
             b'GIF',      # GIF images
             b'\xFF\xD8', # JPEG images
         }
+        self.cache_service = cache_service
 
     def _validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """Validate and process configuration.
@@ -192,4 +197,24 @@ class FileService(BaseService):
             
         if pattern.is_regex:
             return bool(re.match(pattern, name))
-        return fnmatch.fnmatch(name, pattern) 
+        return fnmatch.fnmatch(name, pattern)
+
+    def read_file(self, file_path: Path) -> str:
+        """Read file contents.
+        
+        Args:
+            file_path: Path to file
+            
+        Returns:
+            File contents as string
+            
+        Raises:
+            FileNotFoundError if file doesn't exist
+            IOError if file can't be read
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            logger.error("Failed to read %s: %s", file_path, e)
+            raise 

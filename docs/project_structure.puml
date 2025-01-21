@@ -49,6 +49,8 @@ package "GithubAnalyzer" {
         package "Services" {
             package "Parsers" {
                 component [tree_sitter.py] as TS
+                component [tree_sitter_query.py] as TSQ
+                component [language_utils.py] as LU
                 component [documentation.py] as DP
                 component [license.py] as LP
             }
@@ -75,6 +77,8 @@ package "GithubAnalyzer" {
     ' Analysis Dependencies
     TS --> AST : uses
     TS --> TSM : uses
+    TS --> TSQ : uses
+    TS --> LU : uses
     DP --> AST : uses
     LP --> AST : uses
     PR --> PS : uses
@@ -104,6 +108,10 @@ package "GithubAnalyzer" {
     ' Service Inheritance
     BS <|-- FS : extends
     BS <|-- PS : extends
+
+    ' Tree-sitter Component Dependencies
+    TSQ --> TSM : uses
+    LU --> TS : uses
 
     ' Notes
     note right of Core

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import Dict, Any
 from pathlib import Path
+from .logging_config import get_logging_config
 
 @dataclass
 class Settings:
@@ -31,26 +32,4 @@ LOG_LEVEL = "INFO"
 PARSER_TIMEOUT = 5000  # milliseconds
 
 # Logging configuration
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "standard": {
-            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-        },
-    },
-    "handlers": {
-        "default": {
-            "level": LOG_LEVEL,
-            "formatter": "standard",
-            "class": "logging.StreamHandler",
-        },
-    },
-    "loggers": {
-        "": {
-            "handlers": ["default"],
-            "level": LOG_LEVEL,
-            "propagate": True
-        }
-    }
-}
+LOGGING = get_logging_config()

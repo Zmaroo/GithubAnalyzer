@@ -1,23 +1,33 @@
 """Configuration file parser implementation."""
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import yaml
 
-from ....config.parser_config import CONFIG_FILE_FORMATS, get_config_format
-from ....models.analysis.ast import ParseResult
-from ....models.core.errors import ParserError
-from ....models.core.file import FileInfo, FileType
+from ...models.ast import ParseResult
+from ...models.errors import ParserError
+from ...models.file import FileInfo, FileType
+from ...config.parser_config import CONFIG_FILE_FORMATS, get_config_format
 from .base import BaseParser
-from ...common.cache_service import CacheService
-from ....utils.context_manager import ContextManager
-from ....utils.decorators import retry, timeout, timer
+from ....common.services.cache_service import CacheService
+from ...utils.context_manager import ContextManager
+from ...utils.decorators import retry, timeout, timer
 
 
 class ConfigParser(BaseParser):
     """Parser for configuration files (YAML, JSON, TOML, etc.)."""
+
+    def __init__(self, cache_service=None):
+        """Initialize config parser.
+        
+        Args:
+            cache_service: Optional cache service instance
+        """
+        super().__init__()
+        self.cache_service = cache_service
 
     def initialize(self, languages: Optional[List[str]] = None) -> None:
         """Initialize the parser.

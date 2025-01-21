@@ -1,436 +1,564 @@
-"""Tree-sitter based parser implementation."""
+"""Tree-sitter parser implementation."""
 
+from typing import Dict, List, Optional, Set, Tuple, Any, Callable, Union
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Any, Set, Callable
-from threading import Lock
 
-from tree_sitter import Language, Parser, Tree, Node
+from tree_sitter import (
+    Language, 
+    Parser, 
+    Tree, 
+    Node, 
+    Query, 
+    QueryError
+)
 from tree_sitter_language_pack import get_binding, get_language, get_parser
 
-from ....core.models.errors import ParserError
-from ....core.models.file import FileInfo, FileType
-from ...models.tree_sitter import (
-    TreeSitterConfig,
+from src.GithubAnalyzer.core.models.errors import ParserError
+from src.GithubAnalyzer.core.models.ast import NodeType
+from src.GithubAnalyzer.core.services.base_service import BaseService
+from src.GithubAnalyzer.core.services.file_service import FileService
+from src.GithubAnalyzer.core.services.parsers.base import BaseParser
+from src.GithubAnalyzer.common.services.cache_service import CacheService
+from src.GithubAnalyzer.analysis.models.tree_sitter import (
     TreeSitterError,
     TreeSitterResult,
-    TreeSitterNodeType,
-    TreeSitterLogType,
-    TreeSitterRange,
-    TreeSitterEdit,
-    TreeSitterLanguageBinding
+    TreeSitterQueryError
 )
-from ....core.services.file_service import FileService
-from ....core.services.parsers.base import BaseParser
-from ....common.services.cache_service import CacheService
-from ....core.utils.context_manager import ContextManager
-from ....core.utils.decorators import retry, timeout, timer
-from ....core.utils.logging import get_logger
-from ....core.services.base_service import BaseService
 
-logger = get_logger(__name__)
+# Configure module logger
+logger = logging.getLogger(__name__)
+
+# Constants
+QUERY_TIMEOUT_MS = 5000  # 5 seconds
+MAX_RECOVERY_ATTEMPTS = 3
+ERROR_SENTINEL = "ERROR"
+MISSING_SENTINEL = "MISSING"
+MAX_QUERY_MATCHES = 1000
+
+def tree_sitter_logger(message: str) -> None:
+    """Logger callback for Tree-sitter v24.
+    
+    Args:
+        message: Log message from Tree-sitter
+    """
+    logger.debug("[tree-sitter] %s", message)
 
 
-class TreeSitterParser(BaseService):
-    """Parser implementation using tree-sitter."""
+class TreeSitterParser(BaseParser):
+    """Tree-sitter based code parser."""
 
-    def __init__(
-        self,
-        config: Optional[TreeSitterConfig] = None,
-        file_service: Optional[FileService] = None,
-        cache_service: Optional[CacheService] = None,
-        context_manager: Optional[ContextManager] = None
-    ) -> None:
-        """Initialize the parser.
-        
-        Args:
-            config: Parser configuration
-            file_service: Service for file operations
-            cache_service: Service for caching results
-            context_manager: Service for resource management
-        """
+    def __init__(self, cache_service=None, context_manager=None, file_service=None):
+        """Initialize tree-sitter parser."""
         super().__init__()
-        self._config = config or TreeSitterConfig(languages=self._get_default_languages())
-        self._file_service = file_service or FileService()
-        self._cache = cache_service or CacheService()
-        self._context = context_manager or ContextManager()
+        self.cache_service = cache_service
+        self._context = context_manager
+        self.file_service = file_service
+        self.languages: Dict[str, Language] = {}
+        self.parsers: Dict[str, Parser] = {}
+        self._source_map: Dict[Tree, bytes] = {}
+        self.language_names: Dict[Language, str] = {}
         
-        self._lock = Lock()
-        self._initialized = False
-        self._language_bindings: Dict[str, TreeSitterLanguageBinding] = {}
-        self._changed_files: Set[Path] = set()
+        # Configure Tree-sitter logging
+        for parser_cls in [Parser, Language, Tree, Node]:
+            if hasattr(parser_cls, 'set_logger'):
+                parser_cls.set_logger(tree_sitter_logger)
         
-        # Set up logging callback for tree-sitter v24
-        self._setup_logging()
+        self.initialize()
 
-    @property
-    def initialized(self) -> bool:
-        """Whether the parser is initialized."""
-        return self._initialized
-
-    @property
-    def supported_languages(self) -> List[str]:
-        """Get list of supported languages."""
-        return list(self._language_bindings.keys())
-
-    def _setup_logging(self) -> None:
-        """Set up logging callback for tree-sitter v24."""
-        def log_callback(message: str) -> None:
-            """Callback for tree-sitter logging.
-            
-            Args:
-                message: The log message
-            """
-            if not self._config.debug:
-                return
-                
-            logger.debug("[tree-sitter] debug: %s", message)
-            
-        # Store callback to prevent garbage collection
-        self._log_callback = log_callback
-        
-    def set_debug(self, enabled: bool) -> None:
-        """Enable or disable debug logging.
-        
-        Args:
-            enabled: Whether to enable debug logging
-        """
-        self._config.debug = enabled
-        
     def initialize(self, languages: Optional[List[str]] = None) -> None:
-        """Initialize the parser with specified languages.
-        
-        Args:
-            languages: List of languages to initialize. If None, uses configured languages.
-            
-        Raises:
-            ParserError: If initialization fails
-        """
+        """Initialize parser with supported languages."""
         try:
-            logger.info("Initializing parser with languages: %s", languages or self._config.languages)
+            logger.info("Initializing Tree-sitter parser")
             
-            # Use provided languages or fall back to configured ones
-            languages_to_init = languages or self._config.languages
-            
-            # Track which languages were initialized
-            initialized_languages = []
-            
-            for language in languages_to_init:
+            # Get languages from tree-sitter-language-pack
+            for lang_id in languages or ["python", "javascript", "typescript"]:
                 try:
-                    # Get language binding and parser
-                    binding = get_binding(language)
-                    language_obj = get_language(language)
-                    parser = get_parser(language)
+                    # Get language and parser from language pack
+                    lang = get_language(lang_id)
+                    parser = get_parser(lang_id)
                     
-                    # Store language binding
-                    self._language_bindings[language] = TreeSitterLanguageBinding(
-                        name=language,
-                        binding=binding,
-                        language=language_obj,
-                        parser=parser
-                    )
+                    # Store language and parser
+                    self.languages[lang_id] = lang
+                    self.parsers[lang_id] = parser
+                    self.language_names[lang] = lang_id
                     
-                    initialized_languages.append(language)
-                    logger.debug("[tree-sitter] Initialized language: %s", language)
+                    # Configure parser
+                    parser.timeout_micros = QUERY_TIMEOUT_MS * 1000
+                    
+                    logger.info(f"Successfully initialized {lang_id} language support")
                     
                 except Exception as e:
-                    logger.warning("Failed to initialize language %s: %s", language, e)
+                    logger.error(f"Failed to initialize {lang_id}: {e}")
                     continue
+                    
+            logger.info(f"Parser initialization complete with languages: {', '.join(self.languages.keys())}")
             
-            # Set initialized if at least one language was initialized
-            if initialized_languages:
-                self._initialized = True
-            else:
-                raise ParserError("No languages were initialized successfully")
-
         except Exception as e:
-            if not isinstance(e, ParserError):
-                raise ParserError(f"Failed to initialize parser: {str(e)}")
+            logger.error(f"Failed to initialize parser: {e}")
             raise
 
-    @retry(max_attempts=2)
-    @timer(name="parse")
-    def parse(self, content: Union[str, bytes], language: str, old_tree: Optional[Tree] = None) -> TreeSitterResult:
+    def parse(self, content: Union[str, bytes], language: str, recovery_enabled: bool = True) -> TreeSitterResult:
         """Parse content using tree-sitter.
         
         Args:
-            content: Content to parse
-            language: Language to use for parsing
-            old_tree: Optional previous tree for incremental parsing
+            content: Source code to parse (string or bytes)
+            language: Language identifier
+            recovery_enabled: Whether to attempt error recovery
             
         Returns:
-            TreeSitterResult containing AST and metadata
+            TreeSitterResult containing parse results
             
         Raises:
-            ParserError: If parsing fails
+            ParserError if language not supported or parsing fails
         """
+        if language not in self.languages:
+            logger.error("Unsupported language: %s", language)
+            raise ValueError(f"Language {language} not supported")
+            
         try:
-            if not self._initialized:
-                raise ParserError("Parser not initialized")
-                
-            if language not in self._language_bindings:
-                raise ParserError(f"Language {language} not supported")
-                
-            # Get parser for language
-            binding = self._language_bindings[language]
-            parser = binding.parser
+            logger.debug("Starting parse of %d bytes with language %s", len(content), language)
+            parser = self.parsers[language]
             
-            # Convert content to bytes if needed
+            # Parse content - handle both string and bytes input
             if isinstance(content, str):
-                content = content.encode()
-                
-            # Log parsing attempt
-            logger.info(f"Parsing {language} content ({len(content)} bytes)")
+                content = content.encode('utf8')
             
-            # Parse content
-            if self._config.debug:
-                logger.debug("[tree-sitter] debug: Starting parse")
-                
-            if old_tree is not None:
-                tree = parser.parse(content, old_tree=old_tree)
-            else:
-                tree = parser.parse(content)
+            # Keep reference to original tree
+            tree = parser.parse(content)
+            if tree is None:
+                raise ValueError("Parser returned None - possible timeout")
             
-            if self._config.debug:
-                logger.debug("[tree-sitter] debug: Parse complete")
+            # Store source for this tree
+            self._source_map[tree] = content
             
-            # Check for syntax errors
-            errors = []
-            for node in self._get_error_nodes(tree.root_node):
-                error = TreeSitterError(
-                    message=f"Syntax error at {node.type}",
-                    range=TreeSitterRange.from_tree_sitter(node.range),
-                    node=node
-                )
-                errors.append(error)
-                logger.warning(f"Syntax error in {language} content: {error.message} at line {error.line}, column {error.column}")
+            # Get error nodes before any modifications
+            error_nodes = self._get_error_nodes(tree.root_node)
+            errors = [TreeSitterError.from_node(node, content.splitlines()) for node in error_nodes]
             
-            # Get reparsed ranges if incremental parsing was used
-            reparsed_ranges = []
-            if old_tree is not None:
-                reparsed_ranges = old_tree.changed_ranges(tree)
-            
-            # Create result
+            # Create result with all required fields
             result = TreeSitterResult(
-                tree=tree,
+                tree=tree,  # Original tree reference
                 language=language,
+                is_valid=not tree.root_node.has_error,
                 errors=errors,
-                is_valid=len(errors) == 0,
-                node_count=self._count_nodes(tree.root_node),
+                node_count=tree.root_node.descendant_count,
                 metadata={
-                    "root_type": tree.root_node.type,
-                    "byte_length": len(content),
-                    "line_count": content.count(b"\n") + 1,
-                    "reparsed_ranges": [TreeSitterRange.from_tree_sitter(r) for r in reparsed_ranges] if reparsed_ranges else None
+                    'content_hash': hash(content),
+                    'recovery_enabled': recovery_enabled,
+                    'parse_time_micros': parser.timeout_micros
                 }
             )
-            
-            # Print tree if configured
-            if self._config.print_tree:
-                result.print_tree()
-                
-            # Log success
-            logger.info(f"Successfully parsed {language} content: {result.node_count} nodes, {len(errors)} errors")
-                
+
+            # Log parse results
+            logger.info("Parse complete: valid=%s, nodes=%d, errors=%d, recovery_attempts=%d",
+                       result.is_valid, result.node_count,
+                       len(result.errors),
+                       0 if result.is_valid else 1)
+
             return result
             
         except Exception as e:
-            logger.error(f"Failed to parse {language} content: {str(e)}", exc_info=True)
-            raise ParserError(f"Failed to parse content: {e}")
+            logger.error("Parsing failed for language %s: %s", language, str(e))
+            raise
 
-    @retry(max_attempts=2)
-    @timer(name="parse_file")
-    def parse_file(self, file_path: Union[str, Path, FileInfo]) -> TreeSitterResult:
+    def parse_file(self, file_path: Path, language: Optional[str] = None) -> TreeSitterResult:
         """Parse a file using tree-sitter.
-    
+        
         Args:
-            file_path: Path to the file to parse or FileInfo object
-    
+            file_path: Path to file
+            language: Optional language override
+            
         Returns:
-            TreeSitterResult containing AST and metadata
-    
+            TreeSitterResult containing parse results
+            
         Raises:
-            ParserError: If parsing fails
+            ParserError if file cannot be read or parsed
         """
         try:
-            # Get file info
-            if isinstance(file_path, FileInfo):
-                file_info = file_path
-                path = file_info.path
+            logger.debug("Reading file: %s", file_path)
+            # Read file directly if no file service
+            if self.file_service:
+                content = self.file_service.read_file(file_path)
             else:
-                path = Path(file_path)
-                file_info = self._file_service.get_file_info(path)
-
-            # Check cache first
-            cache_key = str(path.resolve())
-            if cache_key not in self._changed_files:
-                cached_ast = self._cache.get("ast", cache_key)
-                if cached_ast:
-                    return cached_ast
-
-            # Validate file
-            if file_info.is_binary:
-                raise ParserError(f"Cannot parse binary file: {path}")
-
-            if file_info.file_type == FileType.UNKNOWN:
-                raise ParserError(f"Unsupported file type: {path}")
-
-            # Read and parse file
-            content = path.read_text(encoding=file_info.encoding)
-            result = self.parse(content, file_info.file_type.value)
-
-            # Cache the result
-            self._cache.set("ast", cache_key, result)
-            self._changed_files.discard(cache_key)
-
-            return result
-
-        except Exception as e:
-            raise ParserError(f"Failed to parse file: {str(e)}")
-
-    def edit_file(self, file_path: Union[str, Path], edit: TreeSitterEdit) -> None:
-        """Apply an edit to a previously parsed file.
-        
-        Args:
-            file_path: Path to the file
-            edit: Edit operation to apply
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
             
-        Raises:
-            ParserError: If edit fails
-        """
-        try:
-            file_path = Path(file_path)
-            cache_key = str(file_path.resolve())
-            
-            # Get cached tree
-            cached_result = self._cache.get("ast", cache_key)
-            if not cached_result:
-                raise ParserError(f"No cached AST found for {file_path}")
-                
-            # Apply edit to tree
-            cached_result.tree.edit(
-                start_byte=edit.start_byte,
-                old_end_byte=edit.old_end_byte,
-                new_end_byte=edit.new_end_byte,
-                start_point=edit.start_point,
-                old_end_point=edit.old_end_point,
-                new_end_point=edit.new_end_point
-            )
-            
-            # Mark file as changed
-            self._changed_files.add(cache_key)
+            # Detect language if not provided
+            if not language:
+                language = self._detect_language(file_path)
+                if not language:
+                    raise ParserError(f"Could not detect language for file: {file_path}")
+                    
+            return self.parse(content, language)
             
         except Exception as e:
-            raise ParserError(f"Failed to apply edit: {e}")
-
-    def get_changed_ranges(
-        self, 
-        file_path: Union[str, Path],
-        new_content: Union[str, bytes]
-    ) -> List[TreeSitterRange]:
-        """Get ranges that changed between cached and new content.
-        
-        Args:
-            file_path: Path to the file
-            new_content: New content to compare against
-            
-        Returns:
-            List of changed ranges
-            
-        Raises:
-            ParserError: If comparison fails
-        """
-        try:
-            file_path = Path(file_path)
-            cache_key = str(file_path.resolve())
-            
-            # Get cached tree
-            cached_result = self._cache.get("ast", cache_key)
-            if not cached_result:
-                raise ParserError(f"No cached AST found for {file_path}")
-                
-            # Parse new content
-            if isinstance(new_content, str):
-                new_content = new_content.encode()
-                
-            new_tree = cached_result.tree.copy()
-            new_tree = self._language_bindings[cached_result.language].parser.parse(new_content)
-            
-            # Get changed ranges
-            ranges = cached_result.tree.changed_ranges(new_tree)
-            return [TreeSitterRange.from_tree_sitter(r) for r in ranges]
-            
-        except Exception as e:
-            raise ParserError(f"Failed to get changed ranges: {e}")
-
-    def cleanup(self) -> None:
-        """Clean up parser resources."""
-        with self._lock:
-            self._context.stop()
-            self._cache.cleanup()
-            self._language_bindings.clear()
-            self._changed_files.clear()
-            self._initialized = False
+            logger.error("Failed to parse %s: %s", file_path, e, exc_info=True)
+            raise
 
     def _get_error_nodes(self, node: Node) -> List[Node]:
-        """Get all error nodes in the tree using efficient cursor traversal.
+        """Find all error nodes in the AST.
         
         Args:
-            node: Root node to start traversal from
+            node: Root node to start search from
             
         Returns:
-            List of nodes containing syntax errors
+            List of nodes with syntax errors
         """
         errors = []
         cursor = node.walk()
         
-        # Visit all nodes in the tree efficiently
-        while True:
-            if cursor.node.has_error:
-                errors.append(cursor.node)
+        reached_end = False
+        while not reached_end:
+            current_node = cursor.node
+            
+            if current_node.has_error or current_node.is_missing or current_node.type == ERROR_SENTINEL:
+                logger.debug(
+                    "Found error node: type=%s, line=%d, has_error=%s, is_missing=%s",
+                    current_node.type,
+                    current_node.start_point[0] + 1,
+                    current_node.has_error,
+                    current_node.is_missing
+                )
+                errors.append(current_node)
                 
-            # Try to move to first child
             if cursor.goto_first_child():
                 continue
                 
-            # No children, try to move to next sibling
             if cursor.goto_next_sibling():
                 continue
                 
-            # No siblings, move up and try next sibling
             retracing = True
             while retracing:
                 if not cursor.goto_parent():
-                    # Reached the root, traversal complete
-                    return errors
-                    
-                if cursor.goto_next_sibling():
+                    retracing = False
+                    reached_end = True
+                elif cursor.goto_next_sibling():
                     retracing = False
                     
         return errors
 
-    def _get_default_languages(self) -> List[str]:
-        """Get list of default supported languages."""
-        return ["python", "javascript", "typescript"]
+    def _attempt_recovery(self, node: Node, language: str) -> bool:
+        """Attempt to recover from a parse error.
+        
+        Args:
+            node: Error node to recover from
+            language: Language being parsed
+            
+        Returns:
+            True if recovery was successful
+        """
+        try:
+            # Try basic recovery strategies
+            if node.type == "ERROR":
+                if language == "python":
+                    # Check for missing colon
+                    if self._is_missing_colon(node):
+                        logger.debug("Attempting to recover from missing colon at line %d", 
+                                   node.start_point[0] + 1)
+                        
+                        # Create and apply edit
+                        edit = self.create_edit_for_missing_colon(node)
+                        self.edit_tree(node.tree, [edit])
+                        return True
+                    
+            return False
+            
+        except Exception as e:
+            logger.error("Error during recovery attempt: %s", e)
+            return False
+        
+    def _is_missing_colon(self, node: Node) -> bool:
+        """Check if error is due to missing colon.
+        
+        Args:
+            node: Error node to check
+            
+        Returns:
+            True if error appears to be missing colon
+        """
+        try:
+            # Get language object
+            lang = self.languages["python"]
+            
+            # Create lookahead iterator for error node
+            if not hasattr(node, 'parse_state'):
+                return False
+            
+            lookahead = lang.lookahead_iterator(node.parse_state)
+            valid_symbols = set(lookahead.iter_names())
+            
+            # Check if colon is a valid next symbol
+            if ":" in valid_symbols:
+                logger.debug("Found missing colon at line %d", node.start_point[0] + 1)
+                return True
+            
+            # Check parent context
+            parent = node.parent
+            if parent and parent.type in {
+                "function_definition",
+                "class_definition",
+                "if_statement",
+                "for_statement",
+                "while_statement",
+                "try_statement"
+            }:
+                # These constructs require colons - check if we're at the point where colon is expected
+                for child in parent.children:
+                    if child == node and ":" in valid_symbols:
+                        logger.debug("Found missing colon in %s at line %d", 
+                                   parent.type, node.start_point[0] + 1)
+                        return True
+                    
+            return False
+            
+        except Exception as e:
+            logger.error("Error checking for missing colon: %s", e)
+            return False
+
+    def _create_query(self, language: str, query_string: str) -> Tuple[Query, List[TreeSitterQueryError]]:
+        """Create a tree-sitter query with error handling.
+        
+        Args:
+            language: Language to create query for
+            query_string: Query pattern
+            
+        Returns:
+            Tuple of (Query object, list of query errors)
+            
+        Raises:
+            ParserError if query creation fails
+        """
+        try:
+            logger.debug("Creating query for language %s", language)
+            lang = self.languages[language]
+            query = Query(lang, query_string)
+            
+            # Configure query limits
+            query.disable_pattern(0)  # Prevent timeout on first match
+            query.set_match_limit(MAX_QUERY_MATCHES)
+            query.set_timeout_micros(QUERY_TIMEOUT_MS * 1000)  # Convert to microseconds
+            
+            logger.debug(
+                "Query configured: patterns=%d, captures=%d, timeout=%dms",
+                query.pattern_count, query.capture_count, QUERY_TIMEOUT_MS
+            )
+            
+            errors = []
+            
+            # Check for predicate errors
+            for pattern_index, pattern in enumerate(query.patterns):
+                try:
+                    if hasattr(pattern, 'validate_predicates'):
+                        pattern.validate_predicates()
+                except QueryError as e:
+                    logger.warning(
+                        "Invalid predicate in pattern %d: %s",
+                        pattern_index, e
+                    )
+                    errors.append(TreeSitterQueryError.from_query(
+                        query=query,
+                        message=str(e),
+                        pattern_index=pattern_index
+                    ))
+            
+            if errors:
+                logger.warning("Found %d query errors", len(errors))
+            
+            return query, errors
+            
+        except Exception as e:
+            logger.error("Failed to create query: %s", e, exc_info=True)
+            raise
+
+    def _detect_language(self, file_path: Path) -> Optional[str]:
+        """Detect language from file extension."""
+        ext = file_path.suffix.lower()
+        ext_map = {
+            ".py": "python",
+            ".js": "javascript", 
+            ".ts": "typescript"
+        }
+        return ext_map.get(ext)
+
+    def _get_default_languages(self) -> List[Tuple[str, str]]:
+        """Get default supported languages.
+        
+        Returns:
+            List of (language_id, library_path) tuples
+        """
+        # This would be configured based on installed language libraries
+        return [
+            ("python", "/usr/local/lib/tree-sitter-python.dylib"),
+            ("javascript", "/usr/local/lib/tree-sitter-javascript.dylib"),
+            ("typescript", "/usr/local/lib/tree-sitter-typescript.dylib")
+        ]
 
     def _count_nodes(self, node: Node) -> int:
-        """Count nodes in AST recursively."""
+        """Count nodes in AST recursively.
+        
+        Args:
+            node: Root node to count from
+            
+        Returns:
+            Total number of nodes
+        """
         count = 1  # Count current node
         for child in node.children:
             count += self._count_nodes(child)
         return count
 
-    def _validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate and process configuration.
+    def _validate_config(self, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Validate parser configuration."""
+        return config or {}
+
+    def cleanup(self) -> None:
+        """Clean up parser resources."""
+        self.languages.clear()
+        self.parsers.clear()
+        self._source_map.clear()
+        logger.info("Tree-sitter parser cleaned up")
+
+    def edit_tree(self, tree: Tree, edits: List[Dict[str, Any]]) -> Tree:
+        """Apply edits to a tree-sitter tree.
         
         Args:
-            config: Configuration dictionary to validate
+            tree: Tree to edit
+            edits: List of edit operations
             
         Returns:
-            The validated configuration dictionary
+            New tree after edits
             
-        Raises:
-            ConfigError: If configuration is invalid
+        Note:
+            Tree-sitter requires edits to be applied in order and the tree kept in sync
         """
-        # No config needed for tree-sitter parser
-        return config
+        try:
+            # Get original source
+            source = self._source_map.get(tree)
+            if source is None:
+                raise ValueError("No source found for tree")
+            
+            # Create edited source
+            edited_source = bytearray(source)
+            
+            # Sort edits by position to ensure correct order
+            sorted_edits = sorted(edits, key=lambda e: e['start_byte'])
+            
+            # Track offset adjustments
+            offset = 0
+            
+            # Apply edits one at a time, keeping tree in sync
+            for edit in sorted_edits:
+                # Adjust positions for previous edits
+                start_byte = edit['start_byte'] + offset
+                old_end_byte = edit['old_end_byte'] + offset
+                
+                # Calculate new end byte based on text length
+                text_len = len(edit['text'])
+                new_end_byte = start_byte + text_len
+                
+                # Update source
+                edited_source[start_byte:old_end_byte] = edit['text']
+                
+                # Keep tree in sync with edit
+                tree.edit(
+                    start_byte=start_byte,
+                    old_end_byte=old_end_byte,
+                    new_end_byte=new_end_byte,
+                    start_point=edit['start_point'],
+                    old_end_point=edit['old_end_point'],
+                    new_end_point=edit['new_end_point']
+                )
+                
+                # Update offset for next edit
+                offset += text_len - (old_end_byte - start_byte)
+            
+            # Get parser for this tree's language
+            parser = self.parsers[self.language_names[tree.language]]
+            
+            # Parse with edited source using old tree
+            new_tree = parser.parse(bytes(edited_source), old_tree=tree)
+            
+            # Store source for new tree
+            self._source_map[new_tree] = bytes(edited_source)
+            
+            return new_tree
+            
+        except Exception as e:
+            logger.error("Failed to apply edits: %s", e)
+            raise
+
+    def create_edit_for_missing_colon(self, node: Node) -> Dict[str, Any]:
+        """Create edit operation to add missing colon.
+        
+        Args:
+            node: Node missing colon
+            
+        Returns:
+            Edit operation dict
+        """
+        # Get position after node
+        end_byte = node.end_byte
+        end_point = node.end_point
+        
+        return {
+            'start_byte': end_byte,
+            'old_end_byte': end_byte,
+            'new_end_byte': end_byte + 1,
+            'start_point': end_point,
+            'old_end_point': end_point,
+            'new_end_point': (end_point[0], end_point[1] + 1),
+            'text': b':'
+        }
+
+    def create_batch_edit(self, edits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Create a batch of edits ensuring they don't conflict.
+        
+        Args:
+            edits: List of edit operations
+            
+        Returns:
+            Validated and sorted list of edits
+        """
+        # Sort edits by position to apply in correct order
+        sorted_edits = sorted(edits, key=lambda e: (e['start_point'][0], e['start_point'][1]))
+        
+        # Validate edits don't overlap
+        for i in range(len(sorted_edits) - 1):
+            current = sorted_edits[i]
+            next_edit = sorted_edits[i + 1]
+            if current['new_end_point'] > next_edit['start_point']:
+                raise ValueError(f"Overlapping edits at positions {current['new_end_point']} and {next_edit['start_point']}")
+            
+        return sorted_edits
+
+    def create_edit_for_indent(self, node: Node, indent_level: int = 4) -> Dict[str, Any]:
+        """Create edit to fix indentation.
+        
+        Args:
+            node: Node to indent
+            indent_level: Number of spaces per indent
+            
+        Returns:
+            Edit operation dict
+        """
+        start_byte = node.start_byte
+        start_point = node.start_point
+        
+        # Calculate required indentation
+        current_indent = start_point[1]
+        required_indent = indent_level * node.parent.children.index(node)
+        indent_diff = required_indent - current_indent
+        
+        if indent_diff == 0:
+            return None
+        
+        return {
+            'start_byte': start_byte - current_indent,
+            'old_end_byte': start_byte,
+            'new_end_byte': start_byte - current_indent + required_indent,
+            'start_point': (start_point[0], 0),
+            'old_end_point': start_point,
+            'new_end_point': (start_point[0], required_indent),
+            'text': b' ' * required_indent
+        }

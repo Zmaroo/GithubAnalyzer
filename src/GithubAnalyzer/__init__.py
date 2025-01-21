@@ -15,6 +15,19 @@ logging.basicConfig(
 # Version
 __version__ = "0.1.0"
 
+# Import core components first
+from .core.models import ast, errors, file
+from .core.services.base_service import BaseService
+from .core.services.file_service import FileService
+from .core.services.parser_service import ParserService
+
+# Then analysis components
+from .analysis.models.tree_sitter import TreeSitterError, TreeSitterResult
+from .analysis.services.parsers.tree_sitter import TreeSitterParser
+
+# Finally common components
+from .common.services.cache_service import CacheService
+
 # Core layer exports
 from .core.models.ast import ParseResult
 from .core.models.errors import ServiceError, ParserError, FileOperationError
@@ -23,7 +36,6 @@ from .core.config.settings import Settings
 
 # Analysis layer exports
 from .analysis.models.results import AnalysisResult
-from .analysis.services.parsers.tree_sitter import TreeSitterParser
 
 __all__ = [
     # Core models
