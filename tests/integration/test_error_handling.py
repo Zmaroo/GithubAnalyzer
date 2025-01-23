@@ -44,15 +44,21 @@ def test_parser_error_invalid_syntax(parser_service):
     assert "ERROR at line" in str(exc.value)
 
 def test_parser_tree_attributes(parser_service):
-    """Test tree-sitter Tree attributes are correctly exposed."""
+    """Test tree-sitter tree attributes."""
     code = "def test(): pass"
     result = parser_service.parse_content(code, "python")
     
-    # Verify tree attributes according to Tree-sitter v24 docs
-    assert isinstance(result.tree, Tree)
-    assert result.tree.language is not None
-    assert result.tree.root_node is not None
-    assert hasattr(result.tree, 'included_ranges')
+    assert result.tree is not None
+    assert result.language == "python"
+    assert result.is_code
+    assert result.content == code
+    
+    # Test root node properties
+    root = result.tree.root_node
+    assert root.type == "module"
+    assert root.start_byte == 0
+    assert root.end_byte == len(code)
+    assert not root.has_error
 
 def test_parser_timeout(parser_service):
     """Test parser timeout handling."""

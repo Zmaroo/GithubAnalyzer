@@ -66,8 +66,16 @@ class FileFilterConfig:
             return False
         if self.exclude_languages and file_info.language in self.exclude_languages:
             return False
-        if self.include_paths and not any(str(file_info.path).startswith(p) for p in self.include_paths):
-            return False
-        if self.exclude_paths and any(str(file_info.path).startswith(p) for p in self.exclude_paths):
-            return False
+        if self.include_paths:
+            matches = False
+            for pattern in self.include_paths:
+                if file_info.path.match(pattern):
+                    matches = True
+                    break
+            if not matches:
+                return False
+        if self.exclude_paths:
+            for pattern in self.exclude_paths:
+                if file_info.path.match(pattern):
+                    return False
         return True 

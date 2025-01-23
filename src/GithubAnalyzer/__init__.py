@@ -17,12 +17,13 @@ __version__ = "0.1.0"
 
 # Core layer imports
 from .core.models import (
+    FileInfo,
+    FileFilterConfig,
     ParseResult,
     ParserError,
     LanguageError,
     QueryError,
-    FileOperationError,
-    FileInfo
+    FileOperationError
 )
 
 from .core.services import (
@@ -30,12 +31,20 @@ from .core.services import (
     ParserService
 )
 
-from .core.config.settings import Settings
+from .core.config import (
+    settings,
+    Settings,
+    get_logging_config
+)
 
 # Analysis layer imports
 from .analysis.models import (
-    AnalysisResult,
-    TreeSitterNode
+    get_node_text,
+    node_to_dict,
+    format_error_context,
+    count_nodes,
+    CodeAnalysisResult,
+    AnalysisResult
 )
 
 from .analysis.services import (
@@ -51,20 +60,27 @@ from .core.utils import (
 
 __all__ = [
     # Core models
+    'FileInfo',
+    'FileFilterConfig',
     'ParseResult',
     'ParserError',
     'LanguageError',
     'QueryError',
     'FileOperationError',
-    'FileInfo',
     # Core services
     'FileService',
     'ParserService',
     # Core config
+    'settings',
     'Settings',
+    'get_logging_config',
     # Analysis models
+    'get_node_text',
+    'node_to_dict',
+    'format_error_context',
+    'count_nodes',
+    'CodeAnalysisResult',
     'AnalysisResult',
-    'TreeSitterNode',
     # Analysis services
     'TreeSitterQueryHandler',
     'TreeSitterTraversal',

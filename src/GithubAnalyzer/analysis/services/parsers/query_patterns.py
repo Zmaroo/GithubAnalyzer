@@ -6,10 +6,13 @@ QUERY_PATTERNS = {
     "python": {
         "function": """
             (function_definition
-                name: (identifier) @function.name) @function
+                name: (identifier) @function.name
+            ) @function.definition
         """,
         "class": """
-            (class_definition) @class
+            (class_definition
+                name: (identifier) @class.name
+            ) @class.definition
         """,
         "import": """
             (import_statement) @import

@@ -14,11 +14,30 @@ package "GithubAnalyzer" {
             component [ast.py] as AST
             
             note right of EM
-                Simplified Error Hierarchy:
+                Error Hierarchy:
                 ParserError
                 ├── LanguageError
                 └── QueryError
                 FileOperationError
+            end note
+
+            note right of AST
+                ParseResult:
+                - tree: Tree
+                - language: str
+                - content: str
+                - is_code: bool
+            end note
+
+            note right of FM
+                FileInfo:
+                - path: Path
+                - language: str
+                - metadata: Dict
+                FileFilterConfig:
+                - include_patterns
+                - exclude_patterns
+                - languages
             end note
         }
         
@@ -29,19 +48,21 @@ package "GithubAnalyzer" {
 
         package "Config" {
             component [settings.py] as SET
-            component [language_config.py] as LC
             component [logging_config.py] as LOG
         }
 
         package "Utils" {
             component [logging.py] as LG
             component [timing.py] as TM
+            component [error_handler.py] as EH
         }
     }
 
     ' Analysis Layer
     package "Analysis" {
         package "Models" {
+            component [code_analysis.py] as CAM
+            component [results.py] as RES
             component [tree_sitter.py] as TSM
         }
         
@@ -50,59 +71,90 @@ package "GithubAnalyzer" {
                 component [tree_sitter_query.py] as TSQ
                 component [tree_sitter_traversal.py] as TST
                 component [query_patterns.py] as QP
+                component [tree_sitter_editor.py] as TSE
             }
         }
     }
 
-    ' Dependencies
+    ' Core Dependencies
     FS --> FM : uses file models
     PS --> AST : uses AST models
     PS --> "tree-sitter-language-pack" : uses directly
+    PS --> FM : uses FileInfo
+    FS --> LOG : uses logging config
+    EH --> EM : handles errors
+
+    ' Analysis Dependencies
     TSQ --> "tree-sitter-language-pack" : uses directly
     TSQ --> TST : uses traversal
     TSQ --> QP : uses patterns
-    LC --> "tree-sitter-language-pack" : uses for extension mapping
+    TSM --> AST : extends models
+    CAM --> RES : uses results
+    TSQ --> TSM : uses models
+    TSE --> TST : uses traversal
+    TSE --> TSQ : uses query handler
+    TSE --> "tree-sitter-language-pack" : uses directly
 
-    ' Error Usage Dependencies
+    ' Error Usage
     FS ..> EM : throws FileOperationError
-    PS ..> EM : throws ParserError
+    PS ..> EM : throws ParserError, LanguageError
     TSQ ..> EM : throws QueryError
+    TSE ..> EM : throws ParserError
 
-    ' Logging Usage
+    ' Utility Usage
     FS --> LG : uses logging
     PS --> LG : uses logging
     TSQ --> LG : uses logging
-
-    ' Timer Usage
+    TSE --> LG : uses logging
     PS ..> TM : uses timing
     TSQ ..> TM : uses timing
+    FS ..> EH : uses error handler
+    PS ..> EH : uses error handler
 
     note right of Core
-        Core layer provides fundamental models,
-        services, configuration and utilities.
-        Directly uses tree-sitter-language-pack.
+        Core layer provides:
+        - File operations
+        - Direct tree-sitter integration
+        - Configuration
+        - Error handling
+        - Logging and timing utilities
     end note
 
     note right of Analysis
-        Analysis layer provides specialized query
-        and traversal utilities on top of tree-sitter.
-        No intermediate abstractions.
+        Analysis layer provides:
+        - Code analysis models
+        - Tree-sitter query utilities
+        - Tree traversal helpers
+        - Result processing
+        - Tree editing and incremental parsing
     end note
 
     note right of PS
-        ParserService directly uses tree-sitter-language-pack for:
-        - Language initialization
-        - Parser management
-        - Language detection
-        No intermediate abstraction layer needed.
+        ParserService features:
+        - Direct tree-sitter integration
+        - Language detection from extensions
+        - Syntax error handling
+        - File type detection
+        - Timeout support
+        - Binary file handling
     end note
 
-    note right of TSQ
-        TreeSitterQuery provides:
-        - Query caching
+    note right of FS
+        FileService features:
+        - File listing and filtering
+        - Language detection
+        - File metadata collection
+        - Binary file detection
         - Error handling
-        - Pattern management
-        Direct use of tree-sitter Query API.
+    end note
+
+    note right of TSE
+        TreeSitterEditor features:
+        - Incremental parsing
+        - Tree editing with validation
+        - Position validation
+        - Tree change verification
+        - Tree caching
     end note
 }
 

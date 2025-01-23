@@ -1,7 +1,12 @@
-"""Analysis package."""
+"""Analysis module."""
+
 from .models import (
-    AnalysisResult,
-    TreeSitterNode
+    get_node_text,
+    node_to_dict,
+    format_error_context,
+    count_nodes,
+    CodeAnalysisResult,
+    AnalysisResult
 )
 
 from .services import (
@@ -10,8 +15,12 @@ from .services import (
 )
 
 __all__ = [
+    'get_node_text',
+    'node_to_dict',
+    'format_error_context',
+    'count_nodes',
+    'CodeAnalysisResult',
     'AnalysisResult',
-    'TreeSitterNode',
     'TreeSitterQueryHandler',
     'TreeSitterTraversal'
 ] 

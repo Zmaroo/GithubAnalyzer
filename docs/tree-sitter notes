@@ -1,0 +1,3 @@
+Instead of relying on generic has_error or is_missing flags, we specifically check for missing required nodes in return statements.
+We look at the node types to determine if a return statement has its required expression.
+We provide more specific error messages that help identify the exact issue.

@@ -1,146 +1,66 @@
 """Tree-sitter models."""
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Any, Tuple
-from tree_sitter import Node, Tree
+from tree_sitter import Node
 
-@dataclass
-class TreeSitterNode:
-    """Lightweight wrapper for tree-sitter Node with convenient properties."""
-    node: Node
-    metadata: Dict[str, Any] = None
+from src.GithubAnalyzer.core.models.errors import ParserError, QueryError
 
-    @property
-    def type(self) -> str:
-        """Get node type."""
-        return self.node.type
+def get_node_text(node: Optional[Node], content: str) -> str:
+    """Get text from a node."""
+    if not node:
+        return ""
+    return content[node.start_byte:node.end_byte]
 
-    @property
-    def text(self) -> str:
-        """Get node text."""
-        return self.node.text.decode('utf-8') if self.node.text else ""
+def node_to_dict(node: Node, include_metadata: bool = False) -> Dict[str, Any]:
+    """Convert node to dictionary representation."""
+    result = {
+        'type': node.type,
+        'children': [node_to_dict(child, include_metadata) for child in node.children]
+    }
+    
+    if include_metadata:
+        result.update({
+            'start_point': node.start_point,
+            'end_point': node.end_point
+        })
+    
+    return result
 
-    @property
-    def start_point(self) -> tuple[int, int]:
-        """Get start position (line, column)."""
-        return self.node.start_point
-
-    @property
-    def end_point(self) -> tuple[int, int]:
-        """Get end position (line, column)."""
-        return self.node.end_point
-
-    @property
-    def children(self) -> List[Node]:
-        """Get child nodes."""
-        return self.node.children
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert node to dictionary."""
-        return {
-            'type': self.type,
-            'text': self.text,
-            'start_point': self.start_point,
-            'end_point': self.end_point,
-            'metadata': self.metadata or {}
-        }
-
-@dataclass
-class QueryMatch:
-    """Represents a query match result."""
-    pattern_index: int
-    captures: List[Tuple[str, Node]]
-    node: Node
-
-@dataclass
-class TreeSitterError:
-    """Tree-sitter specific error."""
-    node: Optional[Node] = None
-    message: str = ""
-    line: int = 0
-    column: int = 0
-    context: str = ""
-
-    @classmethod
-    def from_node(cls, node: Node, source_lines: List[bytes]) -> 'TreeSitterError':
-        """Create error from node."""
-        line = node.start_point[0]
-        column = node.start_point[1]
-        context = source_lines[line].decode('utf-8') if line < len(source_lines) else ""
-        return cls(
-            node=node,
-            message=f"Error at line {line + 1}, column {column + 1}",
-            line=line,
-            column=column,
-            context=context
-        )
-
-class TreeSitterQueryError(TreeSitterError):
-    """Error during tree-sitter query execution."""
-    pass
-
-@dataclass
-class TreeSitterResult:
-    """Result of tree-sitter parsing with analysis capabilities."""
-
-    tree: Optional[Tree] = None
-    recovery_attempts: int = 0
-    text: Optional[str] = None
-
-    def __init__(
-        self,
-        tree: Optional[Tree] = None,
-        language: Optional[str] = None,
-        is_valid: bool = True,
-        errors: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        recovery_attempts: int = 0,
-        text: Optional[str] = None
-    ):
-        """Initialize TreeSitterResult.
+def format_error_context(code: str, position: int, context_lines: int = 3) -> str:
+    """Format error context from a position in code."""
+    if position >= len(code):
+        return code
         
-        Args:
-            tree: Tree-sitter parse tree
-            language: Language identifier
-            is_valid: Whether parsing was successful
-            errors: Any errors encountered during parsing
-            metadata: Additional metadata
-            recovery_attempts: Number of recovery attempts made
-            text: Original text that was parsed
-        """
-        self.tree = tree
-        self.recovery_attempts = recovery_attempts
-        self.text = text
+    lines = code.split('\n')
+    line_no = 0
+    pos = 0
+    
+    # Find the line number containing the position
+    for i, line in enumerate(lines):
+        if pos + len(line) + 1 > position:
+            line_no = i
+            break
+        pos += len(line) + 1
+    
+    # Calculate the column number
+    col_no = position - pos
+    
+    # Get context lines
+    start = max(0, line_no - context_lines)
+    end = min(len(lines), line_no + context_lines + 1)
+    
+    # Format output with line numbers and pointer
+    result = []
+    for i in range(start, end):
+        result.append(f"{i+1:>3} | {lines[i]}")
+        if i == line_no:
+            result.append("    " + " " * col_no + "^")
+            result.append("")  # Add blank line after pointer
+    
+    return '\n'.join(result[:-1] if not result else result)  # Remove trailing empty line if it exists
 
-    def _calculate_node_count(self, tree: Optional[Tree]) -> int:
-        """Calculate node count only when needed."""
-        if not tree or not tree.root_node:
-            return 0
-            
-        def count(node: Node) -> int:
-            return 1 + sum(count(child) for child in node.children)
-            
-        return count(tree.root_node)
-
-    @property
-    def root(self) -> Optional[Node]:
-        """Get the root node of the tree."""
-        return self.tree.root_node if self.tree else None
-
-    @property
-    def has_errors(self) -> bool:
-        """Check if there are any errors."""
-        return len(self.errors) > 0
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert result to dictionary."""
-        base_dict = super().get_analysis_summary()
-        return {
-            **base_dict,
-            'language': self.language,
-            'errors': self.errors,
-            'is_valid': self.is_valid,
-            'metadata': self.metadata,
-            'recovery_attempts': self.recovery_attempts,
-            'has_tree': self.tree is not None,
-            'text_length': len(self.text) if self.text else 0
-        } 
+def count_nodes(node: Optional[Node]) -> int:
+    """Count total nodes in a tree starting from given node."""
+    if not node:
+        return 0
+    return 1 + sum(count_nodes(child) for child in node.children) 

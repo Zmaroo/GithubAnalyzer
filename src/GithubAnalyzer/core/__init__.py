@@ -1,13 +1,13 @@
-"""Core package."""
+"""Core module."""
+
 from .models import (
+    FileInfo,
+    FileFilterConfig,
     ParseResult,
     ParserError,
     LanguageError,
     QueryError,
-    FileOperationError,
-    FileInfo,
-    FilePattern,
-    FileFilterConfig
+    FileOperationError
 )
 
 from .services import (
@@ -16,36 +16,22 @@ from .services import (
 )
 
 from .config import (
+    settings,
     Settings,
-    get_language_by_extension,
-    get_supported_languages,
-    get_file_types
-)
-
-from .utils import (
-    Timer,
-    StructuredLogger
+    get_logging_config
 )
 
 __all__ = [
-    # Models
+    'FileInfo',
+    'FileFilterConfig',
     'ParseResult',
     'ParserError',
     'LanguageError',
     'QueryError',
     'FileOperationError',
-    'FileInfo',
-    'FilePattern',
-    'FileFilterConfig',
-    # Services
     'FileService',
     'ParserService',
-    # Config
+    'settings',
     'Settings',
-    'get_language_by_extension',
-    'get_supported_languages',
-    'get_file_types',
-    # Utils
-    'Timer',
-    'StructuredLogger'
+    'get_logging_config'
 ] 

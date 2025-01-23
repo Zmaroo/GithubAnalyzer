@@ -16,17 +16,17 @@ def test_files(tmp_path) -> Generator[Path, None, None]:
     py_file = tmp_path / "test.py"
     py_file.write_text("def test(): pass")
     
-    # Config file
+    # YAML file
     yaml_file = tmp_path / "config.yaml"
     yaml_file.write_text("key: value")
     
-    # Doc file
+    # Markdown file
     md_file = tmp_path / "readme.md"
     md_file.write_text("# Test")
     
-    # License file
-    license_file = tmp_path / "LICENSE.txt"
-    license_file.write_text("MIT License")
+    # Text file
+    txt_file = tmp_path / "LICENSE.txt"
+    txt_file.write_text("MIT License")
     
     yield tmp_path
     
@@ -34,7 +34,7 @@ def test_files(tmp_path) -> Generator[Path, None, None]:
     py_file.unlink()
     yaml_file.unlink()
     md_file.unlink()
-    license_file.unlink()
+    txt_file.unlink()
 
 def test_parse_file_with_path(parser_service, test_files):
     """Test parsing file using Path object."""
@@ -63,38 +63,42 @@ def test_parse_file_with_file_info(parser_service, test_files):
     assert isinstance(result.tree, Tree)
     assert result.language == "python"
 
-def test_parse_config_file(parser_service, test_files):
-    """Test parsing config file."""
+def test_parse_yaml_file(parser_service, test_files):
+    """Test parsing YAML file."""
     result = parser_service.parse_file(test_files / "config.yaml")
-    assert not result.is_code
-    assert result.tree is None
-    assert result.language == "config"
+    assert result.is_code
+    assert isinstance(result.tree, Tree)
+    assert result.language == "yaml"
     assert "key: value" in result.content
 
-def test_parse_doc_file(parser_service, test_files):
-    """Test parsing documentation file."""
+def test_parse_markdown_file(parser_service, test_files):
+    """Test parsing Markdown file."""
     result = parser_service.parse_file(test_files / "readme.md")
-    assert not result.is_code
-    assert result.tree is None
-    assert result.language == "documentation"
+    assert result.is_code
+    assert isinstance(result.tree, Tree)
+    assert result.language == "markdown"
     assert "# Test" in result.content
 
-def test_parse_license_file(parser_service, test_files):
-    """Test parsing license file."""
-    result = parser_service.parse_file(test_files / "LICENSE.txt")
+def test_parse_unsupported_file(parser_service, test_files):
+    """Test parsing an unsupported file type."""
+    test_file = test_files / "test.txt"
+    test_file.write_text("This is a text file")
+
+    result = parser_service.parse_file(test_file)
+    assert result.language == "unknown"
     assert not result.is_code
     assert result.tree is None
-    assert result.language == "license"
-    assert "MIT License" in result.content
 
 def test_parse_file_no_language(parser_service, test_files):
     """Test parsing file without language specification."""
     test_file = test_files / "test.unknown"
     test_file.write_text("test content")
     try:
-        with pytest.raises(ParserError) as exc:
-            parser_service.parse_file(test_file)
-        assert "Could not detect language for file" in str(exc.value)
+        result = parser_service.parse_file(test_file)
+        assert not result.is_code
+        assert result.tree is None
+        assert result.language == "unknown"
+        assert "test content" in result.content
     finally:
         test_file.unlink()
 
@@ -149,8 +153,14 @@ def test_parse_file_with_unicode(parser_service, test_files):
     finally:
         unicode_file.unlink()
 
-def test_required_config_fields(parser_service):
-    """Test getting required configuration fields."""
-    fields = parser_service.get_required_config_fields()
-    assert isinstance(fields, list)
-    assert "language_bindings" in fields 
+def test_parser_tree_attributes(parser_service):
+    """Test tree-sitter tree attributes."""
+    code = "def test(): pass"
+    result = parser_service.parse_content(code, "python")
+    
+    assert result.is_code
+    assert isinstance(result.tree, Tree)
+    assert result.tree.root_node is not None
+    assert result.tree.root_node.type == "module"
+    assert not result.tree.root_node.has_error
+    assert result.language == "python" 

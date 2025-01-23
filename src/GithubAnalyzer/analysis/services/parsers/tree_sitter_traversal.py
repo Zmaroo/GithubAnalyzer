@@ -24,14 +24,24 @@ logger = logging.getLogger(__name__)
 T = TypeVar('T', bound=Node)
 
 class TreeSitterTraversal:
-    """Utilities for traversing Tree-sitter nodes."""
-    
+    """Utilities for traversing tree-sitter syntax trees."""
+
     @staticmethod
     def walk_tree(node: Node) -> Generator[Node, None, None]:
-        """Walk through all nodes in the tree using cursor."""
-        cursor = node.walk()
+        """Walk a tree using tree-sitter's native cursor API.
         
+        Args:
+            node: Root node to start traversal from
+            
+        Yields:
+            Each node in the tree in traversal order
+        """
+        if not node:
+            return
+
+        cursor = node.walk()
         reached_root = False
+        
         while not reached_root:
             yield cursor.node
             
@@ -50,39 +60,137 @@ class TreeSitterTraversal:
                     break
 
     @staticmethod
-    def find_nodes_by_type(root: Node, node_type: str) -> List[Node]:
-        """Find all nodes of a specific type in the tree."""
-        return [
-            node for node in TreeSitterTraversal.walk_tree(root)
-            if node.type == node_type
-        ]
+    def find_node_at_point(root: Node, point: Point) -> Optional[Node]:
+        """Find smallest node at point using tree-sitter's native API.
+        
+        Args:
+            root: Root node to search in
+            point: Point to find node at
+            
+        Returns:
+            Node at point or None if not found
+        """
+        try:
+            if not root:
+                logger.error("Error finding node at point: No root node")
+                return None
+            return root.descendant_for_point_range(point, point)
+        except Exception as e:
+            logger.error(f"Error finding node at point: {e}")
+            return None
 
     @staticmethod
-    def find_parent_of_type(node: Node, parent_type: str) -> Optional[Node]:
-        """Find the nearest parent node of a specific type."""
-        current = node.parent
-        while current:
-            if current.type == parent_type:
-                return current
-            current = current.parent
-        return None
+    def find_nodes_in_range(root: Node, range_obj: Range) -> List[Node]:
+        """Find nodes in range using tree-sitter's native API.
+        
+        Args:
+            root: Root node to search in
+            range_obj: Range to find nodes in
+            
+        Returns:
+            List of nodes in range
+        """
+        try:
+            if not root:
+                logger.error("Error finding nodes in range: No root node")
+                return []
+            
+            # Get smallest node containing range
+            node = root.descendant_for_point_range(
+                range_obj.start_point,
+                range_obj.end_point
+            )
+            if not node:
+                return []
+                
+            # Get all nodes within that node that overlap the range
+            return [n for n in TreeSitterTraversal.walk_tree(node)
+                   if TreeSitterTraversal.node_in_range(n, range_obj)]
+        except Exception as e:
+            logger.error(f"Error finding nodes in range: {e}")
+            return []
 
     @staticmethod
-    def find_node_at_position(tree: Tree, position: Point) -> Optional[Node]:
-        """Find node at position."""
-        node = tree.root_node
-        while node:
-            for child in node.children:
-                if child.start_point <= position <= child.end_point:
-                    node = child
-                    break
-            else:
-                break
-        return node
+    def node_in_range(node: Node, range_obj: Range) -> bool:
+        """Check if node is within range.
+        
+        Args:
+            node: Node to check
+            range_obj: Range to check against
+            
+        Returns:
+            True if node is within range
+        """
+        if not node:
+            return False
+            
+        node_start = Point(*node.start_point)
+        node_end = Point(*node.end_point)
+        
+        return (node_start >= range_obj.start_point and 
+                node_end <= range_obj.end_point)
+
+    def find_parent_of_type(self, node: Node, type_name: str) -> Optional[Node]:
+        """Find closest parent node of given type.
+        
+        Args:
+            node: Node to start from
+            type_name: Type of parent to find
+            
+        Returns:
+            Parent node of given type or None
+        """
+        try:
+            if not node:
+                return None
+                
+            current = node
+            while current.parent:
+                current = current.parent
+                if current.type == type_name:
+                    return current
+            return None
+        except Exception as e:
+            logger.error(f"Error finding parent of type: {e}")
+            return None
+
+    @staticmethod
+    def get_node_range(node: Node) -> Range:
+        """Get range spanned by node.
+        
+        Args:
+            node: Node to get range for
+            
+        Returns:
+            Range object representing node's span
+        """
+        return Range(
+            start_point=Point(*node.start_point),
+            end_point=Point(*node.end_point),
+            start_byte=node.start_byte,
+            end_byte=node.end_byte
+        )
 
     @staticmethod
     def get_node_context(node: Node, context_lines: int = 2) -> Dict[str, Any]:
-        """Get source context around a node."""
+        """Get context around node including surrounding lines.
+        
+        Args:
+            node: Node to get context for
+            context_lines: Number of lines before/after to include
+            
+        Returns:
+            Dict with node and context information
+        """
+        if not node:
+            return {
+                'node': None,
+                'start_line': 0,
+                'end_line': 0,
+                'context_before': 0,
+                'context_after': 0
+            }
+            
         start_line = max(0, node.start_point[0] - context_lines)
         end_line = node.end_point[0] + context_lines
         
@@ -93,6 +201,23 @@ class TreeSitterTraversal:
             'context_before': context_lines,
             'context_after': context_lines
         }
+
+    @staticmethod
+    def find_nodes_by_type(root: Node, node_type: str) -> List[Node]:
+        """Find all nodes of a specific type in the tree."""
+        return [
+            node for node in TreeSitterTraversal.walk_tree(root)
+            if node.type == node_type
+        ]
+
+    @staticmethod
+    def find_node_at_position(tree: Tree, position: Point) -> Optional[Node]:
+        """Find node at position."""
+        try:
+            return tree.root_node.descendant_for_point_range(position, position)
+        except Exception as e:
+            logger.error(f"Error finding node at position {position}: {e}")
+            return None
 
     @staticmethod
     def find_child_by_field(node: Node, field_name: str) -> Optional[Node]:
@@ -116,12 +241,22 @@ class TreeSitterTraversal:
     def create_cursor_at_point(node: Node, point: tuple) -> Optional[TreeCursor]:
         """Create a cursor at a specific point in the tree."""
         try:
+            # Check if point is within node's range
+            point_row, point_col = point
+            start_row, start_col = node.start_point
+            end_row, end_col = node.end_point
+            
+            if not (start_row <= point_row <= end_row and
+                   (point_row > start_row or point_col >= start_col) and
+                   (point_row < end_row or point_col <= end_col)):
+                return None
+                
             cursor = node.walk()
-            if cursor.goto_first_child_for_point(point):
-                return cursor
+            cursor.goto_first_child_for_point(point)
+            return cursor
         except Exception as e:
             logger.error(f"Error creating cursor at point {point}: {e}")
-        return None 
+            return None
 
     @staticmethod
     def walk_descendants(node: Node) -> Generator[Node, None, None]:
@@ -132,44 +267,37 @@ class TreeSitterTraversal:
 
     @staticmethod
     def walk_named_descendants(node: Node) -> Generator[Node, None, None]:
-        """Walk through all named descendants of a node."""
-        for child in node.named_children:
-            if child.is_named:
-                yield child
-                yield from TreeSitterTraversal.walk_named_descendants(child)
-
-    @staticmethod
-    def find_node_at_point(root: Node, point: Point) -> Optional[Node]:
-        """Find the smallest node that contains the given point."""
-        try:
-            return root.descendant_for_point_range(point, point)
-        except Exception as e:
-            logger.error(f"Error finding node at point {point}: {e}")
-            return None
-
-    @staticmethod
-    def find_nodes_in_range(root: Node, range: Range) -> List[Node]:
-        """Find all nodes within a given range."""
-        try:
-            start_node = root.descendant_for_point_range(range.start_point, range.start_point)
-            end_node = root.descendant_for_point_range(range.end_point, range.end_point)
+        """Walk through all named descendants of a node.
+        
+        Args:
+            node: Node to walk
             
-            if not (start_node and end_node):
-                return []
+        Yields:
+            Each named descendant node
+        """
+        if not node:
+            return
+            
+        cursor = node.walk()
+        reached_root = False
+        
+        while not reached_root:
+            if cursor.node.is_named:
+                yield cursor.node
                 
-            nodes = []
-            current = start_node
-            while current and current != end_node:
-                nodes.append(current)
-                current = TreeSitterTraversal.get_next_node(current)
+            if cursor.goto_first_child():
+                continue
                 
-            if end_node:
-                nodes.append(end_node)
+            if cursor.goto_next_sibling():
+                continue
                 
-            return nodes
-        except Exception as e:
-            logger.error(f"Error finding nodes in range {range}: {e}")
-            return []
+            while not reached_root:
+                if not cursor.goto_parent():
+                    reached_root = True
+                    break
+                    
+                if cursor.goto_next_sibling():
+                    break
 
     @staticmethod
     def get_next_node(node: Node) -> Optional[Node]:
@@ -216,27 +344,8 @@ class TreeSitterTraversal:
             
         return common_ancestor
 
-    @staticmethod
-    def get_node_range(node: Node) -> Range:
-        """Get the range covered by a node."""
-        return Range(
-            start_point=node.start_point,
-            end_point=node.end_point,
-            start_byte=node.start_byte,
-            end_byte=node.end_byte
-        ) 
-
     def traverse_tree(self, node: Node) -> Generator[Node, None, None]:
         """Traverse tree nodes."""
         yield node
         for child in node.children:
-            yield from self.traverse_tree(child)
-
-    def find_parent_of_type(self, node: Node, type_name: str) -> Optional[Node]:
-        """Find parent node of specific type."""
-        current = node.parent
-        while current:
-            if current.type == type_name:
-                return current
-            current = current.parent
-        return None 
+            yield from self.traverse_tree(child) 

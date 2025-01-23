@@ -12,31 +12,75 @@ from src.GithubAnalyzer.core.utils.timing import timer
 
 logger = logging.getLogger(__name__)
 
-# Non-code file extensions
-CONFIG_EXTENSIONS = {'yaml', 'yml', 'json'}
-DOC_EXTENSIONS = {'md', 'rst', 'txt'}
-LICENSE_FILES = {'license', 'license.txt', 'license.md'}
+# Special file types that don't need parsing
+LICENSE_FILES = {'license', 'license.txt', 'license.md', 'copying', 'copying.txt', 'copying.md'}
 
-# Language mapping for file extensions
+# Map file extensions to tree-sitter language names
 EXTENSION_MAP = {
-    '.py': 'python',
-    '.js': 'javascript',
-    '.ts': 'typescript',
-    '.cpp': 'cpp',
+    # C family
     '.c': 'c',
     '.h': 'c',
+    '.cpp': 'cpp',
     '.hpp': 'cpp',
-    '.java': 'java',
-    '.rb': 'ruby',
-    '.go': 'go',
-    '.rs': 'rust',
+    '.cc': 'cpp',
+    '.cxx': 'cpp',
+    '.c++': 'cpp',
+    '.cs': 'c-sharp',
+    
+    # Web
+    '.js': 'javascript',
+    '.jsx': 'javascript',
+    '.ts': 'typescript',
+    '.tsx': 'typescript',
+    '.html': 'html',
+    '.css': 'css',
     '.php': 'php',
-    '.cs': 'c_sharp',
+    
+    # System
+    '.sh': 'bash',
+    '.bash': 'bash',
+    '.rs': 'rust',
+    '.go': 'go',
+    '.java': 'java',
+    '.scala': 'scala',
+    '.rb': 'ruby',
+    '.py': 'python',
     '.swift': 'swift',
     '.kt': 'kotlin',
-    '.scala': 'scala',
-    '.m': 'objective-c',
-    '.mm': 'objective-cpp'
+    '.kts': 'kotlin',
+    
+    # Data/Config
+    '.json': 'json',
+    '.yaml': 'yaml',
+    '.yml': 'yaml',
+    '.toml': 'toml',
+    '.xml': 'xml',
+    
+    # Documentation
+    '.md': 'markdown',
+    '.txt': 'text',
+    '.rst': 'rst',
+    '.org': 'org',
+    '.ini': 'ini',
+    
+    # Other languages
+    '.lua': 'lua',
+    '.r': 'r',
+    '.elm': 'elm',
+    '.ex': 'elixir',
+    '.exs': 'elixir',
+    '.erl': 'erlang',
+    '.hrl': 'erlang',
+    '.hs': 'haskell',
+    '.lhs': 'haskell',
+    '.ml': 'ocaml',
+    '.mli': 'ocaml',
+    '.pl': 'perl',
+    '.pm': 'perl',
+    '.proto': 'protobuf',
+    '.sql': 'sql',
+    '.vue': 'vue',
+    '.zig': 'zig'
 }
 
 class ParserService:
@@ -50,17 +94,64 @@ class ParserService:
         """
         self.timeout_micros = timeout_micros
 
-    def _detect_language(self, file_path: Path) -> Optional[str]:
+    def _detect_language(self, file_path: Path) -> str:
         """Detect language from file extension.
         
         Args:
             file_path: Path to file
             
         Returns:
-            Language identifier or None if not detected
+            Language identifier based on file extension
         """
         ext = file_path.suffix.lower()
-        return EXTENSION_MAP.get(ext)
+        return EXTENSION_MAP.get(ext, ext.lstrip('.'))
+
+    def _parse_code(self, content: str, language: str) -> ParseResult:
+        """Parse code content using tree-sitter.
+        
+        Args:
+            content: Content to parse
+            language: Language identifier
+            
+        Returns:
+            ParseResult containing tree-sitter Tree
+            
+        Raises:
+            ParserError: If parsing fails
+            LanguageError: If language is not supported
+        """
+        try:
+            parser = get_parser(language)
+            # Set parser logger to debug level
+            parser.logger = logger.debug
+            if self.timeout_micros is not None:
+                parser.timeout_micros = self.timeout_micros
+            tree = parser.parse(bytes(content, "utf8"))
+            
+            # Check for syntax errors
+            if tree.root_node.has_error:
+                error_nodes = [
+                    node for node in tree.root_node.children 
+                    if node.has_error or node.type == 'ERROR'
+                ]
+                if error_nodes:
+                    error_msg = "Syntax errors found:\n"
+                    for node in error_nodes:
+                        error_msg += f"- ERROR at line {node.start_point[0] + 1}: {node.type}\n"
+                    raise ParserError(error_msg)
+            
+            return ParseResult(
+                tree=tree,
+                language=language,
+                content=content,
+                is_code=True
+            )
+        except LookupError:
+            raise LanguageError(f"Language not supported by tree-sitter: {language}")
+        except ParserError:
+            raise
+        except Exception as e:
+            raise ParserError(f"Failed to parse content: {str(e)}")
 
     @timer
     def parse_file(self, file_info: Union[str, Path, FileInfo]) -> ParseResult:
@@ -85,55 +176,30 @@ class ParserService:
                 file_path = Path(file_info)
                 language = None
             
-            # Get file extension and content
+            # Get file content
             content = file_path.read_text()
             
-            # Handle non-code files first
+            # Handle license files
             name = file_path.name.lower()
             if name in LICENSE_FILES:
                 return ParseResult(tree=None, language='license', content=content, is_code=False)
             
-            ext = file_path.suffix.lower().lstrip('.')
-            if ext in CONFIG_EXTENSIONS:
-                return ParseResult(tree=None, language='config', content=content, is_code=False)
-            if ext in DOC_EXTENSIONS:
-                return ParseResult(tree=None, language='documentation', content=content, is_code=False)
-            
-            # Get language and parser
+            # Get language and try to parse
             if not language:
                 language = self._detect_language(file_path)
-                if not language:
-                    raise ParserError(f"Could not detect language for file: {file_path}")
-                
-            try:
-                # Parse code file
-                parser = get_parser(language)
-                if self.timeout_micros is not None:
-                    parser.timeout_micros = self.timeout_micros
-                tree = parser.parse(bytes(content, "utf8"))
-                
-                # Check for syntax errors
-                if tree.root_node.has_error:
-                    error_nodes = [
-                        node for node in tree.root_node.children 
-                        if node.has_error or node.type == 'ERROR'
-                    ]
-                    if error_nodes:
-                        error_msg = "Syntax errors found:\n"
-                        for node in error_nodes:
-                            error_msg += f"- ERROR at line {node.start_point[0] + 1}: {node.type}\n"
-                        raise ParserError(error_msg)
-                
-                return ParseResult(
-                    tree=tree,
-                    language=language,
-                    content=content,
-                    is_code=True
-                )
-            except LookupError:
-                raise LanguageError(f"Language not supported: {language}")
             
-        except LanguageError:
+            # Special handling for known non-code files
+            if language in {'rst', 'org', 'ini'}:
+                return ParseResult(tree=None, language='documentation', content=content, is_code=False)
+            
+            try:
+                return self._parse_code(content, language)
+            except LanguageError:
+                # If parsing fails due to unsupported language, treat as non-code file
+                logger.info(f"File {file_path} has unsupported language: {language}")
+                return ParseResult(tree=None, language='unknown', content=content, is_code=False)
+            
+        except (ParserError):
             raise
         except Exception as e:
             raise ParserError(f"Failed to parse file: {str(e)}")
@@ -153,42 +219,4 @@ class ParserService:
             ParserError: If parsing fails
             LanguageError: If language is not supported
         """
-        try:
-            try:
-                parser = get_parser(language)
-                if self.timeout_micros is not None:
-                    parser.timeout_micros = self.timeout_micros
-                tree = parser.parse(bytes(content, "utf8"))
-                
-                # Check for syntax errors
-                if tree.root_node.has_error:
-                    error_nodes = [
-                        node for node in tree.root_node.children 
-                        if node.has_error or node.type == 'ERROR'
-                    ]
-                    if error_nodes:
-                        error_msg = "Syntax errors found:\n"
-                        for node in error_nodes:
-                            error_msg += f"- ERROR at line {node.start_point[0] + 1}: {node.type}\n"
-                        raise ParserError(error_msg)
-                
-                return ParseResult(
-                    tree=tree,
-                    language=language,
-                    content=content,
-                    is_code=True
-                )
-            except LookupError:
-                raise LanguageError(f"Language not supported: {language}")
-            except ParserError:
-                raise
-            except Exception as e:
-                raise ParserError(f"Failed to parse content: {str(e)}")
-        except LanguageError:
-            raise
-        except Exception as e:
-            raise ParserError(f"Failed to parse content: {str(e)}")
-
-    def get_required_config_fields(self) -> list[str]:
-        """Get required configuration fields."""
-        return ["language_bindings"]
+        return self._parse_code(content, language)

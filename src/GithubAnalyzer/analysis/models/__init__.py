@@ -1,9 +1,20 @@
 """Analysis models."""
+
+from .tree_sitter import (
+    get_node_text,
+    node_to_dict,
+    format_error_context,
+    count_nodes
+)
+
+from .code_analysis import CodeAnalysisResult
 from .results import AnalysisResult
-from .tree_sitter import TreeSitterNode, TreeSitterError
 
 __all__ = [
-    'AnalysisResult',
-    'TreeSitterNode',
-    'TreeSitterError'
+    'get_node_text',
+    'node_to_dict',
+    'format_error_context',
+    'count_nodes',
+    'CodeAnalysisResult',
+    'AnalysisResult'
 ] 
