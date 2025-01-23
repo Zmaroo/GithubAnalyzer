@@ -1,12 +1,12 @@
-"""Analysis result models."""
+"""Code analysis models."""
+
 from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
 
 @dataclass
-class AnalysisResult:
+class CodeAnalysisResult:
     """Result of code analysis."""
     language: str
-    file_path: str
     node_count: int = 0
     metadata: Dict[str, Any] = None
 
@@ -14,7 +14,6 @@ class AnalysisResult:
         """Get analysis summary."""
         return {
             'language': self.language,
-            'file_path': self.file_path,
             'node_count': self.node_count,
             'metadata': self.metadata or {}
-        }
+        } 

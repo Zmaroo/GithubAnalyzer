@@ -8,7 +8,8 @@ from functools import wraps
 from typing import Any, Callable, Optional, Type, TypeVar, Union
 from types import TracebackType
 
-from ..models.errors import ParserError, TimeoutError
+from ..models.errors import ParserError, TimeoutError, BaseError, ServiceError
+from .error_handler import ErrorHandler
 
 T = TypeVar('T')
 logger = logging.getLogger(__name__)
@@ -163,3 +164,73 @@ class timer:
         if self.end_time:
             return self.end_time - self.start_time
         return time.time() - self.start_time
+
+def wrap_errors(
+    error_type: Type[BaseError] = ServiceError,
+    context: str = "",
+    recovery_fn: Optional[Callable] = None,
+    retry_count: int = 0,
+    retry_delay: float = 1.0,
+    timeout: Optional[float] = None
+) -> Callable:
+    """Decorator to wrap function errors with retry and timeout.
+    
+    Args:
+        error_type: Type of error to raise
+        context: Error context message
+        recovery_fn: Optional recovery function to call
+        retry_count: Number of retries
+        retry_delay: Delay between retries
+        timeout: Optional timeout in seconds
+        
+    Returns:
+        Decorated function
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> T:
+            last_error = None
+            current_delay = retry_delay
+
+            for attempt in range(max(1, retry_count + 1)):
+                try:
+                    if timeout:
+                        return _with_timeout(timeout, func, *args, **kwargs)
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_error = e
+                    if recovery_fn:
+                        recovery_fn()
+                    if attempt < retry_count:
+                        logger.warning(
+                            f"Attempt {attempt + 1}/{retry_count + 1} failed: {str(e)}. "
+                            f"Retrying in {current_delay:.1f}s..."
+                        )
+                        time.sleep(current_delay)
+                        current_delay *= 2
+                    else:
+                        ErrorHandler.handle_error(
+                            e,
+                            context or f"Error in {func.__name__}",
+                            error_type
+                        )
+            
+            if last_error:
+                raise last_error
+            raise RuntimeError("Unexpected error in retry logic")
+        return wrapper
+    return decorator
+
+def _with_timeout(seconds: float, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+    """Execute function with timeout."""
+    def handler(signum: int, frame: Optional[Any]) -> None:
+        raise TimeoutError(f"Function {func.__name__} timed out after {seconds} seconds")
+
+    original_handler = signal.signal(signal.SIGALRM, handler)
+    signal.alarm(int(seconds))
+
+    try:
+        return func(*args, **kwargs)
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, original_handler)

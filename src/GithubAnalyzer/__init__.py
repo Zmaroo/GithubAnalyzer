@@ -15,42 +15,62 @@ logging.basicConfig(
 # Version
 __version__ = "0.1.0"
 
-# Import core components first
-from .core.models import ast, errors, file
-from .core.services.base_service import BaseService
-from .core.services.file_service import FileService
-from .core.services.parser_service import ParserService
+# Core layer imports
+from .core.models import (
+    ParseResult,
+    ParserError,
+    LanguageError,
+    QueryError,
+    FileOperationError,
+    FileInfo
+)
 
-# Then analysis components
-from .analysis.models.tree_sitter import TreeSitterError, TreeSitterResult
-from .analysis.services.parsers.tree_sitter import TreeSitterParser
+from .core.services import (
+    FileService,
+    ParserService
+)
 
-# Finally common components
-from .common.services.cache_service import CacheService
-
-# Core layer exports
-from .core.models.ast import ParseResult
-from .core.models.errors import ServiceError, ParserError, FileOperationError
-from .core.models.file import FileInfo, FileType
 from .core.config.settings import Settings
 
-# Analysis layer exports
-from .analysis.models.results import AnalysisResult
+# Analysis layer imports
+from .analysis.models import (
+    AnalysisResult,
+    TreeSitterNode
+)
+
+from .analysis.services import (
+    TreeSitterQueryHandler,
+    TreeSitterTraversal
+)
+
+# Utils imports
+from .core.utils import (
+    Timer,
+    StructuredLogger
+)
 
 __all__ = [
     # Core models
-    "ParseResult",
-    "ServiceError",
-    "ParserError", 
-    "FileOperationError",
-    "FileInfo",
-    "FileType",
+    'ParseResult',
+    'ParserError',
+    'LanguageError',
+    'QueryError',
+    'FileOperationError',
+    'FileInfo',
+    # Core services
+    'FileService',
+    'ParserService',
     # Core config
-    "Settings",
+    'Settings',
     # Analysis models
-    "AnalysisResult",
+    'AnalysisResult',
+    'TreeSitterNode',
     # Analysis services
-    "TreeSitterParser",
+    'TreeSitterQueryHandler',
+    'TreeSitterTraversal',
+    # Utils exports
+    'Timer',
+    'StructuredLogger'
 ]
 
 # Initialize settings

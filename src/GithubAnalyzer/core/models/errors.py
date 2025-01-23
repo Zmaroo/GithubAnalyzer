@@ -1,49 +1,47 @@
-"""Core error definitions."""
+"""Error classes for the GithubAnalyzer package."""
 
-class BaseError(Exception):
-    """Base error class for all custom exceptions."""
+from dataclasses import dataclass
+from typing import Optional, List
 
+@dataclass
+class ParserError(Exception):
+    """Base class for parser-related errors."""
+    message: str
+    details: Optional[str] = None
 
-class ServiceError(BaseError):
-    """Error raised by services."""
+@dataclass
+class LanguageError(ParserError):
+    """Error raised when a language is not supported."""
+    pass
 
+@dataclass
+class QueryError(ParserError):
+    """Error raised when a query fails."""
+    pass
 
-class ParserError(ServiceError):
-    """Error raised by parsers."""
+@dataclass
+class FileOperationError(Exception):
+    """Error raised when a file operation fails."""
+    message: str
+    details: Optional[str] = None
 
+@dataclass
+class ConfigError(Exception):
+    """Error raised when there is a configuration error."""
+    message: str
+    details: Optional[str] = None
 
-class ConfigError(ServiceError):
-    """Error raised during configuration."""
-
-
-class DatabaseError(ServiceError):
-    """Error raised by database operations."""
-
-
-class FileOperationError(BaseError):
-    """Error raised during file operations."""
-
-
-class FrameworkError(BaseError):
-    """Error raised by framework components."""
-
-
-class ServiceNotFoundError(FrameworkError):
-    """Error raised when a required service is not found."""
-
-
-class TimeoutError(ServiceError):
-    """Error raised when an operation times out."""
-
+@dataclass
+class ServiceError(Exception):
+    """Error raised when a service operation fails."""
+    message: str
+    details: Optional[str] = None
 
 __all__ = [
-    "BaseError",
-    "ServiceError",
     "ParserError",
-    "ConfigError",
-    "DatabaseError",
+    "LanguageError",
+    "QueryError",
     "FileOperationError",
-    "FrameworkError",
-    "ServiceNotFoundError",
-    "TimeoutError",
+    "ConfigError",
+    "ServiceError",
 ]

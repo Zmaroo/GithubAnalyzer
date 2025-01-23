@@ -1,6 +1,8 @@
 """Configuration for parsers."""
 from enum import Enum
 from typing import Dict, List, Optional, Union
+from pathlib import Path
+from .language_config import get_language_by_extension
 
 class ConfigFormat(Enum):
     """Supported configuration file formats."""
@@ -10,23 +12,13 @@ class ConfigFormat(Enum):
     INI = "ini"
 
 # Configuration file format mappings
-CONFIG_FILE_FORMATS: Dict[str, Dict[str, List[str]]] = {
-    "yaml": {
-        "extensions": [".yaml", ".yml"],
-        "mime_types": ["application/x-yaml", "text/yaml"]
-    },
-    "json": {
-        "extensions": [".json"],
-        "mime_types": ["application/json"]
-    },
-    "toml": {
-        "extensions": [".toml"],
-        "mime_types": ["application/toml"]
-    },
-    "ini": {
-        "extensions": [".ini"],
-        "mime_types": ["text/plain"]
-    }
+CONFIG_FILE_FORMATS = {
+    ".json": "json",
+    ".yaml": "yaml",
+    ".yml": "yaml",
+    ".toml": "toml",
+    ".ini": "ini",
+    ".cfg": "ini"
 }
 
 # Documentation file format mappings
@@ -63,32 +55,24 @@ LICENSE_PATTERNS: Dict[str, List[str]] = {
     ]
 }
 
-def get_parser_for_file(file_path: str) -> Optional[str]:
-    """Determine appropriate parser type for a given file.
-
+def get_parser_for_file(file_path: str | Path) -> Optional[str]:
+    """Get appropriate parser for a file.
+    
     Args:
         file_path: Path to the file
-
+        
     Returns:
-        Parser type identifier or None if no appropriate parser found
+        Parser identifier or None if no parser available
     """
-    lower_path = file_path.lower()
+    path = Path(file_path)
+    extension = path.suffix.lower()
     
-    # Check for config files
-    for format_type, info in CONFIG_FILE_FORMATS.items():
-        if any(lower_path.endswith(ext) for ext in info["extensions"]):
-            return "config"
-            
-    # Check for documentation files
-    for format_type, info in DOC_FILE_FORMATS.items():
-        if any(lower_path.endswith(ext) for ext in info["extensions"]):
-            return "documentation"
-            
-    # Check for license files
-    if any(pattern in lower_path for pattern in LICENSE_PATTERNS["filename_patterns"]):
-        return "license"
-            
-    return None
+    # First check if it's a config file
+    if extension in CONFIG_FILE_FORMATS:
+        return CONFIG_FILE_FORMATS[extension]
+        
+    # Otherwise try to detect language
+    return get_language_by_extension(extension)
 
 def get_config_format(file_path: str) -> Optional[str]:
     """Get the specific configuration format for a file."""

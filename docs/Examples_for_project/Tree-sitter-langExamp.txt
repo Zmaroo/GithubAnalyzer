@@ -1,0 +1,290 @@
+# Tree-sitter-language-pack exposed functions:
+
+from tree_sitter_language_pack import get_binding, get_language, get_parser
+
+python_binding = get_binding('python')  # this is an int pointing to the C binding
+python_lang = get_language('python')  # this is an instance of tree_sitter.Language
+python_parser = get_parser('python')  # this is an instance of tree_sitter.Parser
+
+
+#Here is an example test that comes with the tree-sitter-language-pack repository:
+from collections.abc import Callable
+from json import loads
+from pathlib import Path
+from typing import Any, cast
+
+import pytest
+from tree_sitter import Language, Parser
+
+from tree_sitter_language_pack import SupportedLanguage, get_binding, get_language, get_parser
+
+language_definitions = cast(
+    dict[str, dict[str, str]],
+    loads((Path(__file__).parent.parent.resolve() / "sources" / "language_definitions.json").read_text()),
+)
+language_names = [
+    *list(language_definitions.keys()),
+    "csharp",
+    "embeddedtemplate",
+    "yaml",
+    "typescript",
+    "tsx",
+    "xml",
+    "php",
+    "dtd",
+]
+
+
+def test_language_names() -> None:
+    supported_langauges = sorted([*SupportedLanguage.__args__[0].__args__, *SupportedLanguage.__args__[1].__args__])  # type: ignore[attr-defined]
+    assert supported_langauges == sorted(language_names)
+
+
+@pytest.mark.parametrize("language", language_names)
+def test_get_binding(language: SupportedLanguage) -> None:
+    assert isinstance(get_binding(language), int)
+
+
+@pytest.mark.parametrize("language", language_names)
+def test_get_language(language: SupportedLanguage) -> None:
+    assert isinstance(get_language(language), Language)
+
+
+@pytest.mark.parametrize("language", language_names)
+def test_get_parser(language: SupportedLanguage) -> None:
+    assert isinstance(get_parser(language), Parser)
+
+
+@pytest.mark.parametrize("handler", [get_language, get_parser])
+def test_raises_exception_for_invalid_name(handler: Callable[[str], Any]) -> None:
+    with pytest.raises(LookupError):
+        handler("invalid")
+
+# end of test example
+
+# Example Python code for testing
+example = """
+#!shebang
+# License blah blah (Apache 2.0)
+"This is a module docstring."
+
+a = 1
+
+'''This
+is
+not
+a
+multiline
+comment.'''
+
+b = 2
+
+class Test:
+    "This is a class docstring."
+    
+    'This is bogus.'
+    
+    def test(self):
+        "This is a function docstring."
+        
+        "Please, no."
+        
+        return 1
+
+c = 3
+"""
+
+def initialize_language(language: str) -> tuple[Optional[int], Optional[Language], Optional[Parser]]:
+    """Initialize a language using tree-sitter-language-pack.
+    
+    Args:
+        language: Language identifier (e.g. 'python', 'javascript')
+        
+    Returns:
+        Tuple of (binding, language instance, parser instance)
+    """
+    if language not in installed_bindings_map:
+        print(f"Language {language} not found in installed bindings")
+        return None, None, None
+        
+    # Get binding first
+    binding = get_binding(language)
+    if binding is None:
+        print(f"Failed to get binding for {language}")
+        return None, None, None
+        
+    # Get language instance
+    lang = get_language(language)
+    if lang is None:
+        print(f"Failed to get language for {language}")
+        return None, None, None
+        
+    # Get parser instance
+    parser = get_parser(language)
+    if parser is None:
+        print(f"Failed to get parser for {language}")
+        return None, None, None
+        
+    return binding, lang, parser
+
+def get_supported_languages() -> List[str]:
+    """Get list of supported languages from installed bindings."""
+    return list(installed_bindings_map.keys())
+
+def parse_code(parser: Parser, content: str) -> Optional[Tree]:
+    """Parse code content using initialized parser.
+    
+    Args:
+        parser: Initialized tree-sitter Parser
+        content: Source code to parse
+        
+    Returns:
+        Parsed syntax tree or None if parsing fails
+    """
+    try:
+        # Convert content to bytes if needed
+        if isinstance(content, str):
+            content = content.encode('utf8')
+            
+        # Parse content
+        tree = parser.parse(content)
+        if not tree:
+            print("Failed to parse content")
+            return None
+            
+        return tree
+        
+    except Exception as e:
+        print(f"Parse failed: {str(e)}")
+        return None
+
+def find_nodes_by_type(tree: Tree, node_type: str) -> List[Node]:
+    """Find all nodes of a specific type in the syntax tree.
+    
+    Args:
+        tree: Parsed syntax tree
+        node_type: Type of nodes to find (e.g. 'comment', 'string', 'function')
+        
+    Returns:
+        List of matching nodes
+    """
+    nodes = []
+    cursor = tree.walk()
+    
+    def visit_node():
+        if cursor.node.type == node_type:
+            nodes.append(cursor.node)
+        
+        if cursor.goto_first_child():
+            visit_node()
+            while cursor.goto_next_sibling():
+                visit_node()
+            cursor.goto_parent()
+            
+    visit_node()
+    return nodes
+
+def create_query(language: Language, query_string: str) -> Optional[object]:
+    """Create a tree-sitter query for pattern matching.
+    
+    Args:
+        language: Language instance
+        query_string: Query pattern string
+        
+    Returns:
+        Query object or None if creation fails
+    """
+    try:
+        return language.query(query_string)
+    except Exception as e:
+        print(f"Failed to create query: {str(e)}")
+        return None
+
+# Example usage
+if __name__ == "__main__":
+    # Initialize Python language
+    binding, python_lang, python_parser = initialize_language('python')
+    if not all((binding, python_lang, python_parser)):
+        print("Failed to initialize Python language")
+        exit(1)
+        
+    # Parse example code
+    tree = parse_code(python_parser, example)
+    if not tree:
+        print("Failed to parse example code")
+        exit(1)
+        
+    # Find all comments using node type
+    comments = find_nodes_by_type(tree, 'comment')
+    print("\nComments found by node type:")
+    for node in comments:
+        print(f"Line {node.start_point[0]+1}: {node.text.decode()}")
+        
+    # Find comments using query
+    query_string = "(comment) @comment"
+    query = create_query(python_lang, query_string)
+    if query:
+        matches = query.matches(tree.root_node)
+        print("\nComments found by query:")
+        for m in matches:
+            node = m[0]  # First capture in each match
+            print(f"Line {node.start_point[0]+1}: {node.text.decode()}")
+            
+    # Find docstrings using query
+    query_string = """
+        (module 
+          (string) @module.docstring)
+        (class_definition
+          (block
+            (expression_statement
+              (string) @class.docstring)))
+        (function_definition
+          (block
+            (expression_statement
+              (string) @function.docstring)))
+    """
+    query = create_query(python_lang, query_string)
+    if query:
+        matches = query.matches(tree.root_node)
+        print("\nDocstrings found:")
+        for m in matches:
+            node = m[0]  # First capture in each match
+            print(f"Line {node.start_point[0]+1}: {node.text.decode()}")
+
+# Key Learnings About tree-sitter-language-pack:
+
+1. Language Detection and Management:
+   - The package already handles language detection and management
+   - We don't need to maintain our own FileType enum or language mapping
+   - Instead of our custom language detection, we should use get_language_by_extension directly
+
+2. Understanding the Return Types:
+   - get_binding('python') -> int: Returns a C binding pointer
+   - get_language('python') -> tree_sitter.Language: Returns the actual Language instance
+   - get_parser('python') -> tree_sitter.Parser: Returns a configured Parser instance
+
+3. Current Duplication in Our Codebase:
+   - FileType enum duplicates language detection that tree-sitter-language-pack provides
+   - Our custom language mapping in file_service._detect_file_type is unnecessary
+   - TreeSitterQueryHandler._languages dict is redundant since we can use get_language directly
+   - initialize_language function duplicates functionality already provided by the package
+
+4. Best Practices:
+   - Use get_language directly instead of maintaining our own language registry
+   - Let tree-sitter-language-pack handle language detection and initialization
+   - Focus our code on using the tree-sitter functionality rather than reimplementing it
+   - Use the package's built-in error handling and validation
+
+5. Query Handling:
+   - The package provides proper Query creation and configuration
+   - We should focus on query patterns and traversal logic rather than language management
+   - Error recovery and state management should leverage tree-sitter's built-in capabilities
+
+6. Areas to Refactor:
+   - Remove FileType enum and use string language identifiers directly
+   - Simplify FileInfo to use language strings from tree-sitter-language-pack
+   - Remove redundant language initialization in TreeSitterQueryHandler
+   - Focus TreeSitterQueryHandler on query patterns and execution, not language management
+
+
+

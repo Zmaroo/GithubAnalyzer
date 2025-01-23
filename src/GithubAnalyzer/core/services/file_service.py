@@ -1,203 +1,140 @@
 """File service for handling file operations."""
 
-import mimetypes
-import os
-import fnmatch
-import re
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
 import logging
+from pathlib import Path
+from typing import List, Optional, Dict, Any
 
-from ..models.errors import FileOperationError, ConfigError
-from ..models.file import FileInfo, FileType, FileFilterConfig
-from src.GithubAnalyzer.core.services.base_service import BaseService
+from tree_sitter_language_pack import get_language
 
-# Configure module logger
+from ..models.errors import FileOperationError, LanguageError
+from ..models.file import FileInfo, FileFilterConfig
+from ..config.settings import settings
+
 logger = logging.getLogger(__name__)
 
-class FileService(BaseService):
+# Common file extensions and their corresponding languages
+EXTENSION_MAP = {
+    '.py': 'python',
+    '.js': 'javascript',
+    '.ts': 'typescript',
+    '.cpp': 'cpp',
+    '.c': 'c',
+    '.h': 'c',
+    '.hpp': 'cpp',
+    '.java': 'java',
+    '.rb': 'ruby',
+    '.go': 'go',
+    '.rs': 'rust',
+    '.php': 'php',
+    '.cs': 'c_sharp',
+    '.swift': 'swift',
+    '.kt': 'kotlin',
+    '.scala': 'scala',
+    '.m': 'objective-c',
+    '.mm': 'objective-cpp'
+}
+
+class FileService:
     """Service for file operations."""
 
-    def __init__(self, filter_config: Optional[FileFilterConfig] = None, cache_service=None):
-        """Initialize file service.
-        
-        Args:
-            filter_config: Optional configuration for file filtering
-            cache_service: Optional cache service
-        """
-        super().__init__()
-        self._filter_config = filter_config
-        self._binary_signatures: Set[bytes] = {
-            b'\x7fELF',  # Unix executables
-            b'MZ',       # Windows executables
-            b'\x89PNG',  # PNG images
-            b'GIF',      # GIF images
-            b'\xFF\xD8', # JPEG images
-        }
-        self.cache_service = cache_service
+    def list_files(self, root_path: Path, filter_config: Optional[FileFilterConfig] = None) -> List[FileInfo]:
+        """List files in a directory, optionally filtered by configuration."""
+        if not root_path.exists():
+            raise FileOperationError(f"Path does not exist: {root_path}")
+        if not root_path.is_dir():
+            raise FileOperationError(f"Path is not a directory: {root_path}")
 
-    def _validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate and process configuration.
-        
-        Args:
-            config: Configuration dictionary to validate
-            
-        Returns:
-            The validated configuration dictionary
-            
-        Raises:
-            ConfigError: If configuration is invalid
-        """
-        # No config needed for file service
-        return config
-
-    def initialize(self, languages: Optional[List[str]] = None) -> None:
-        """Initialize the file service.
-        
-        Args:
-            languages: Not used by file service
-        """
-        self._initialized = True
-
-    def cleanup(self) -> None:
-        """Clean up file service resources."""
-        self._initialized = False
-
-    def get_file_info(self, file_path: str | Path) -> FileInfo:
-        """Get information about a file.
-        
-        Args:
-            file_path: Path to the file
-            
-        Returns:
-            FileInfo object containing file metadata
-            
-        Raises:
-            FileOperationError: If file cannot be accessed
-        """
+        files = []
         try:
-            path = Path(file_path).resolve()
-            if not path.exists():
-                raise FileOperationError(f"File not found: {path}")
-            
-            return FileInfo(
-                path=path,
-                file_type=self._detect_file_type(path),
-                size=path.stat().st_size,
-                is_binary=self._is_binary(path)
-            )
-        except Exception as e:
-            raise FileOperationError(f"Error getting file info: {str(e)}")
-
-    def list_files(self, directory: str | Path) -> List[FileInfo]:
-        """List all files in a directory recursively.
-        
-        Args:
-            directory: Directory to scan
-            
-        Returns:
-            List of FileInfo objects for each file
-            
-        Raises:
-            FileOperationError: If directory cannot be accessed
-        """
-        try:
-            files = []
-            directory = Path(directory).resolve()
-            
-            for root, _, filenames in os.walk(str(directory)):
-                for filename in filenames:
-                    file_path = Path(root) / filename
+            for path in root_path.rglob('*'):
+                if path.is_file():
                     try:
-                        file_info = self.get_file_info(file_path)
-                        if self._should_include_file(file_info):
+                        file_info = self._create_file_info(path)
+                        if filter_config is None or filter_config.matches(file_info):
                             files.append(file_info)
-                    except FileOperationError:
-                        self.logger.warning(f"Skipping inaccessible file: {file_path}")
-                        
-            return files
+                    except Exception as e:
+                        logger.warning(f"Failed to process file {path}: {str(e)}")
         except Exception as e:
-            raise FileOperationError(f"Error listing files: {str(e)}")
+            raise FileOperationError(f"Failed to list files in {root_path}: {str(e)}")
 
-    def _detect_file_type(self, file_path: Path) -> FileType:
-        """Detect file type from extension and content."""
-        ext = file_path.suffix.lower()
+        return files
+
+    def _create_file_info(self, path: Path) -> FileInfo:
+        """Create a FileInfo instance for a file."""
+        try:
+            language = self._detect_language(path)
+            metadata = {
+                'size': path.stat().st_size,
+                'extension': path.suffix,
+                'is_binary': self._is_binary(path)
+            }
+            return FileInfo(path=path, language=language, metadata=metadata)
+        except Exception as e:
+            raise FileOperationError(f"Failed to create file info for {path}: {str(e)}")
+
+    def _detect_language(self, path: Path) -> str:
+        """Detect the language of a file based on its extension."""
+        extension = path.suffix.lower()
+        language = EXTENSION_MAP.get(extension, 'unknown')
         
-        # Map extensions to FileType
-        extension_map = {
-            '.py': FileType.PYTHON,
-            '.js': FileType.JAVASCRIPT,
-            '.ts': FileType.TYPESCRIPT,
-            '.css': FileType.CSS,
-            '.yaml': FileType.YAML,
-            '.yml': FileType.YAML,
-            '.json': FileType.JSON,
-            '.sh': FileType.BASH,
-            '.cpp': FileType.CPP,
-            '.java': FileType.JAVA,
-            '.html': FileType.HTML
-        }
+        # Verify the language is supported by tree-sitter
+        if language != 'unknown':
+            try:
+                get_language(language)
+            except LookupError:
+                logger.warning(f"Language {language} is not supported by tree-sitter")
+                language = 'unknown'
+            
+        return language
+
+    def get_file_info(self, file_path: Path) -> FileInfo:
+        """Get file information.
         
-        return extension_map.get(ext, FileType.UNKNOWN)
+        Args:
+            file_path: Path to file
+            
+        Returns:
+            FileInfo object
+            
+        Raises:
+            FileOperationError: If file operation fails
+            LanguageError: If language is not supported
+        """
+        try:
+            if not file_path.exists():
+                raise FileOperationError(f"File not found: {file_path}")
+                
+            language = self._detect_language(file_path)
+            if language == "unknown":
+                raise LanguageError(f"Language not supported: {file_path}")
+                
+            metadata = {
+                'size': file_path.stat().st_size,
+                'extension': file_path.suffix,
+                'is_binary': self._is_binary(file_path)
+            }
+            return FileInfo(path=file_path, language=language, metadata=metadata)
+            
+        except LanguageError:
+            raise
+        except Exception as e:
+            raise FileOperationError(f"Failed to get file info: {str(e)}")
 
     def _is_binary(self, file_path: Path) -> bool:
-        """Check if file is binary."""
-        try:
-            # Check file signature
-            with open(file_path, 'rb') as f:
-                signature = f.read(4)
-                if any(signature.startswith(sig) for sig in self._binary_signatures):
-                    return True
-            
-            # Try reading as text
-            with open(file_path, 'r', encoding='utf-8') as f:
-                f.read(1024)
-            return False
-        except UnicodeDecodeError:
-            return True
-        except Exception as e:
-            raise FileOperationError(f"Error checking if file is binary: {str(e)}")
-
-    def _should_include_file(self, file_info: FileInfo) -> bool:
-        """Check if file should be included based on filter config."""
-        if not self._filter_config:
-            return True
-            
-        # Check file size
-        if file_info.size > self._filter_config.max_size:
-            return False
-            
-        # Check file type
-        if (self._filter_config.allowed_types and 
-            file_info.file_type not in self._filter_config.allowed_types):
-            return False
-            
-        # Check patterns
-        name = str(file_info.path)
+        """Check if file is binary.
         
-        # Check exclude patterns first
-        for pattern in self._filter_config.exclude_patterns:
-            if self._matches_pattern(name, pattern):
-                return False
-                
-        # If we have include patterns, file must match at least one
-        if self._filter_config.include_patterns:
-            return any(
-                self._matches_pattern(name, pattern)
-                for pattern in self._filter_config.include_patterns
-            )
+        Args:
+            file_path: Path to file
             
-        return True
-
-    def _matches_pattern(self, name: str, pattern: str) -> bool:
-        """Check if filename matches pattern."""
-        if not pattern.case_sensitive:
-            name = name.lower()
-            pattern = pattern.lower()
-            
-        if pattern.is_regex:
-            return bool(re.match(pattern, name))
-        return fnmatch.fnmatch(name, pattern)
+        Returns:
+            True if file is binary, False otherwise
+        """
+        try:
+            with open(file_path, 'rb') as f:
+                chunk = f.read(1024)
+                return b'\0' in chunk
+        except Exception:
+            return False
 
     def read_file(self, file_path: Path) -> str:
         """Read file contents.
@@ -217,4 +154,14 @@ class FileService(BaseService):
                 return f.read()
         except Exception as e:
             logger.error("Failed to read %s: %s", file_path, e)
-            raise 
+            raise
+
+    def get_required_config_fields(self) -> List[str]:
+        """Get required configuration fields."""
+        return ["root_dir", "exclude_patterns", "include_patterns"] 
+
+    def test_file_type(self, file_info: FileInfo, expected_type: str) -> bool:
+        """Test if file matches expected type."""
+        if isinstance(file_info.language, str):
+            return file_info.language == expected_type
+        return str(file_info.language) == expected_type 

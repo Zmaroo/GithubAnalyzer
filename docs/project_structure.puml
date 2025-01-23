@@ -1,4 +1,4 @@
-@startuml GithubAnalyzer Structure
+@startuml github_analyzer_architecture
 
 ' Styling
 skinparam componentStyle uml2
@@ -9,127 +9,100 @@ package "GithubAnalyzer" {
     ' Core Layer
     package "Core" {
         package "Models" {
-            component [base.py] as BM
             component [errors.py] as EM
             component [file.py] as FM
             component [ast.py] as AST
+            
+            note right of EM
+                Simplified Error Hierarchy:
+                ParserError
+                ├── LanguageError
+                └── QueryError
+                FileOperationError
+            end note
         }
         
         package "Services" {
-            component [base_service.py] as BS
             component [file_service.py] as FS
             component [parser_service.py] as PS
-            
-            package "Parsers" {
-                component [base.py] as BP
-                component [config_parser.py] as CP
-            }
         }
 
         package "Config" {
             component [settings.py] as SET
-            component [parser_config.py] as PCF
-            component [language_config.py] as LCF
+            component [language_config.py] as LC
+            component [logging_config.py] as LOG
         }
 
         package "Utils" {
-            component [context_manager.py] as CM
-            component [decorators.py] as DC
             component [logging.py] as LG
+            component [timing.py] as TM
         }
     }
 
     ' Analysis Layer
     package "Analysis" {
         package "Models" {
-            component [results.py] as AR
             component [tree_sitter.py] as TSM
         }
         
         package "Services" {
             package "Parsers" {
-                component [tree_sitter.py] as TS
                 component [tree_sitter_query.py] as TSQ
-                component [language_utils.py] as LU
-                component [documentation.py] as DP
-                component [license.py] as LP
+                component [tree_sitter_traversal.py] as TST
+                component [query_patterns.py] as QP
             }
-            component [parser_registry.py] as PR
         }
     }
 
-    ' Common Layer
-    package "Common" {
-        package "Services" {
-            component [cache_service.py] as CS
-        }
-    }
+    ' Dependencies
+    FS --> FM : uses file models
+    PS --> AST : uses AST models
+    PS --> "tree-sitter-language-pack" : uses directly
+    TSQ --> "tree-sitter-language-pack" : uses directly
+    TSQ --> TST : uses traversal
+    TSQ --> QP : uses patterns
+    LC --> "tree-sitter-language-pack" : uses for extension mapping
 
-    ' Core Dependencies
-    BS --> EM : uses
-    BS --> LG : uses
-    FS --> FM : uses
-    PS --> AST : uses
-    BP --> FM : uses
-    BP --> EM : uses
-    CP --> PCF : uses
+    ' Error Usage Dependencies
+    FS ..> EM : throws FileOperationError
+    PS ..> EM : throws ParserError
+    TSQ ..> EM : throws QueryError
 
-    ' Analysis Dependencies
-    TS --> AST : uses
-    TS --> TSM : uses
-    TS --> TSQ : uses
-    TS --> LU : uses
-    DP --> AST : uses
-    LP --> AST : uses
-    PR --> PS : uses
-    PR --> TS : uses
-    PR --> DP : uses
-    PR --> LP : uses
+    ' Logging Usage
+    FS --> LG : uses logging
+    PS --> LG : uses logging
+    TSQ --> LG : uses logging
 
-    ' Common Usage
-    PS --> CS : uses
-    FS --> CS : uses
-    TS --> CS : uses
-    DP --> CS : uses
-    LP --> CS : uses
+    ' Timer Usage
+    PS ..> TM : uses timing
+    TSQ ..> TM : uses timing
 
-    ' Infrastructure Usage
-    CS --> CM : uses
-    CS --> LG : uses
-    PCF --> SET : uses
-    LCF --> SET : uses
-
-    ' Parser Inheritance
-    BP <|-- CP : extends
-    BP <|-- TS : extends
-    BP <|-- DP : extends
-    BP <|-- LP : extends
-
-    ' Service Inheritance
-    BS <|-- FS : extends
-    BS <|-- PS : extends
-
-    ' Tree-sitter Component Dependencies
-    TSQ --> TSM : uses
-    LU --> TS : uses
-
-    ' Notes
     note right of Core
         Core layer provides fundamental models,
-        interfaces, services, configuration and utilities.
-        No dependencies on Analysis layer.
+        services, configuration and utilities.
+        Directly uses tree-sitter-language-pack.
     end note
 
     note right of Analysis
-        Analysis layer implements specialized parsers
-        and analysis services. Can depend on Core
-        and Common layers.
+        Analysis layer provides specialized query
+        and traversal utilities on top of tree-sitter.
+        No intermediate abstractions.
     end note
 
-    note right of Common
-        Common layer provides shared services
-        used by both Core and Analysis layers.
-        No dependencies on either layer.
+    note right of PS
+        ParserService directly uses tree-sitter-language-pack for:
+        - Language initialization
+        - Parser management
+        - Language detection
+        No intermediate abstraction layer needed.
+    end note
+
+    note right of TSQ
+        TreeSitterQuery provides:
+        - Query caching
+        - Error handling
+        - Pattern management
+        Direct use of tree-sitter Query API.
     end note
 }
 

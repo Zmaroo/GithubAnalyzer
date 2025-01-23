@@ -185,3 +185,74 @@ assert matches[0][1]["function.block"] == [function_body_node]
 # second match
 assert matches[1][1]["function.call"] == [function_call_name_node]
 assert matches[1][1]["function.args"] == [function_call_args_node]
+
+"""Example usage demonstrating GithubAnalyzer layer interactions."""
+from pathlib import Path
+from GithubAnalyzer import (
+    # Core services
+    FileService,
+    # Analysis services
+    LanguageUtils,
+    TreeSitterParser,
+    TreeSitterQueryHandler,
+    ParserRegistry,
+    # Common services
+    CacheService
+)
+
+class CodeAnalyzer:
+    """Example class showing proper layer interaction."""
+    
+    def __init__(self):
+        """Initialize services following layer dependencies."""
+        # Initialize services in dependency order
+        self.cache = CacheService()  # Common layer
+        self.file_service = FileService()  # Core layer
+        self.language_utils = LanguageUtils()  # Analysis layer
+        self.parser_registry = ParserRegistry()  # Analysis layer
+        
+        # Register parsers
+        self._register_parsers()
+    
+    def _register_parsers(self):
+        """Register available parsers."""
+        for language in ["python", "javascript", "typescript"]:
+            self.parser_registry.register_parser("tree-sitter", language)
+            self.parser_registry.register_parser("documentation", language)
+            self.parser_registry.register_parser("license", language)
+    
+    def analyze_file(self, file_path: str) -> dict:
+        """Analyze a source code file."""
+        # Use Core layer for file operations
+        file_info = self.file_service.get_file_info(file_path)
+        
+        # Use cache from Common layer
+        cache_key = f"language_{file_info.language}"
+        if not self.cache.get("languages", cache_key):
+            self.language_utils.initialize_language(file_info.language)
+            self.cache.set("languages", cache_key, True)
+        
+        # Use Analysis layer for parsing
+        parser = TreeSitterParser(self.language_utils.languages)
+        with open(file_path) as f:
+            code = f.read()
+        result = parser.parse(code, file_info.language)
+        
+        # Use Analysis layer for queries
+        query_handler = TreeSitterQueryHandler(self.language_utils.languages)
+        functions = query_handler.find_functions(result.tree)
+        
+        return {
+            "file_info": file_info,
+            "functions": functions,
+            "is_valid": result.is_valid
+        }
+
+def main():
+    """Example usage."""
+    analyzer = CodeAnalyzer()
+    result = analyzer.analyze_file("example.py")
+    print(f"Analysis complete: {len(result['functions'])} functions found")
+
+if __name__ == "__main__":
+    main()

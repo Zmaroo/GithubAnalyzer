@@ -3,45 +3,53 @@
 from collections import defaultdict
 from threading import Lock
 from typing import Any, Dict, List, Optional
+from pathlib import Path
+import logging
 
 from ...core.models.errors import ServiceError, ConfigError
 from ...core.services.base_service import BaseService
 
 class CacheService(BaseService):
-    """Service for caching data in memory."""
+    """Service for caching parsed data."""
 
-    def __init__(self, max_size: Optional[int] = None):
-        """Initialize cache service.
-        
-        Args:
-            max_size: Optional maximum number of items to cache
-        """
-        super().__init__()
-        self._max_size = max_size
+    logger = logging.getLogger(__qualname__)  # Class-level logger
+
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        """Initialize cache service."""
+        default_config = {
+            "max_size": 1000,  # Default max cache size
+            "cache_dir": str(Path.home() / ".cache" / "github_analyzer")
+        }
+        if config:
+            default_config.update(config)
+        super().__init__(default_config)
+        self.logger.info("Initializing cache service")
+        self._max_size = default_config["max_size"]
         self._caches: Dict[str, Dict[str, Any]] = defaultdict(dict)
         self._lock = Lock()
 
     def _validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate and process configuration.
+        """Validate and process configuration."""
+        config = super()._validate_config(config)
         
-        Args:
-            config: Configuration dictionary to validate
+        # Validate max_size if provided
+        if "max_size" in config:
+            if not isinstance(config["max_size"], int):
+                raise ConfigError("max_size must be an integer")
+            if config["max_size"] <= 0:
+                raise ConfigError("max_size must be positive")
             
-        Returns:
-            The validated configuration dictionary
+        # Validate cache_dir
+        if "cache_dir" in config:
+            if not isinstance(config["cache_dir"], str):
+                raise ConfigError("cache_dir must be a string")
             
-        Raises:
-            ConfigError: If configuration is invalid
-        """
-        # No config needed for cache service
         return config
 
     def initialize(self, languages: Optional[List[str]] = None) -> None:
-        """Initialize the cache service.
-        
-        Args:
-            languages: Not used by cache service
-        """
+        """Initialize the cache service."""
+        self._caches = defaultdict(dict)
+        self._lock = Lock()
         self._initialized = True
 
     def get(self, cache_name: str, key: str) -> Optional[Any]:
@@ -97,4 +105,8 @@ class CacheService(BaseService):
     def cleanup(self) -> None:
         """Clean up all caches."""
         with self._lock:
-            self._caches.clear() 
+            self._caches.clear()
+
+    def get_required_config_fields(self) -> List[str]:
+        """Get required configuration fields."""
+        return ["cache_dir", "max_size"] 

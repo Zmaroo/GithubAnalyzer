@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, Any
 from pathlib import Path
 from .logging_config import get_logging_config
+import logging
 
 @dataclass
 class Settings:
@@ -11,11 +12,13 @@ class Settings:
     parser_timeout: int = 5000
     debug_mode: bool = False
     testing_mode: bool = False
-    log_level: str = "INFO"
+    log_level: int = logging.INFO
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Settings":
         """Create settings from dictionary."""
+        if "log_level" in data and isinstance(data["log_level"], str):
+            data["log_level"] = getattr(logging, data["log_level"].upper())
         return cls(**data)
 
 # Global settings instance

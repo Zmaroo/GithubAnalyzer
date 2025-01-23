@@ -3,10 +3,13 @@
 from pathlib import Path
 from typing import Any, Dict, Optional, Set
 from threading import Lock
+from src.GithubAnalyzer.core.utils.logging import get_logger
 
 
 class ContextManager:
     """Manages context and resources for analysis operations."""
+
+    logger = get_logger(__name__)
 
     def __init__(self):
         """Initialize context manager."""

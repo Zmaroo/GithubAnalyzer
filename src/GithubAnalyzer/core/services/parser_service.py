@@ -1,192 +1,194 @@
-"""Parser service for orchestrating code analysis."""
+"""Parser service for code analysis using tree-sitter."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Union, Optional
+import logging
+from tree_sitter_language_pack import get_parser, get_language
 
 from src.GithubAnalyzer.core.models.ast import ParseResult
-from src.GithubAnalyzer.core.models.errors import ParserError, ServiceError, ConfigError
-from src.GithubAnalyzer.core.models.file import FileInfo, FileType
-from src.GithubAnalyzer.core.services.parsers.base import BaseParser
-from src.GithubAnalyzer.core.services.parsers.config_parser import ConfigParser
-from src.GithubAnalyzer.common.services.cache_service import CacheService
-from src.GithubAnalyzer.core.utils.context_manager import ContextManager
-from src.GithubAnalyzer.core.utils.logging import StructuredLogger
-from src.GithubAnalyzer.core.services.base_service import BaseService
+from src.GithubAnalyzer.core.models.errors import ParserError, LanguageError
+from src.GithubAnalyzer.core.models.file import FileInfo
+from src.GithubAnalyzer.core.utils.timing import timer
 
+logger = logging.getLogger(__name__)
 
-class ParserService(BaseService):
-    """Service for orchestrating parsing operations."""
+# Non-code file extensions
+CONFIG_EXTENSIONS = {'yaml', 'yml', 'json'}
+DOC_EXTENSIONS = {'md', 'rst', 'txt'}
+LICENSE_FILES = {'license', 'license.txt', 'license.md'}
 
-    def __init__(self, cache_service=None):
-        """Initialize parser service."""
-        super().__init__()
-        self.cache_service = cache_service or CacheService()
-        self._context = ContextManager()
-        self._parsers: Dict[str, BaseParser] = {}
-        self.logger = StructuredLogger(__name__)
-        self._initialized = False
+# Language mapping for file extensions
+EXTENSION_MAP = {
+    '.py': 'python',
+    '.js': 'javascript',
+    '.ts': 'typescript',
+    '.cpp': 'cpp',
+    '.c': 'c',
+    '.h': 'c',
+    '.hpp': 'cpp',
+    '.java': 'java',
+    '.rb': 'ruby',
+    '.go': 'go',
+    '.rs': 'rust',
+    '.php': 'php',
+    '.cs': 'c_sharp',
+    '.swift': 'swift',
+    '.kt': 'kotlin',
+    '.scala': 'scala',
+    '.m': 'objective-c',
+    '.mm': 'objective-cpp'
+}
 
-    def register_parser(self, name: str, parser: BaseParser) -> None:
-        """Register a parser implementation.
-        
-        Args:
-            name: Name/type of the parser
-            parser: Parser instance to register
-            
-        Raises:
-            ServiceError: If parser is already registered
-        """
-        if name in self._parsers:
-            raise ServiceError(f"Parser {name} already registered")
-        self._parsers[name] = parser
-        self.logger.info(f"Registered parser", parser_name=name)
+class ParserService:
+    """Service for parsing files using tree-sitter."""
 
-    def initialize(self, parser_types: Optional[List[str]] = None) -> None:
+    def __init__(self, timeout_micros: Optional[int] = None):
         """Initialize parser service.
         
         Args:
-            parser_types: Optional list of parser types to initialize
-            
-        Raises:
-            ServiceError: If initialization fails
+            timeout_micros: Optional timeout in microseconds for parsing operations
         """
-        try:
-            if not self._initialized:
-                self._context.start()
-                self.cache_service.initialize(["ast"])
-                
-                # Only initialize config parser if needed
-                if not parser_types or "config" in parser_types:
-                    try:
-                        config_parser = ConfigParser(cache_service=self.cache_service)
-                        config_parser.initialize()
-                        self._parsers["config"] = config_parser
-                    except Exception as e:
-                        self.logger.warning(f"Failed to initialize config parser: {e}")
-                        
-                self._initialized = True
-                self.logger.info("Parser service initialized", parser_types=parser_types)
-        except Exception as e:
-            raise ServiceError(f"Failed to initialize parser service: {str(e)}")
+        self.timeout_micros = timeout_micros
 
+    def _detect_language(self, file_path: Path) -> Optional[str]:
+        """Detect language from file extension.
+        
+        Args:
+            file_path: Path to file
+            
+        Returns:
+            Language identifier or None if not detected
+        """
+        ext = file_path.suffix.lower()
+        return EXTENSION_MAP.get(ext)
+
+    @timer
     def parse_file(self, file_info: Union[str, Path, FileInfo]) -> ParseResult:
-        """Parse a file using appropriate parser.
+        """Parse a file using tree-sitter or return raw content for non-code files.
         
         Args:
             file_info: Path or FileInfo object for the file to parse
             
         Returns:
-            ParseResult containing AST and metadata
+            ParseResult containing tree-sitter Tree for code files or raw content for others
             
         Raises:
             ParserError: If parsing fails
-            ServiceError: If service not initialized
+            LanguageError: If language is not supported
         """
-        self._ensure_initialized()
-        
         try:
             # Handle FileInfo objects
             if isinstance(file_info, FileInfo):
                 file_path = file_info.path
+                language = file_info.language
             else:
                 file_path = Path(file_info)
+                language = None
             
-            cache_key = str(file_path.resolve())
+            # Get file extension and content
+            content = file_path.read_text()
             
-            # Check cache first
-            cached_result = self.cache_service.get("ast", cache_key)
-            if cached_result:
-                return cached_result
+            # Handle non-code files first
+            name = file_path.name.lower()
+            if name in LICENSE_FILES:
+                return ParseResult(tree=None, language='license', content=content, is_code=False)
             
-            # Get appropriate parser
-            parser = self._get_parser_for_file(file_path)
-            if not parser:
-                raise ParserError(f"No parser available for file: {file_path}")
+            ext = file_path.suffix.lower().lstrip('.')
+            if ext in CONFIG_EXTENSIONS:
+                return ParseResult(tree=None, language='config', content=content, is_code=False)
+            if ext in DOC_EXTENSIONS:
+                return ParseResult(tree=None, language='documentation', content=content, is_code=False)
             
-            # Parse file
-            result = parser.parse_file(file_path)
+            # Get language and parser
+            if not language:
+                language = self._detect_language(file_path)
+                if not language:
+                    raise ParserError(f"Could not detect language for file: {file_path}")
+                
+            try:
+                # Parse code file
+                parser = get_parser(language)
+                if self.timeout_micros is not None:
+                    parser.timeout_micros = self.timeout_micros
+                tree = parser.parse(bytes(content, "utf8"))
+                
+                # Check for syntax errors
+                if tree.root_node.has_error:
+                    error_nodes = [
+                        node for node in tree.root_node.children 
+                        if node.has_error or node.type == 'ERROR'
+                    ]
+                    if error_nodes:
+                        error_msg = "Syntax errors found:\n"
+                        for node in error_nodes:
+                            error_msg += f"- ERROR at line {node.start_point[0] + 1}: {node.type}\n"
+                        raise ParserError(error_msg)
+                
+                return ParseResult(
+                    tree=tree,
+                    language=language,
+                    content=content,
+                    is_code=True
+                )
+            except LookupError:
+                raise LanguageError(f"Language not supported: {language}")
             
-            # Cache result
-            self.cache_service.set("ast", cache_key, result)
-            
-            return result
-            
+        except LanguageError:
+            raise
         except Exception as e:
             raise ParserError(f"Failed to parse file: {str(e)}")
 
-    def cleanup(self) -> None:
-        """Clean up service resources."""
-        for parser in self._parsers.values():
-            parser.cleanup()
-        self._parsers.clear()
-        self.cache_service.cleanup()
-        self._context.stop()
-        self._initialized = False
-        self.logger.info("Parser service cleaned up")
-
-    def _get_parser_for_file(self, file_path: Path) -> Optional[BaseParser]:
-        """Get appropriate parser for file type."""
-        # Get file extension
-        ext = file_path.suffix.lower().lstrip('.')
-        
-        # Config files
-        if ext in ['yaml', 'yml', 'json']:
-            return self._parsers.get('config')
-            
-        # Documentation files
-        if ext in ['md', 'rst', 'txt']:
-            return self._parsers.get('documentation')
-            
-        # License files
-        if file_path.name.lower() in ['license', 'license.txt', 'license.md']:
-            return self._parsers.get('license')
-            
-        # Default to tree-sitter for code files
-        return self._parsers.get('tree-sitter')
-
-    def _validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate parser service configuration.
-        
-        Args:
-            config: Configuration dictionary
-            
-        Returns:
-            Validated configuration
-            
-        Raises:
-            ConfigError: If configuration is invalid
-        """
-        if not isinstance(config, dict):
-            raise ConfigError("Configuration must be a dictionary")
-        return config
-
-    def _ensure_initialized(self) -> None:
-        """Ensure service is initialized."""
-        if not self._initialized:
-            raise ServiceError("Parser service not initialized")
-
+    @timer
     def parse_content(self, content: str, language: str) -> ParseResult:
-        """Parse content string.
+        """Parse content string using tree-sitter.
         
         Args:
             content: Content to parse
             language: Language identifier
             
         Returns:
-            ParseResult containing AST and metadata
+            ParseResult containing tree-sitter Tree
             
         Raises:
             ParserError: If parsing fails
-            ServiceError: If service not initialized
+            LanguageError: If language is not supported
         """
-        self._ensure_initialized()
-        
         try:
-            parser = self._parsers.get(language)
-            if not parser:
-                raise ParserError(f"No parser available for language: {language}")
+            try:
+                parser = get_parser(language)
+                if self.timeout_micros is not None:
+                    parser.timeout_micros = self.timeout_micros
+                tree = parser.parse(bytes(content, "utf8"))
                 
-            return parser.parse(content, language)
-            
+                # Check for syntax errors
+                if tree.root_node.has_error:
+                    error_nodes = [
+                        node for node in tree.root_node.children 
+                        if node.has_error or node.type == 'ERROR'
+                    ]
+                    if error_nodes:
+                        error_msg = "Syntax errors found:\n"
+                        for node in error_nodes:
+                            error_msg += f"- ERROR at line {node.start_point[0] + 1}: {node.type}\n"
+                        raise ParserError(error_msg)
+                
+                return ParseResult(
+                    tree=tree,
+                    language=language,
+                    content=content,
+                    is_code=True
+                )
+            except LookupError:
+                raise LanguageError(f"Language not supported: {language}")
+            except ParserError:
+                raise
+            except Exception as e:
+                raise ParserError(f"Failed to parse content: {str(e)}")
+        except LanguageError:
+            raise
         except Exception as e:
             raise ParserError(f"Failed to parse content: {str(e)}")
+
+    def get_required_config_fields(self) -> list[str]:
+        """Get required configuration fields."""
+        return ["language_bindings"]
