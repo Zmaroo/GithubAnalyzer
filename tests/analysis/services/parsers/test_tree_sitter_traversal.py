@@ -2,7 +2,7 @@
 import pytest
 import logging
 import logging.config
-import json
+import json  # Ensure this import is present
 from tree_sitter import Tree, Node, Point
 from tree_sitter_language_pack import get_parser
 from src.GithubAnalyzer.analysis.services.parsers.tree_sitter_traversal import TreeSitterTraversal
@@ -156,7 +156,7 @@ def test_get_node_depth(complex_tree):
         if "greet" in TreeSitterTraversal.get_node_text(node):
             assert depth > 1
 
-def test_example():
+def test_example(simple_tree):
     traversal = TreeSitterTraversal()
     traversal._logger.info("Test log message")
-    assert True
+    assert simple_tree.root_node is not None
