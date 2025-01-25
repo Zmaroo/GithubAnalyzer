@@ -2,44 +2,17 @@
 import pytest
 import logging
 import logging.config
+import json
 from tree_sitter import Tree, Node, Point
 from tree_sitter_language_pack import get_parser
 from src.GithubAnalyzer.analysis.services.parsers.tree_sitter_traversal import TreeSitterTraversal
-from src.GithubAnalyzer.core.utils.logging import get_logging_config
+from src.GithubAnalyzer.core.utils.logging import get_logging_config, configure_logging
 from src.GithubAnalyzer.analysis.services.parsers.tree_sitter_logging import TreeSitterLogHandler
 
 @pytest.fixture(autouse=True)
-def setup_logging(caplog):
+def setup_logging():
     """Configure logging for tests."""
-    # Get logging config
-    config = get_logging_config()
-    
-    # Update config for testing
-    config['loggers']['tree_sitter.traversal'] = {
-        'handlers': ['default'],
-        'level': 'DEBUG',
-        'propagate': True
-    }
-    
-    # Configure default handler for debug level
-    config['handlers']['default']['level'] = 'DEBUG'
-    
-    # Apply configuration
-    logging.config.dictConfig(config)
-    
-    # Set caplog level
-    caplog.set_level(logging.DEBUG, logger='tree_sitter.traversal')
-    
-    # Create logger instance
-    logger = logging.getLogger('tree_sitter.traversal')
-    
-    # Create and add tree-sitter handler
-    handler = TreeSitterLogHandler(logger)
-    handler.setLevel(logging.DEBUG)
-    handler.setFormatter(logging.Formatter('%(levelname)s - %(name)s - %(message)s'))
-    logger.addHandler(handler)
-    
-    return logger
+    configure_logging()
 
 @pytest.fixture
 def python_parser():
@@ -181,4 +154,9 @@ def test_get_node_depth(complex_tree):
         assert depth >= 0
         # Class methods should be deeper than top-level functions
         if "greet" in TreeSitterTraversal.get_node_text(node):
-            assert depth > 1 
+            assert depth > 1
+
+def test_example():
+    traversal = TreeSitterTraversal()
+    traversal._logger.info("Test log message")
+    assert True

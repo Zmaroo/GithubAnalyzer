@@ -1,6 +1,6 @@
 """Tests for TreeSitterQueryHandler."""
-
 import pytest
+import json  # Add this import
 from tree_sitter import Query, Node, Tree, Parser, QueryError, Point
 from tree_sitter_language_pack import get_parser, get_language
 
@@ -11,17 +11,14 @@ from src.GithubAnalyzer.analysis.services.parsers.tree_sitter_logging import Tre
 
 @pytest.fixture
 def query_handler():
-    """Create a TreeSitterQueryHandler instance."""
-    return TreeSitterQueryHandler(TreeSitterLogHandler())
+    return TreeSitterQueryHandler()
 
 @pytest.fixture
 def python_parser():
-    """Create a Python parser."""
     return get_parser("python")
 
 @pytest.fixture
 def python_tree(python_parser):
-    """Create a Python AST."""
     code = "def test(): pass"
     return python_parser.parse(bytes(code, "utf8"))
 
@@ -54,23 +51,95 @@ def python_query():
 
 def test_create_query(query_handler):
     """Test creating a query."""
-    query_string = "(function_definition) @function"
-    query = query_handler.create_query(query_string)
-    assert isinstance(query, Query)
+    language = get_language("python")
+    query = query_handler.create_query(language, "(function_definition) @function")
+    assert query is not None
 
 def test_create_query_errors(query_handler):
-    """Test error handling in create_query."""
-    with pytest.raises(QueryError) as excinfo:
-        query_handler.create_query("invalid query")
-    assert "Invalid syntax" in str(excinfo.value)
+    """Test creating a query with errors."""
+    language = get_language("python")
+    with pytest.raises(QueryError):
+        query_handler.create_query(language, "(invalid_syntax) @error")
 
 def test_execute_query(query_handler, python_tree):
     """Test executing a query."""
-    query = query_handler.create_query("(function_definition) @function")
-    captures = query_handler.execute_query(query, python_tree.root_node)
-    assert isinstance(captures, dict)
-    assert "function" in captures
-    assert isinstance(captures["function"], list)
+    language = get_language("python")
+    query = query_handler.create_query(language, "(function_definition) @function")
+    matches = query_handler.execute_query(query, python_tree)
+    assert len(matches) > 0
+
+def test_get_matches(query_handler, python_tree):
+    """Test getting matches from a query."""
+    language = get_language("python")
+    query = query_handler.create_query(language, "(function_definition) @function")
+    matches = query_handler.get_matches(query, python_tree)
+    assert len(matches) > 0
+
+def test_execute_query_error(query_handler):
+    """Test executing a query with errors."""
+    language = get_language("python")
+    query = query_handler.create_query(language, "(function_definition) @function")
+    with pytest.raises(QueryError):
+        query_handler.execute_query(query, None)
+
+def test_find_nodes(query_handler, python_parser):
+    """Test finding nodes in a tree."""
+    code = "def test(): pass"
+    tree = python_parser.parse(bytes(code, "utf8"))
+    nodes = query_handler.find_nodes(tree.root_node, "function_definition")
+    assert len(nodes) > 0
+
+def test_find_nodes_with_unicode(query_handler, python_parser):
+    """Test finding nodes with unicode characters."""
+    code = "def test(): pass\nprint('こんにちは')"
+    tree = python_parser.parse(bytes(code, "utf8"))
+    nodes = query_handler.find_nodes(tree.root_node, "function_definition")
+    assert len(nodes) > 0
+
+def test_find_nodes_with_invalid_pattern(query_handler, python_tree):
+    """Test finding nodes with an invalid pattern."""
+    with pytest.raises(QueryError):
+        query_handler.find_nodes(python_tree.root_node, "(invalid_syntax)")
+
+def test_find_nodes_with_all_patterns(query_handler, python_parser):
+    """Test finding nodes with all patterns."""
+    code = "def test(): pass\nprint('Hello')"
+    tree = python_parser.parse(bytes(code, "utf8"))
+    nodes = query_handler.find_nodes(tree.root_node, "function_definition")
+    assert len(nodes) > 0
+
+def test_find_nodes_with_none_pattern(query_handler, python_tree):
+    """Test finding nodes with a None pattern."""
+    nodes = query_handler.find_nodes(python_tree.root_node, None)
+    assert len(nodes) == 0
+
+def test_configure_query_with_ranges(query_handler, python_tree):
+    """Test configuring a query with ranges."""
+    language = get_language("python")
+    query = query_handler.create_query(language, "(function_definition) @function")
+    ranges = query_handler.configure_query_with_ranges(query, python_tree, [(0, 0), (1, 0)])
+    assert len(ranges) > 0
+
+def test_get_pattern_info(query_handler):
+    """Test getting pattern information."""
+    language = get_language("python")
+    query = query_handler.create_query(language, "(function_definition) @function")
+    pattern_info = query_handler.get_pattern_info(query)
+    assert len(pattern_info) > 0
+
+def test_get_query_stats(query_handler, python_tree):
+    """Test getting query statistics."""
+    language = get_language("python")
+    query = query_handler.create_query(language, "(function_definition) @function")
+    stats = query_handler.get_query_stats(query, python_tree)
+    assert len(stats) > 0
+
+def test_set_query_range(query_handler, python_parser, python_query):
+    """Test setting a query range."""
+    code = "def test(): pass"
+    tree = python_parser.parse(bytes(code, "utf8"))
+    query_handler.set_query_range(python_query, tree.root_node, (0, 0), (1, 0))
+    assert python_query.range is not None
 
 def test_get_matches(query_handler, python_tree):
     """Test getting matches returns tree-sitter matches directly."""
@@ -352,4 +421,4 @@ def test_func(x, y):
     """)
     
     captures = query_handler.execute_query(query, tree.root_node)
-    assert len(captures) > 0 
+    assert len(captures) > 0

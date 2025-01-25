@@ -30,13 +30,15 @@ class TreeSitterTraversal:
     def __init__(self):
         """Initialize TreeSitterTraversal."""
         self._logger = logging.getLogger('tree_sitter.traversal')
-        self._logger.setLevel(logging.DEBUG)
         
-        # Add tree-sitter specific handler if not already present
-        if not any(isinstance(h, TreeSitterLogHandler) for h in self._logger.handlers):
-            handler = TreeSitterLogHandler('tree_sitter.traversal')
-            handler.setFormatter(logging.Formatter('%(levelname)s - %(name)s - %(message)s'))
-            self._logger.addHandler(handler)
+        # Add context processor for structured logging
+        self._logger = logging.LoggerAdapter(
+            self._logger,
+            {'context': {
+                'module': 'tree_sitter_traversal',
+                'thread': threading.get_ident()
+            }}
+        )
 
     @staticmethod
     def walk_tree(node: Node) -> Generator[Node, None, None]:
