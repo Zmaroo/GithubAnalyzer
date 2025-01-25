@@ -1,11 +1,59 @@
-"""Logging configuration."""
+"""Logging utilities."""
 
 import logging
 import logging.config
 from typing import Optional, Dict, Any
 from functools import wraps
 
-from ..config.logging_config import get_logging_config
+def get_logging_config(env: Optional[str] = None) -> Dict[str, Any]:
+    """Get logging configuration.
+    
+    Args:
+        env: Optional environment name
+        
+    Returns:
+        Logging configuration dictionary
+    """
+    config = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'standard': {
+                'format': '%(levelname)s - %(message)s'
+            },
+            'detailed': {
+                'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            }
+        },
+        'handlers': {
+            'default': {
+                'level': 'INFO',
+                'formatter': 'standard',
+                'class': 'logging.StreamHandler',
+                'stream': 'ext://sys.stdout'
+            },
+            'file': {
+                'level': 'DEBUG',
+                'formatter': 'detailed',
+                'class': 'logging.FileHandler',
+                'filename': 'github_analyzer.log'
+            }
+        },
+        'loggers': {
+            '': {
+                'handlers': ['default'],
+                'level': 'INFO',
+                'propagate': True
+            }
+        }
+    }
+    
+    # Environment-specific settings
+    if env == 'test':
+        config['loggers']['']['level'] = 'DEBUG'
+        config['loggers']['']['handlers'] = ['default', 'file']
+        
+    return config
 
 def configure_logging(config: Optional[Dict[str, Any]] = None, env: Optional[str] = None) -> None:
     """Configure logging with optional custom config.
@@ -16,7 +64,6 @@ def configure_logging(config: Optional[Dict[str, Any]] = None, env: Optional[str
     """
     if config is None:
         config = get_logging_config(env)
-    
     logging.config.dictConfig(config)
 
 def get_logger(name: str) -> logging.Logger:
@@ -61,43 +108,87 @@ class StructuredLogger:
         """
         self._logger = logging.getLogger(name)
         self._context = {}
-    
+        
     def add_context(self, **kwargs) -> None:
-        """Add context data to be included in all log messages."""
+        """Add context key-value pairs."""
         self._context.update(kwargs)
-    
+        
     def clear_context(self) -> None:
         """Clear all context data."""
         self._context.clear()
-    
-    def _format_message(self, msg: str) -> str:
-        """Format message with context data."""
-        if self._context:
-            context_str = " ".join(f"{k}={v}" for k, v in self._context.items())
+        
+    def _format_context(self, extra: Optional[Dict[str, Any]] = None) -> str:
+        """Format context and extra data into string."""
+        context = self._context.copy()
+        if extra:
+            context.update(extra)
+        if not context:
+            return ""
+        return " [" + " ".join(f"{k}={v}" for k, v in context.items()) + "]"
+        
+    def _format_message(self, msg: str, **kwargs) -> str:
+        """Format a message with context.
+        
+        Args:
+            msg: The message to format
+            **kwargs: Additional context key-value pairs
+            
+        Returns:
+            The formatted message with context
+        """
+        # Combine context and kwargs
+        context = self._context.copy()
+        if kwargs:
+            context.update(kwargs)
+        
+        # Format context if present
+        if context:
+            context_str = " ".join(f"{k}={v}" for k, v in sorted(context.items()))
             return f"{msg} [{context_str}]"
+        
         return msg
-    
-    def debug(self, msg: str, **kwargs) -> None:
-        """Log debug message with context."""
-        context = {**self._context, **kwargs}
-        self._logger.debug(self._format_message(msg), extra=context)
-    
-    def info(self, msg: str, **kwargs) -> None:
-        """Log info message with context."""
-        context = {**self._context, **kwargs}
-        self._logger.info(self._format_message(msg), extra=context)
-    
-    def warning(self, msg: str, **kwargs) -> None:
-        """Log warning message with context."""
-        context = {**self._context, **kwargs}
-        self._logger.warning(self._format_message(msg), extra=context)
-    
-    def error(self, msg: str, **kwargs) -> None:
-        """Log error message with context."""
-        context = {**self._context, **kwargs}
-        self._logger.error(self._format_message(msg), extra=context)
-    
-    def exception(self, msg: str, **kwargs) -> None:
-        """Log exception message with context."""
-        context = {**self._context, **kwargs}
-        self._logger.exception(self._format_message(msg), extra=context)
+        
+    def debug(self, message: str, **kwargs) -> None:
+        """Log debug message.
+        
+        Args:
+            message: Message to log
+            **kwargs: Additional context
+        """
+        self._logger.debug(self._format_message(message, **kwargs))
+        
+    def info(self, message: str, **kwargs) -> None:
+        """Log info message.
+        
+        Args:
+            message: Message to log
+            **kwargs: Additional context
+        """
+        self._logger.info(self._format_message(message, **kwargs))
+        
+    def warning(self, message: str, **kwargs) -> None:
+        """Log warning message.
+        
+        Args:
+            message: Message to log
+            **kwargs: Additional context
+        """
+        self._logger.warning(self._format_message(message, **kwargs))
+        
+    def error(self, message: str, **kwargs) -> None:
+        """Log error message.
+        
+        Args:
+            message: Message to log
+            **kwargs: Additional context
+        """
+        self._logger.error(self._format_message(message, **kwargs))
+        
+    def exception(self, message: str, **kwargs) -> None:
+        """Log exception message.
+        
+        Args:
+            message: Message to log
+            **kwargs: Additional context
+        """
+        self._logger.exception(self._format_message(message, **kwargs))

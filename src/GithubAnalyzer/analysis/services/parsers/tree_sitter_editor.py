@@ -1,83 +1,27 @@
 """Tree-sitter editor for handling incremental parsing and tree updates."""
 from typing import Dict, List, Optional, Tuple, Union, Sequence
-import logging
 from dataclasses import dataclass
 from pathlib import Path
-from tree_sitter import Tree, Node, Point, Parser, Range
+from tree_sitter import Tree, Node, Point, Parser, Range, Query
+import logging
+import sys
 
 from src.GithubAnalyzer.core.models.errors import ParserError
 from src.GithubAnalyzer.core.utils.logging import get_logger
 from src.GithubAnalyzer.analysis.services.parsers.tree_sitter_traversal import TreeSitterTraversal
 from src.GithubAnalyzer.analysis.services.parsers.tree_sitter_query import TreeSitterQueryHandler
+from src.GithubAnalyzer.analysis.services.parsers.tree_sitter_logging import TreeSitterLogHandler
+from tree_sitter_language_pack import get_language
 
 logger = get_logger(__name__)
 
 @dataclass
 class EditOperation:
     """Represents a single edit operation on the tree."""
-    start_byte: int
-    old_end_byte: int
-    new_end_byte: int
-    start_point: Point
-    old_end_point: Point
-    new_end_point: Point
     old_text: str
     new_text: str
-
-class TreeSitterLogHandler:
-    """Handler for tree-sitter logging that integrates with our logging system."""
-    def __init__(self):
-        """Initialize the log handler."""
-        self._enabled = False
-        self.PARSE_TYPE = 0  # Tree-sitter parse event type
-        self.LEX_TYPE = 1    # Tree-sitter lex event type
-    
-    def __call__(self, log_type: int, message: str) -> None:
-        """Log a message from tree-sitter.
-        
-        Args:
-            log_type: 0 for parse events, 1 for lex events
-            message: The log message
-        """
-        if not self._enabled:
-            return
-            
-        # Use INFO level to match logging config
-        if log_type == self.PARSE_TYPE:
-            logger.info(f"[PARSE] {message.strip()}", stacklevel=2)
-        elif log_type == self.LEX_TYPE:
-            logger.info(f"[LEX] {message.strip()}", stacklevel=2)
-    
-    def enable(self) -> None:
-        """Enable logging."""
-        self._enabled = True
-    
-    def disable(self) -> None:
-        """Disable logging."""
-        self._enabled = False
-
-    def enable_parser_logging(self, parser: Parser) -> None:
-        """Enable tree-sitter parser logging.
-        
-        Args:
-            parser: The tree-sitter parser to enable logging for
-        """
-        self.enable()
-        # Ensure the logger is properly set and bound
-        parser.reset()  # Reset first to clear any existing logger
-        parser.logger = self
-        parser.reset()  # Reset again to ensure logger takes effect
-
-    def disable_parser_logging(self, parser: Parser) -> None:
-        """Disable tree-sitter parser logging.
-        
-        Args:
-            parser: The tree-sitter parser to disable logging for
-        """
-        self.disable()
-        parser.reset()  # Reset first to clear existing logger
-        parser.logger = None
-        parser.reset()  # Reset again to ensure logger is removed
+    start_position: Point
+    end_position: Optional[Point] = None
 
 class TreeSitterEditor:
     """Handles tree editing and incremental parsing."""
@@ -85,157 +29,49 @@ class TreeSitterEditor:
     def __init__(self):
         """Initialize editor with traversal and query utilities."""
         self._traversal = TreeSitterTraversal()
-        self._query_handler = TreeSitterQueryHandler()
-        self._tree_cache: Dict[str, Tuple[Tree, bytes]] = {}  # Store both tree and its source
-        self._tree_backups: Dict[str, bytes] = {}  # Store source bytes separately
         self._log_handler = TreeSitterLogHandler()
-        self._source_bytes: Dict[str, bytes] = {}  # Store source bytes separately
+        self._query_handler = TreeSitterQueryHandler(self._log_handler)
+        self._log_handler.enable()  # Enable logging by default
 
     def enable_parser_logging(self, parser: Parser) -> None:
-        """Enable tree-sitter parser logging."""
+        """Enable tree-sitter parser logging.
+        
+        Args:
+            parser: Parser to enable logging for
+        """
         self._log_handler.enable_parser_logging(parser)
+        # Enable DOT graph debugging in debug mode
+        if logging.getLogger().isEnabledFor(logging.DEBUG):
+            try:
+                parser.print_dot_graphs(sys.stderr)
+            except AttributeError:
+                self._log_handler.warning("DOT graph debugging not supported in this version")
 
     def disable_parser_logging(self, parser: Parser) -> None:
-        """Disable tree-sitter parser logging."""
-        self._log_handler.disable_parser_logging(parser)
-
-    def get_cached_tree(self, file_path: str) -> Optional[Tree]:
-        """Get cached tree for a file."""
-        cached = self._tree_cache.get(file_path)
-        return cached[0] if cached else None
-
-    def get_source_bytes(self, file_path: str) -> Optional[bytes]:
-        """Get source bytes for a file."""
-        cached = self._tree_cache.get(file_path)
-        return cached[1] if cached else None
-
-    def cache_tree(self, file_path: str, tree: Tree, source_bytes: Optional[bytes] = None) -> None:
-        """Cache a tree and its source for a file.
-        
-        Args:
-            file_path: Path to the file
-            tree: Tree to cache
-            source_bytes: Optional source bytes to store with tree
-        """
+        """Disable logging for a parser."""
         try:
-            if not tree or not tree.root_node:
-                logger.error("Cannot cache invalid tree")
-                return
-
-            # Get source bytes from input or try to get from tree
-            if source_bytes is None:
-                try:
-                    source_bytes = tree.root_node.text
-                except Exception as e:
-                    logger.error(f"Failed to get source bytes from tree: {e}")
-                    return
-
-            # Store a copy of the source bytes and the original tree
-            # We don't need to reparse here since the tree is already valid
-            self._tree_cache[file_path] = (tree, bytes(source_bytes))
-            
-        except Exception as e:
-            logger.error(f"Failed to cache tree: {str(e)}")
-
-    def backup_tree(self, file_path: str) -> None:
-        """Create a backup of the current tree state.
+            if hasattr(parser, "logger"):
+                parser.logger = None
+        except AttributeError:
+            pass
         
-        Args:
-            file_path: Path to the file to backup
-        """
         try:
-            cached = self._tree_cache.get(file_path)
-            if not cached:
-                logger.error("No tree in cache to backup")
-                return
-                
-            tree, source_bytes = cached
-            if not tree or not tree.root_node:
-                logger.error("Cannot backup invalid tree")
-                return
+            parser.print_dot_graphs(None)
+        except AttributeError:
+            self._log_handler.warning("DOT graph debugging not supported in this version")
 
-            # Store a copy of the source bytes only
-            # We'll reparse during restore using the provided parser
-            self._tree_backups[file_path] = bytes(source_bytes)
-            
-        except Exception as e:
-            logger.error(f"Failed to backup tree: {str(e)}")
+    def get_changed_ranges(self, old_tree: Tree, new_tree: Tree) -> List[Range]:
+        """Get ranges that changed between trees."""
+        return old_tree.changed_ranges(new_tree)
 
-    def restore_tree(self, file_path: str, parser: Parser) -> bool:
-        """Restore tree from backup.
-        
-        Args:
-            file_path: Path to the file to restore
-            parser: Parser to use for reparsing
-            
-        Returns:
-            bool: True if restore succeeded, False otherwise
-        """
-        try:
-            backup_bytes = self._tree_backups.get(file_path)
-            if not backup_bytes:
-                logger.error("Failed to restore tree from backup: No backup found")
-                return False
-
-            # Create a new copy of source bytes for restoration
-            restore_bytes = bytes(backup_bytes)
-            
-            # Parse from scratch with the provided parser
-            parser.reset()
-            restored_tree = parser.parse(restore_bytes)
-            
-            if not restored_tree or not restored_tree.root_node:
-                logger.error("Failed to restore tree from backup: Could not parse")
-                return False
-                
-            if not self.verify_tree_changes(restored_tree):
-                logger.error("Failed to restore tree from backup: Syntax errors in restored tree")
-                return False
-                
-            # Cache the restored tree with its source
-            self.cache_tree(file_path, restored_tree, restore_bytes)
-            return True
-            
-        except Exception as e:
-            logger.error(f"Failed to restore tree from backup: {str(e)}")
-            return False
-
-    def get_changed_ranges(self, old_tree: Tree, new_tree: Tree) -> Sequence[Range]:
-        """Get ranges that changed between two trees.
-        
-        According to v24 docs, this should be called right after parsing
-        with the old tree that was passed to parse() and the new tree
-        that was returned from it.
-        
-        Args:
-            old_tree: The original tree before edits
-            new_tree: The new tree after edits
-            
-        Returns:
-            Sequence of Range objects indicating changed areas
-        """
-        try:
-            return old_tree.changed_ranges(new_tree)
-        except Exception as e:
-            logger.error(f"Failed to get changed ranges: {e}")
-            return []
-
-    def visualize_tree(self, tree: Tree, output_path: Union[str, Path]) -> bool:
-        """Write a DOT graph visualization of the tree.
-        
-        Args:
-            tree: Tree to visualize
-            output_path: Path to write DOT file
-            
-        Returns:
-            True if visualization was successful
-        """
+    def visualize_tree(self, tree: Tree, output_path: str) -> bool:
+        """Visualize a tree and save to file."""
         try:
             with open(output_path, 'w') as f:
-                tree.print_dot_graph(f)
+                f.write(str(tree.root_node))  # Use str() instead of sexp()
             return True
         except Exception as e:
-            logger.error(f"Failed to write DOT graph: {e}")
+            self._log_handler.error(f"Failed to visualize tree: {str(e)}")
             return False
 
     def get_tree_with_offset(
@@ -282,302 +118,194 @@ class TreeSitterEditor:
             
         return True
 
+    def verify_tree_changes(self, tree: Tree) -> bool:
+        """Verify if a tree has valid changes."""
+        if not tree or not tree.root_node:
+            return False
+            
+        return self._query_handler.is_valid_node(tree.root_node)
+
     def create_edit_operation(
         self,
         tree: Tree,
         old_text: str,
         new_text: str,
-        start_position: Point
+        start_position: Point,
+        end_position: Optional[Point] = None
     ) -> EditOperation:
-        """Create an edit operation from text changes.
-        
-        Args:
-            tree: Tree to edit
-            old_text: Text to replace
-            new_text: New text
-            start_position: Starting position of edit
+        """Create an edit operation."""
+        if not self._validate_tree(tree, "create_edit"):
+            raise ParserError("Cannot create edit for invalid tree")
             
-        Returns:
-            EditOperation: Edit operation to apply
+        if not self.is_valid_position(tree, start_position):
+            raise ParserError(f"Invalid start position: {start_position}")
             
-        Raises:
-            ParserError: If edit position is invalid or text doesn't match
-        """
-        # Find node at edit position using traversal
-        node = self._traversal.find_node_at_point(tree.root_node, start_position)
-        if not node:
-            raise ParserError(f"Invalid edit position: {start_position}")
+        if end_position and not self.is_valid_position(tree, end_position):
+            raise ParserError(f"Invalid end position: {end_position}")
             
-        # Get source bytes and verify position
-        source_bytes = tree.root_node.text
-        lines = source_bytes.split(b'\n')
-        
-        # Calculate start_byte by counting bytes up to the position
-        start_byte = 0
-        for i in range(start_position[0]):
-            start_byte += len(lines[i]) + 1  # +1 for newline
-        start_byte += len(lines[start_position[0]][:start_position[1]].decode('utf8').encode('utf8'))
-        
-        # Get actual old text from source to verify
-        old_text_bytes = old_text.encode('utf8')
-        actual_old_text = source_bytes[start_byte:start_byte + len(old_text_bytes)].decode('utf8')
-        if actual_old_text != old_text:
-            raise ParserError(f"Text mismatch at position {start_position}: expected '{old_text}', found '{actual_old_text}'")
-            
-        # Calculate end bytes
-        old_end_byte = start_byte + len(old_text_bytes)
-        new_end_byte = start_byte + len(new_text.encode('utf8'))
-        
-        # Calculate end points
-        old_lines = old_text.split('\n')
-        new_lines = new_text.split('\n')
-        
-        # For old text end point
-        if len(old_lines) == 1:
-            old_end_point = Point(
-                row=start_position[0],
-                column=start_position[1] + len(old_text)
-            )
-        else:
-            old_end_point = Point(
-                row=start_position[0] + len(old_lines) - 1,
-                column=len(old_lines[-1])
-            )
-            
-        # For new text end point    
-        if len(new_lines) == 1:
-            new_end_point = Point(
-                row=start_position[0],
-                column=start_position[1] + len(new_text)
-            )
-        else:
-            new_end_point = Point(
-                row=start_position[0] + len(new_lines) - 1,
-                column=len(new_lines[-1])
-            )
-
         return EditOperation(
-            start_byte=start_byte,
-            old_end_byte=old_end_byte,
-            new_end_byte=new_end_byte,
-            start_point=start_position,
-            old_end_point=old_end_point,
-            new_end_point=new_end_point,
             old_text=old_text,
-            new_text=new_text
+            new_text=new_text,
+            start_position=start_position,
+            end_position=end_position
         )
 
     def apply_edit(self, tree: Tree, edit: EditOperation) -> None:
-        """Apply an edit operation to a tree.
-        
-        Args:
-            tree: Tree to edit
-            edit: Edit operation to apply
-            
-        Raises:
-            ParserError: If edit application fails
-        """
-        try:
-            # Verify tree is valid
-            if not tree or not tree.root_node:
-                raise ParserError("Cannot apply edit to invalid tree")
-                
-            # Verify edit position is valid
-            node = self._traversal.find_node_at_point(tree.root_node, edit.start_point)
-            if not node:
-                raise ParserError(f"Invalid edit position: {edit.start_point}")
-                
-            # Get source bytes and verify old text
-            source_bytes = tree.root_node.text
-            actual_old_text = source_bytes[edit.start_byte:edit.old_end_byte].decode('utf8')
-            if actual_old_text != edit.old_text:
-                raise ParserError(f"Text mismatch: expected '{edit.old_text}', found '{actual_old_text}'")
-                
-            # Apply edit to tree
-            tree.edit(
-                start_byte=edit.start_byte,
-                old_end_byte=edit.old_end_byte,
-                new_end_byte=edit.new_end_byte,
-                start_point=edit.start_point,
-                old_end_point=edit.old_end_point,
-                new_end_point=edit.new_end_point
-            )
-            
-        except Exception as e:
-            logger.error(f"Failed to apply edit: {e}")
-            raise ParserError(f"Failed to apply edit: {e}")
+        """Apply an edit operation to a tree."""
+        if not self._validate_tree(tree, "apply_edit"):
+            raise ParserError("Cannot apply edit to invalid tree")
 
-    def verify_tree_changes(self, tree: Tree) -> bool:
-        """Verify that a tree has no syntax errors.
-        
-        Args:
-            tree: Tree to verify
+        try:
+            self._log_handler.info(f"Applying edit: {edit.old_text} -> {edit.new_text} at {edit.start_position}")
+            start_byte = self._get_byte_offset(tree, edit.start_position)
+            end_byte = (self._get_byte_offset(tree, edit.end_position) 
+                       if edit.end_position 
+                       else start_byte + len(edit.old_text.encode('utf8')))
             
-        Returns:
-            bool: True if tree is valid, False if it has errors
-        """
-        if not tree or not tree.root_node:
-            logger.error("Cannot verify invalid tree")
+            self._log_handler.debug(f"Edit byte range: {start_byte} -> {end_byte}")
+                       
+            tree.edit(
+                start_byte=start_byte,
+                old_end_byte=end_byte,
+                new_end_byte=start_byte + len(edit.new_text.encode('utf8')),
+                start_point=edit.start_position,
+                old_end_point=edit.end_position or edit.start_position,
+                new_end_point=self._calculate_new_end_point(
+                    edit.start_position,
+                    edit.new_text
+                )
+            )
+            self._log_handler.info("Edit applied successfully")
+        except Exception as e:
+            self._log_handler.error(f"Failed to apply edit: {e}", exc_info=True)
+            raise ParserError(f"Failed to apply edit: {str(e)}")
+
+    def _validate_tree(self, tree: Tree, context: str = "") -> bool:
+        """Validate a tree."""
+        if not tree:
+            self._log_handler.error(f"{context}: Tree is None")
             return False
-            
-        # Check if tree has errors using root node property
+        if not tree.root_node:
+            self._log_handler.error(f"{context}: Tree has no root node")
+            return False
         if tree.root_node.has_error:
-            logger.error("Tree contains syntax errors")
-            return False
-            
-        # Use cursor-based traversal for efficiency
-        cursor = tree.root_node.walk()
-        reached_root = False
-        
-        while not reached_root:
-            node = cursor.node
-            
-            # Check for error nodes
-            if node.type == "ERROR" or node.is_missing:
-                logger.error(f"Found error node: {node.type} at {node.start_point}")
-                return False
-                
-            # Try to move to first child
-            if cursor.goto_first_child():
-                continue
-                
-            # Try to move to next sibling
-            if cursor.goto_next_sibling():
-                continue
-                
-            # Move up until we find a parent with next sibling
-            while not reached_root:
-                if not cursor.goto_parent():
-                    reached_root = True
-                    break
-                    
-                if cursor.goto_next_sibling():
-                    break
-                    
+            self._log_handler.warning(f"{context}: Tree contains errors")
         return True
 
-    def update_tree(
-        self,
-        file_path: str,
-        edits: List[EditOperation],
-        parser: Parser
-    ) -> Optional[Tree]:
-        """Update a tree with edits.
-        
-        Args:
-            file_path: Path to file being edited
-            edits: List of edit operations to apply
-            parser: Parser instance to use
-            
-        Returns:
-            Tree: Updated tree if successful, None if failed
-        """
-        # Get cached tree and source
-        tree = self.get_cached_tree(file_path)
-        if not tree:
+    def update_tree(self, tree: Tree, edits: List[EditOperation], parser: Parser) -> Optional[Tree]:
+        """Update a tree with edits using incremental parsing."""
+        if not self._validate_tree(tree, "update"):
+            self._log_handler.error("Cannot update invalid tree")
             return None
+
+        try:
+            # Apply edits
+            self._log_handler.info(f"Applying {len(edits)} edits to tree")
             
-        # Create working copies
-        working_tree = tree.copy()
-        source_bytes = working_tree.root_node.text
-        
-        # Sort edits by start_byte in reverse order
-        sorted_edits = sorted(edits, key=lambda e: e.start_byte, reverse=True)
-        
-        # Apply edits to source
-        updated_source = source_bytes
-        for edit in sorted_edits:
-            # Verify edit position
-            node = self._traversal.find_node_at_point(working_tree.root_node, edit.start_point)
-            if not node:
-                logger.error(f"Invalid edit position: {edit.start_point}")
-                return None
+            # Build new source by applying edits
+            source_bytes = bytearray(tree.root_node.text)  # Get initial source from root node
+            self._log_handler.debug(f"Initial source length: {len(source_bytes)} bytes")
+            
+            # Apply edits in reverse order to maintain byte offsets
+            for edit in reversed(edits):
+                self._log_handler.info(f"Applying edit: {edit.old_text} -> {edit.new_text} at {edit.start_position}")
+                start_byte = self._get_byte_offset(tree, edit.start_position)
+                end_byte = (self._get_byte_offset(tree, edit.end_position) 
+                          if edit.end_position 
+                          else start_byte + len(edit.old_text.encode('utf8')))
                 
-            # Get actual old text from current source
-            actual_old_text = updated_source[edit.start_byte:edit.old_end_byte].decode('utf8')
-            if actual_old_text != edit.old_text:
-                logger.error(
-                    f"Text mismatch at position {edit.start_point}: "
-                    f"expected '{edit.old_text}', found '{actual_old_text}'"
+                # Replace bytes in source
+                new_bytes = edit.new_text.encode('utf8')
+                source_bytes[start_byte:end_byte] = new_bytes
+                self._log_handler.debug(f"Updated source length: {len(source_bytes)} bytes")
+                
+                # Apply edit to tree for tracking
+                tree.edit(
+                    start_byte=start_byte,
+                    old_end_byte=end_byte,
+                    new_end_byte=start_byte + len(new_bytes),
+                    start_point=edit.start_position,
+                    old_end_point=edit.end_position or edit.start_position,
+                    new_end_point=self._calculate_new_end_point(
+                        edit.start_position,
+                        edit.new_text
+                    )
                 )
-                return None
-                
-            # Apply edit to source
-            updated_source = (
-                updated_source[:edit.start_byte] +
-                edit.new_text.encode('utf8') +
-                updated_source[edit.old_end_byte:]
-            )
-            
-            # Apply edit to working tree
-            try:
-                working_tree.edit(
-                    start_byte=edit.start_byte,
-                    old_end_byte=edit.old_end_byte,
-                    new_end_byte=edit.new_end_byte,
-                    start_point=edit.start_point,
-                    old_end_point=edit.old_end_point,
-                    new_end_point=edit.new_end_point
-                )
-            except Exception as e:
-                logger.error(f"Failed to apply edit: {e}")
-                return None
-                
-        # Parse updated source
-        parser.reset()
-        new_tree = parser.parse(updated_source, working_tree)
-        if not new_tree:
-            logger.error("Failed to parse updated source")
+                self._log_handler.info("Edit applied successfully")
+
+            # Reparse with timeout
+            self._log_handler.debug("Reparsing tree with timeout")
+            parser.reset()  # Reset parser state
+            parser.timeout_micros = 100000  # 100ms timeout
+            new_tree = parser.parse(bytes(source_bytes), tree)
+
+            if not new_tree or not new_tree.root_node:
+                self._log_handler.error("Parser produced invalid tree")
+                raise ParserError("Parser failed to produce valid tree")
+
+            self._log_handler.info("Tree updated successfully")
+            return new_tree
+
+        except Exception as e:
+            self._log_handler.error(f"Failed to update tree: {str(e)}", exc_info=True)
             return None
-            
-        # Verify tree is valid
-        if new_tree.root_node.has_error:
-            logger.warning("Updated tree contains syntax errors")
-            return None
-            
-        # Cache and return new tree
-        self.cache_tree(file_path, new_tree, updated_source)
-        return new_tree
 
     def reparse_tree(self, tree: Tree, new_source: str, parser: Parser) -> Tree:
-        """Reparse a tree with new source code.
-        
-        Args:
-            tree: Original tree to reparse
-            new_source: New source code
-            parser: Parser to use
+        """Reparse a tree with new source code using incremental parsing."""
+        if not self._validate_tree(tree, "reparse"):
+            raise ParserError("Cannot reparse invalid tree")
             
-        Returns:
-            Tree: New parsed tree
-            
-        Raises:
-            ParserError: If parsing fails or produces an invalid tree
-        """
         try:
-            # Verify input tree
-            if not tree or not tree.root_node:
-                raise ParserError("Cannot reparse invalid tree")
-                
-            # Convert source to bytes
-            source_bytes = bytes(new_source, 'utf8')
-            
-            # Reset parser and parse with old tree
+            # Convert source to bytes and parse incrementally
+            source_bytes = new_source.encode('utf8')
             parser.reset()
+            
+            # Parse with old tree for incremental parsing
             new_tree = parser.parse(source_bytes, tree)
             
             if not new_tree or not new_tree.root_node:
-                raise ParserError("Failed to parse tree: Invalid parse result")
+                raise ParserError("Parser failed to produce valid tree")
                 
-            # Verify new tree has no syntax errors
-            if new_tree.root_node.has_error:
-                raise ParserError("Syntax error in reparsed tree")
-                
-            # Walk tree to find any ERROR nodes
-            for node in self._traversal.walk_tree(new_tree.root_node):
-                if node.type == "ERROR" or node.is_missing:
-                    raise ParserError(f"Found error node: {node.type} at {node.start_point}")
-                    
             return new_tree
-            
+
         except Exception as e:
-            raise ParserError(f"Failed to reparse tree: {str(e)}") 
+            self._log_handler.error(f"Failed to parse tree: {e}", exc_info=True)
+            raise ParserError(f"Failed to parse tree: {str(e)}")
+
+    def _get_byte_offset(self, tree: Tree, position: Point) -> int:
+        """Get byte offset for a position."""
+        if not tree or not tree.root_node:
+            raise ParserError("Cannot get byte offset: Invalid tree")
+            
+        try:
+            return position[1]  # Column is byte offset in line
+        except Exception as e:
+            raise ParserError(f"Failed to get byte offset: {str(e)}")
+
+    def _calculate_new_end_point(self, start: Point, text: str) -> Point:
+        """Calculate end point after inserting text."""
+        lines = text.split('\n')
+        if len(lines) == 1:
+            return Point(start[0], start[1] + len(text.encode('utf8')))
+        else:
+            return Point(
+                start[0] + len(lines) - 1,
+                len(lines[-1].encode('utf8'))
+            )
+
+    def _verify_edit_position(self, node: Node, position: Point, text: str) -> bool:
+        """Verify if an edit position is valid."""
+        if not node:
+            return False
+        
+        # Check if position is within node bounds
+        if position[0] < node.start_point[0] or position[0] > node.end_point[0]:
+            return False
+        
+        # For same line edits, check column bounds
+        if position[0] == node.start_point[0] and position[1] < node.start_point[1]:
+            return False
+        if position[0] == node.end_point[0] and position[1] > node.end_point[1]:
+            return False
+        
+        return True 

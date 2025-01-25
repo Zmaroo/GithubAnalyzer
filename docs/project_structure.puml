@@ -19,6 +19,7 @@ package "GithubAnalyzer" {
                 ├── LanguageError
                 └── QueryError
                 FileOperationError
+                EditError
             end note
 
             note right of AST
@@ -27,6 +28,7 @@ package "GithubAnalyzer" {
                 - language: str
                 - content: str
                 - is_code: bool
+                - metadata: Dict
             end note
 
             note right of FM
@@ -38,6 +40,7 @@ package "GithubAnalyzer" {
                 - include_patterns
                 - exclude_patterns
                 - languages
+                - ignore_binary
             end note
         }
         
@@ -55,6 +58,7 @@ package "GithubAnalyzer" {
             component [logging.py] as LG
             component [timing.py] as TM
             component [error_handler.py] as EH
+            component [file_utils.py] as FU
         }
     }
 
@@ -64,6 +68,7 @@ package "GithubAnalyzer" {
             component [code_analysis.py] as CAM
             component [results.py] as RES
             component [tree_sitter.py] as TSM
+            component [edit_operation.py] as EO
         }
         
         package "Services" {
@@ -72,6 +77,13 @@ package "GithubAnalyzer" {
                 component [tree_sitter_traversal.py] as TST
                 component [query_patterns.py] as QP
                 component [tree_sitter_editor.py] as TSE
+                component [tree_sitter_logging.py] as TSL
+                component [tree_sitter_visualizer.py] as TSV
+            }
+            
+            package "Analysis" {
+                component [code_analyzer.py] as CA
+                component [metrics_collector.py] as MC
             }
         }
     }
@@ -83,6 +95,7 @@ package "GithubAnalyzer" {
     PS --> FM : uses FileInfo
     FS --> LOG : uses logging config
     EH --> EM : handles errors
+    FS --> FU : uses file utils
 
     ' Analysis Dependencies
     TSQ --> "tree-sitter-language-pack" : uses directly
@@ -93,13 +106,20 @@ package "GithubAnalyzer" {
     TSQ --> TSM : uses models
     TSE --> TST : uses traversal
     TSE --> TSQ : uses query handler
+    TSE --> TSL : uses logging
+    TSE --> TSV : uses visualizer
     TSE --> "tree-sitter-language-pack" : uses directly
+    TSQ --> TSL : uses logging
+    TST --> TSL : uses logging
+    CA --> MC : uses metrics
+    CA --> TSE : uses editor
+    CA --> TSQ : uses queries
 
     ' Error Usage
     FS ..> EM : throws FileOperationError
     PS ..> EM : throws ParserError, LanguageError
     TSQ ..> EM : throws QueryError
-    TSE ..> EM : throws ParserError
+    TSE ..> EM : throws ParserError, EditError
 
     ' Utility Usage
     FS --> LG : uses logging
@@ -113,9 +133,9 @@ package "GithubAnalyzer" {
 
     note right of Core
         Core layer provides:
-        - File operations
+        - File operations and utilities
         - Direct tree-sitter integration
-        - Configuration
+        - Configuration management
         - Error handling
         - Logging and timing utilities
     end note
@@ -123,20 +143,22 @@ package "GithubAnalyzer" {
     note right of Analysis
         Analysis layer provides:
         - Code analysis models
-        - Tree-sitter query utilities
-        - Tree traversal helpers
-        - Result processing
-        - Tree editing and incremental parsing
+        - Tree-sitter query and traversal
+        - Tree editing and validation
+        - Incremental parsing
+        - Specialized logging
+        - Code metrics collection
     end note
 
     note right of PS
         ParserService features:
         - Direct tree-sitter integration
-        - Language detection from extensions
+        - Language detection
         - Syntax error handling
         - File type detection
         - Timeout support
         - Binary file handling
+        - Incremental parsing
     end note
 
     note right of FS
@@ -146,6 +168,7 @@ package "GithubAnalyzer" {
         - File metadata collection
         - Binary file detection
         - Error handling
+        - File system operations
     end note
 
     note right of TSE
@@ -154,7 +177,38 @@ package "GithubAnalyzer" {
         - Tree editing with validation
         - Position validation
         - Tree change verification
-        - Tree caching
+        - Error and missing node detection
+        - Source byte handling
+        - Tree visualization
+    end note
+
+    note right of TSQ
+        TreeSitterQueryHandler features:
+        - Query pattern management
+        - Node finding and validation
+        - Syntax error detection
+        - Missing node detection
+        - Query optimization
+        - Pattern caching
+    end note
+
+    note right of TST
+        TreeSitterTraversal features:
+        - Tree traversal utilities
+        - Node finding by type/text
+        - Node relationship checks
+        - Tree structure validation
+        - Node range calculations
+        - Path navigation
+    end note
+
+    note right of CA
+        CodeAnalyzer features:
+        - Code metrics collection
+        - Pattern detection
+        - AST analysis
+        - Code quality checks
+        - Dependency analysis
     end note
 }
 

@@ -1,0 +1,200 @@
+Instead of relying on generic has_error or is_missing flags, we specifically check for missing required nodes in return statements.
+We look at the node types to determine if a return statement has its required expression.
+We provide more specific error messages that help identify the exact issue.
+
+end_byte_for_pattern(index)
+Get the byte offset where the given pattern ends in the query’s source.
+
+is_pattern_guaranteed_at_step(index)
+Check if a pattern is guaranteed to match once a given byte offset is reached.
+
+is_pattern_non_local(index)
+Check if the pattern with the given index is “non-local”.
+
+Note
+
+A non-local pattern has multiple root nodes and can match within a repeating sequence of nodes, as specified by the grammar. Non-local patterns disable certain optimizations that would otherwise be possible when executing a query on a specific range of a syntax tree.
+
+is_pattern_rooted(index)
+Check if the pattern with the given index has a single root node.
+
+matches(node, /, predicate=None)
+Get a list of matches within the given node.
+
+Returns
+:
+A list of tuples where the first element is the pattern index and the second element is a dictionary that maps capture names to nodes.
+
+Important
+
+Predicates cannot be used if the tree was parsed from a callback.
+
+pattern_assertions(index)
+Get the property assertions for the given pattern index.
+
+Assertions are performed using the #is? and #is-not? predicates.
+
+Returns
+:
+A dictionary of assertions, where the first item is the optional property value and the second item indicates whether the assertion was positive or negative.
+
+pattern_settings(index)
+Get the property settings for the given pattern index.
+
+Properties are set using the #set! predicate.
+
+Returns
+:
+A dictionary of properties with optional values.
+
+set_byte_range(byte_range)
+Set the range of bytes in which the query will be executed.
+
+set_point_range(point_range)
+Set the range of points in which the query will be executed.
+
+start_byte_for_pattern(index)
+Get the byte offset where the given pattern starts in the query’s source.
+
+set_match_limit(match_limit)
+Set the maximum number of in-progress matches.
+
+Raises
+:
+ValueError – If set to 0.
+
+set_max_start_depth(max_start_depth)
+Set the maximum start depth for the query.
+
+set_timeout_micros(timeout_micros)
+Set the maximum duration in microseconds that query execution should be allowed to take before halting.
+
+Attributes
+capture_count
+The number of captures in the query.
+
+did_exceed_match_limit
+Check if the query exceeded its maximum number of in-progress matches during its last execution.
+
+match_limit
+The maximum number of in-progress matches.
+
+pattern_count
+The number of patterns in the query.
+
+timeout_micros
+The maximum duration in microseconds that query execution should be allowed to take before halting.
+
+LookaheadIterator
+class tree_sitter.LookaheadIterator
+Bases: Iterator
+
+A class that is used to look up symbols valid in a specific parse state.
+
+Tip
+
+Lookahead iterators can be useful to generate suggestions and improve syntax error diagnostics.
+
+To get symbols valid in an ERROR node, use the lookahead iterator on its first leaf node state. For MISSING nodes, a lookahead iterator created on the previous non-extra leaf node may be appropriate.
+
+Methods
+iter_names()
+Iterate symbol names.
+
+reset_state(state, language=None)
+Reset the lookahead iterator.
+
+Returns
+:
+True if it was reset successfully or False if it failed.
+
+Special Methods
+__iter__()
+Implements iter(self).
+
+__next__()
+Implements next(self).
+
+Attributes
+current_symbol
+The current symbol.
+
+Newly created iterators will return the ERROR symbol.
+
+current_symbol_name
+The current symbol name.
+
+language
+The current language.
+
+LogType
+class tree_sitter.LogType
+Bases: IntEnum
+
+The type of a log message.
+
+Added in version 0.24.0.
+
+Members
+PARSE = 0
+LEX = 1
+
+Tree
+class tree_sitter.Tree
+A tree that represents the syntactic structure of a source code file.
+
+Methods
+changed_ranges(new_tree)
+Compare this old edited syntax tree to a new syntax tree representing the same document, returning a sequence of ranges whose syntactic structure has changed.
+
+Tip
+
+For this to work correctly, this syntax tree must have been edited such that its ranges match up to the new tree.
+
+Generally, you’ll want to call this method right after calling the Parser.parse() method. Call it on the old tree that was passed to the method, and pass the new tree that was returned from it.
+
+copy()
+Create a shallow copy of the tree.
+
+Added in version 0.24.0.
+
+edit(start_byte, old_end_byte, new_end_byte, start_point, old_end_point, new_end_point)
+Edit the syntax tree to keep it in sync with source code that has been edited.
+
+You must describe the edit both in terms of byte offsets and of row/column points.
+
+print_dot_graph(file)
+Write a DOT graph describing the syntax tree to the given file.
+
+Added in version 0.24.0.
+
+root_node_with_offset(offset_bytes, offset_extent, /)
+Get the root node of the syntax tree, but with its position shifted forward by the given offset.
+
+walk()
+Create a new TreeCursor starting from the root of the tree.
+
+Special Methods
+__copy__()
+Use copy.copy() to create a copy of the tree.
+
+Added in version 0.24.0.
+
+Attributes
+included_ranges
+The included ranges that were used to parse the syntax tree.
+
+language
+The language that was used to parse the syntax tree.
+
+root_node
+The root node of the syntax tree.
+
+The #is? predicate requires both arguments to be string literals.
+The #eq? predicate can be used with a capture and a string literal.
+The pattern_assertions method returns an empty dictionary if there are no assertions or if the assertions are not in the expected format.
+We've successfully updated the test to handle these changes in Tree-sitter v24. The test now:
+Creates a query with a function definition pattern and an #eq? predicate
+Verifies that the pattern information includes is_rooted and is_non_local flags
+Verifies that the assertions field is a dictionary (even if empty)
+Would you like me to make any other improvements to the test or implementation?

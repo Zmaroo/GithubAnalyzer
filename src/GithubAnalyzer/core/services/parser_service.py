@@ -1,8 +1,9 @@
 """Parser service for code analysis using tree-sitter."""
 
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union, Optional, Callable
 import logging
+from tree_sitter import Tree
 from tree_sitter_language_pack import get_parser, get_language
 
 from src.GithubAnalyzer.core.models.ast import ParseResult
@@ -93,6 +94,7 @@ class ParserService:
             timeout_micros: Optional timeout in microseconds for parsing operations
         """
         self.timeout_micros = timeout_micros
+        self._logger = logging.getLogger(__name__)
 
     def _detect_language(self, file_path: Path) -> str:
         """Detect language from file extension.
@@ -122,11 +124,15 @@ class ParserService:
         """
         try:
             parser = get_parser(language)
-            # Set parser logger to debug level
-            parser.logger = logger.debug
+            
             if self.timeout_micros is not None:
-                parser.timeout_micros = self.timeout_micros
-            tree = parser.parse(bytes(content, "utf8"))
+                parser.set_timeout_micros(self.timeout_micros)
+
+            encoded_content = content.encode('utf8')
+            tree = parser.parse(encoded_content)
+            
+            if not isinstance(tree, Tree):
+                raise ParserError("Failed to create parse tree")
             
             # Check for syntax errors
             if tree.root_node.has_error:
@@ -148,8 +154,6 @@ class ParserService:
             )
         except LookupError:
             raise LanguageError(f"Language not supported by tree-sitter: {language}")
-        except ParserError:
-            raise
         except Exception as e:
             raise ParserError(f"Failed to parse content: {str(e)}")
 

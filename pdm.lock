@@ -5,10 +5,10 @@
 groups = ["default", "dev", "test"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:248b6a10d3f3f37fe3eee2a6bb08730245765a2179fe48ba5c36269c25957c09"
+content_hash = "sha256:266bf96525097619d7ed9b83bb41846e0897ecbf36cdf34135dcf7bd1a485d5c"
 
 [[metadata.targets]]
-requires_python = ">=3.11"
+requires_python = ">=3.12,<3.13"
 
 [[package]]
 name = "colorama"
@@ -16,7 +16,7 @@ version = "0.4.6"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 summary = "Cross-platform colored terminal text."
 groups = ["dev", "test"]
-marker = "sys_platform == \"win32\" and python_version >= \"3.11\""
+marker = "sys_platform == \"win32\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
@@ -28,7 +28,6 @@ version = "7.6.10"
 requires_python = ">=3.9"
 summary = "Code coverage measurement for Python"
 groups = ["dev", "test"]
-marker = "python_version >= \"3.11\""
 files = [
     {file = "coverage-7.6.10-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:ea3c8f04b3e4af80e17bab607c386a830ffc2fb88a5484e1df756478cf70d1d3"},
     {file = "coverage-7.6.10-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:507a20fc863cae1d5720797761b42d2d87a04b3e5aeb682ef3b7332e90598f43"},
@@ -80,7 +79,6 @@ extras = ["toml"]
 requires_python = ">=3.9"
 summary = "Code coverage measurement for Python"
 groups = ["dev", "test"]
-marker = "python_version >= \"3.11\""
 dependencies = [
     "coverage==7.6.10",
     "tomli; python_full_version <= \"3.11.0a6\"",
@@ -135,7 +133,6 @@ version = "2.0.0"
 requires_python = ">=3.7"
 summary = "brain-dead simple config-ini parsing"
 groups = ["dev", "test"]
-marker = "python_version >= \"3.11\""
 files = [
     {file = "iniconfig-2.0.0-py3-none-any.whl", hash = "sha256:b6a85871a79d2e3b22d2d1b94ac2824226a63c6b741c88f7ae975f18b6778374"},
     {file = "iniconfig-2.0.0.tar.gz", hash = "sha256:2d91e135bf72d31a410b17c16da610a82cb55f6b0477d1a902134b24a455b8b3"},
@@ -147,7 +144,6 @@ version = "24.2"
 requires_python = ">=3.8"
 summary = "Core utilities for Python packages"
 groups = ["dev", "test"]
-marker = "python_version >= \"3.11\""
 files = [
     {file = "packaging-24.2-py3-none-any.whl", hash = "sha256:09abb1bccd265c01f4a3aa3f7a7db064b36514d2cba19a2f694fe6150451a759"},
     {file = "packaging-24.2.tar.gz", hash = "sha256:c228a6dc5e932d346bc5739379109d49e8853dd8223571c7c5b55260edc0b97f"},
@@ -159,10 +155,26 @@ version = "1.5.0"
 requires_python = ">=3.8"
 summary = "plugin and hook calling mechanisms for python"
 groups = ["dev", "test"]
-marker = "python_version >= \"3.11\""
 files = [
     {file = "pluggy-1.5.0-py3-none-any.whl", hash = "sha256:44e1ad92c8ca002de6377e165f3e0f1be63266ab4d554740532335b9d75ea669"},
     {file = "pluggy-1.5.0.tar.gz", hash = "sha256:2cffa88e94fdc978c4c574f15f9e59b7f4201d439195c3715ca9e2486f1d0cf1"},
+]
+
+[[package]]
+name = "psutil"
+version = "6.1.1"
+requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7"
+summary = "Cross-platform lib for process and system monitoring in Python."
+groups = ["default"]
+files = [
+    {file = "psutil-6.1.1-cp36-abi3-macosx_10_9_x86_64.whl", hash = "sha256:fc0ed7fe2231a444fc219b9c42d0376e0a9a1a72f16c5cfa0f68d19f1a0663e8"},
+    {file = "psutil-6.1.1-cp36-abi3-macosx_11_0_arm64.whl", hash = "sha256:0bdd4eab935276290ad3cb718e9809412895ca6b5b334f5a9111ee6d9aff9377"},
+    {file = "psutil-6.1.1-cp36-abi3-manylinux_2_12_i686.manylinux2010_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:b6e06c20c05fe95a3d7302d74e7097756d4ba1247975ad6905441ae1b5b66003"},
+    {file = "psutil-6.1.1-cp36-abi3-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:97f7cb9921fbec4904f522d972f0c0e1f4fabbdd4e0287813b21215074a0f160"},
+    {file = "psutil-6.1.1-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:33431e84fee02bc84ea36d9e2c4a6d395d479c9dd9bba2376c1f6ee8f3a4e0b3"},
+    {file = "psutil-6.1.1-cp37-abi3-win32.whl", hash = "sha256:eaa912e0b11848c4d9279a93d7e2783df352b082f40111e078388701fd479e53"},
+    {file = "psutil-6.1.1-cp37-abi3-win_amd64.whl", hash = "sha256:f35cfccb065fff93529d2afb4a2e89e363fe63ca1e4a5da22b603a85833c2649"},
+    {file = "psutil-6.1.1.tar.gz", hash = "sha256:cf8496728c18f2d0b45198f06895be52f36611711746b7f30c464b422b50e2f5"},
 ]
 
 [[package]]
@@ -171,7 +183,6 @@ version = "8.3.4"
 requires_python = ">=3.8"
 summary = "pytest: simple powerful testing with Python"
 groups = ["dev", "test"]
-marker = "python_version >= \"3.11\""
 dependencies = [
     "colorama; sys_platform == \"win32\"",
     "exceptiongroup>=1.0.0rc8; python_version < \"3.11\"",
@@ -191,7 +202,6 @@ version = "6.0.0"
 requires_python = ">=3.9"
 summary = "Pytest plugin for measuring coverage."
 groups = ["dev", "test"]
-marker = "python_version >= \"3.11\""
 dependencies = [
     "coverage[toml]>=7.5",
     "pytest>=4.6",
@@ -207,7 +217,6 @@ version = "3.2.1"
 requires_python = ">=3.8"
 summary = "JSON Log Formatter for the Python Logging Package"
 groups = ["default"]
-marker = "python_version >= \"3.11\""
 dependencies = [
     "typing-extensions; python_version < \"3.10\"",
 ]
@@ -222,7 +231,6 @@ version = "6.0.2"
 requires_python = ">=3.8"
 summary = "YAML parser and emitter for Python"
 groups = ["default"]
-marker = "python_version >= \"3.11\""
 files = [
     {file = "PyYAML-6.0.2-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:cc1c1159b3d456576af7a3e4d1ba7e6924cb39de8f67111c735f6fc832082774"},
     {file = "PyYAML-6.0.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:1e2120ef853f59c7419231f3bf4e7021f1b936f6ebd222406c3b60212205d2ee"},
@@ -259,17 +267,9 @@ name = "tree-sitter"
 version = "0.24.0"
 requires_python = ">=3.10"
 summary = "Python bindings to the Tree-sitter parsing library"
-groups = ["default", "test"]
-marker = "python_version >= \"3.11\""
+groups = ["default", "dev", "test"]
 files = [
     {file = "tree-sitter-0.24.0.tar.gz", hash = "sha256:abd95af65ca2f4f7eca356343391ed669e764f37748b5352946f00f7fc78e734"},
-    {file = "tree_sitter-0.24.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:de0fb7c18c6068cacff46250c0a0473e8fc74d673e3e86555f131c2c1346fb13"},
-    {file = "tree_sitter-0.24.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:a7c9c89666dea2ce2b2bf98e75f429d2876c569fab966afefdcd71974c6d8538"},
-    {file = "tree_sitter-0.24.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4ddb113e6b8b3e3b199695b1492a47d87d06c538e63050823d90ef13cac585fd"},
-    {file = "tree_sitter-0.24.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:01ea01a7003b88b92f7f875da6ba9d5d741e0c84bb1bd92c503c0eecd0ee6409"},
-    {file = "tree_sitter-0.24.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:464fa5b2cac63608915a9de8a6efd67a4da1929e603ea86abaeae2cb1fe89921"},
-    {file = "tree_sitter-0.24.0-cp311-cp311-win_amd64.whl", hash = "sha256:3b1f3cbd9700e1fba0be2e7d801527e37c49fc02dc140714669144ef6ab58dce"},
-    {file = "tree_sitter-0.24.0-cp311-cp311-win_arm64.whl", hash = "sha256:f3f08a2ca9f600b3758792ba2406971665ffbad810847398d180c48cee174ee2"},
     {file = "tree_sitter-0.24.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:14beeff5f11e223c37be7d5d119819880601a80d0399abe8c738ae2288804afc"},
     {file = "tree_sitter-0.24.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:26a5b130f70d5925d67b47db314da209063664585a2fd36fa69e0717738efaf4"},
     {file = "tree_sitter-0.24.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5fc5c3c26d83c9d0ecb4fc4304fba35f034b7761d35286b936c1db1217558b4e"},
@@ -277,13 +277,6 @@ files = [
     {file = "tree_sitter-0.24.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:24a8dd03b0d6b8812425f3b84d2f4763322684e38baf74e5bb766128b5633dc7"},
     {file = "tree_sitter-0.24.0-cp312-cp312-win_amd64.whl", hash = "sha256:f9e8b1605ab60ed43803100f067eed71b0b0e6c1fb9860a262727dbfbbb74751"},
     {file = "tree_sitter-0.24.0-cp312-cp312-win_arm64.whl", hash = "sha256:f733a83d8355fc95561582b66bbea92ffd365c5d7a665bc9ebd25e049c2b2abb"},
-    {file = "tree_sitter-0.24.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:0d4a6416ed421c4210f0ca405a4834d5ccfbb8ad6692d4d74f7773ef68f92071"},
-    {file = "tree_sitter-0.24.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:e0992d483677e71d5c5d37f30dfb2e3afec2f932a9c53eec4fca13869b788c6c"},
-    {file = "tree_sitter-0.24.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:57277a12fbcefb1c8b206186068d456c600dbfbc3fd6c76968ee22614c5cd5ad"},
-    {file = "tree_sitter-0.24.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d25fa22766d63f73716c6fec1a31ee5cf904aa429484256bd5fdf5259051ed74"},
-    {file = "tree_sitter-0.24.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:7d5d9537507e1c8c5fa9935b34f320bfec4114d675e028f3ad94f11cf9db37b9"},
-    {file = "tree_sitter-0.24.0-cp313-cp313-win_amd64.whl", hash = "sha256:f58bb4956917715ec4d5a28681829a8dad5c342cafd4aea269f9132a83ca9b34"},
-    {file = "tree_sitter-0.24.0-cp313-cp313-win_arm64.whl", hash = "sha256:23641bd25dcd4bb0b6fa91b8fb3f46cc9f1c9f475efe4d536d3f1f688d1b84c8"},
 ]
 
 [[package]]
@@ -291,8 +284,7 @@ name = "tree-sitter-c-sharp"
 version = "0.23.1"
 requires_python = ">=3.9"
 summary = "C# grammar for tree-sitter"
-groups = ["default", "test"]
-marker = "python_version >= \"3.11\""
+groups = ["default", "dev", "test"]
 files = [
     {file = "tree_sitter_c_sharp-0.23.1-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:2b612a6e5bd17bb7fa2aab4bb6fc1fba45c94f09cb034ab332e45603b86e32fd"},
     {file = "tree_sitter_c_sharp-0.23.1-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:1a8b98f62bc53efcd4d971151950c9b9cd5cbe3bacdb0cd69fdccac63350d83e"},
@@ -309,8 +301,7 @@ name = "tree-sitter-embedded-template"
 version = "0.23.2"
 requires_python = ">=3.9"
 summary = "Embedded Template (ERB, EJS) grammar for tree-sitter"
-groups = ["default", "test"]
-marker = "python_version >= \"3.11\""
+groups = ["default", "dev", "test"]
 files = [
     {file = "tree_sitter_embedded_template-0.23.2-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:a505c2d2494464029d79db541cab52f6da5fb326bf3d355e69bf98b84eb89ae0"},
     {file = "tree_sitter_embedded_template-0.23.2-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:28028b93b42cc3753261ae7ce066675d407f59de512417524f9c3ab7792b1d37"},
@@ -327,8 +318,7 @@ name = "tree-sitter-language-pack"
 version = "0.2.0"
 requires_python = ">=3.9.0"
 summary = "Extensive Language Pack for Tree-Sitter"
-groups = ["default", "test"]
-marker = "python_version >= \"3.11\""
+groups = ["default", "dev", "test"]
 dependencies = [
     "tree-sitter-c-sharp>=0.21.2",
     "tree-sitter-embedded-template>=0.21.0",
@@ -347,8 +337,7 @@ name = "tree-sitter-php"
 version = "0.23.11"
 requires_python = ">=3.9"
 summary = "PHP grammar for tree-sitter"
-groups = ["default", "test"]
-marker = "python_version >= \"3.11\""
+groups = ["default", "dev", "test"]
 files = [
     {file = "tree_sitter_php-0.23.11-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:f46b741fd4843a7287e46505c35b4712cf2bea8481ce5236d2a32add45921c42"},
     {file = "tree_sitter_php-0.23.11-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:315f5da5ad8f9ed014008da481ed49a88db21e03e9f723f1c631eec36b6b3691"},
@@ -365,8 +354,7 @@ name = "tree-sitter-typescript"
 version = "0.23.2"
 requires_python = ">=3.9"
 summary = "TypeScript and TSX grammars for tree-sitter"
-groups = ["default", "test"]
-marker = "python_version >= \"3.11\""
+groups = ["default", "dev", "test"]
 files = [
     {file = "tree_sitter_typescript-0.23.2-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:3cd752d70d8e5371fdac6a9a4df9d8924b63b6998d268586f7d374c9fba2a478"},
     {file = "tree_sitter_typescript-0.23.2-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:c7cc1b0ff5d91bac863b0e38b1578d5505e718156c9db577c8baea2557f66de8"},
@@ -383,8 +371,7 @@ name = "tree-sitter-xml"
 version = "0.7.0"
 requires_python = ">=3.9"
 summary = "XML & DTD grammars for tree-sitter"
-groups = ["default", "test"]
-marker = "python_version >= \"3.11\""
+groups = ["default", "dev", "test"]
 files = [
     {file = "tree_sitter_xml-0.7.0-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:cc3e516d4c1e0860fb22172c172148debb825ba638971bc48bad15b22e5b0bae"},
     {file = "tree_sitter_xml-0.7.0-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:0674fdf4cc386e4d323cb287d3b072663de0f20a9e9af5d5e09821aae56a9e5c"},
@@ -401,8 +388,7 @@ name = "tree-sitter-yaml"
 version = "0.7.0"
 requires_python = ">=3.9"
 summary = "YAML grammar for tree-sitter"
-groups = ["default", "test"]
-marker = "python_version >= \"3.11\""
+groups = ["default", "dev", "test"]
 files = [
     {file = "tree_sitter_yaml-0.7.0-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:e21553ac190ae05bf82796df8beb4d9158ba195b5846018cb36fbc3a35bd0679"},
     {file = "tree_sitter_yaml-0.7.0-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:c022054f1f9b54201082ea83073a6c24c42d0436ad8ee99ff2574cba8f928c28"},

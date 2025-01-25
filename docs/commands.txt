@@ -1,0 +1,17 @@
+# Add psutil for memory tests
+pdm add psutil
+
+# Run the full test suite
+pdm run pytest
+
+# For more detailed output
+pdm run pytest -v
+
+# To run specific test categories
+pdm run pytest tests/test_query_handling.py -v  # Query vs traversal tests
+pdm run pytest tests/test_memory.py -v          # Memory tests
+pdm run pytest -m concurrent -v                 # Concurrent processing tests
+pdm run pytest -m performance -v               # Performance tests
+
+# With coverage
+pdm run pytest --cov=src/GithubAnalyzer --cov-report=term-missing
