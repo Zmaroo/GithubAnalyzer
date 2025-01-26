@@ -1,8 +1,7 @@
-"""Test configuration and fixtures."""
-import pytest
-from pathlib import Path
 from tree_sitter_language_pack import get_parser
-
+import pytest
+"""Test configuration and fixtures."""
+from pathlib import Path
 @pytest.fixture
 def test_data_dir():
     """Get the test data directory."""

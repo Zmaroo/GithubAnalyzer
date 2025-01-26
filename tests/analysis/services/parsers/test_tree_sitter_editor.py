@@ -1,16 +1,25 @@
 """Tests for TreeSitterEditor."""
 import pytest
-import json  # Add this import
-from unittest.mock import patch, Mock
-from tree_sitter import Tree, Parser, Point
-from tree_sitter_language_pack import get_parser
+import logging
+from pathlib import Path
+from tree_sitter import Tree, Node, Point
+from tree_sitter_language_pack import get_parser, get_language
 
-from src.GithubAnalyzer.analysis.services.parsers.tree_sitter_editor import (
-    TreeSitterEditor,
-    EditOperation,
-    ParserError
-)
-from src.GithubAnalyzer.analysis.services.parsers.tree_sitter_logging import TreeSitterLogHandler
+from GithubAnalyzer.services.analysis.parsers.tree_sitter_editor import TreeSitterEditor
+from GithubAnalyzer.utils.logging.tree_sitter_logging import TreeSitterLogHandler
+from GithubAnalyzer.utils.logging.logging_config import configure_logging
+
+@pytest.fixture(autouse=True)
+def setup_logging():
+    """Set up logging for all tests."""
+    configure_logging(level=logging.DEBUG, structured=True, enable_tree_sitter=True)
+    root_logger = logging.getLogger('tree_sitter')
+    if not any(isinstance(h, TreeSitterLogHandler) for h in root_logger.handlers):
+        handler = TreeSitterLogHandler()
+        root_logger.addHandler(handler)
+    yield
+    # Clean up handlers after test
+    root_logger.handlers.clear()
 
 @pytest.fixture
 def editor():
@@ -19,88 +28,99 @@ def editor():
 
 @pytest.fixture
 def python_parser():
-    """Create a Python parser."""
+    """Get a Python parser."""
     return get_parser("python")
 
 @pytest.fixture
-def simple_tree(python_parser):
-    """Create a simple Python AST."""
+def python_tree(python_parser):
+    """Create a Python tree."""
     code = "def test(): pass"
     return python_parser.parse(bytes(code, "utf8"))
 
-def test_enable_disable_parser_logging(editor, python_parser):
-    """Test enabling and disabling parser logging."""
-    # Enable logging
-    editor.enable_parser_logging(python_parser)
-    assert hasattr(python_parser, "logger")
-    assert python_parser.logger is not None
+def test_parse_code(editor):
+    """Test parsing Python code."""
+    code = "def test(): pass"
+    tree = editor.parse_code(code)
+    assert isinstance(tree, Tree)
+    assert tree.root_node.type == "module"
 
-    # Disable logging
-    editor.disable_parser_logging(python_parser)
-    assert python_parser.logger is None
-
-def test_get_changed_ranges(editor, python_parser):
+def test_get_changed_ranges(editor):
     """Test getting changed ranges between trees."""
     old_code = "def test(): pass"
-    new_code = "def test():\n    pass"
-    old_tree = python_parser.parse(bytes(old_code, "utf8"))
-    new_tree = python_parser.parse(bytes(new_code, "utf8"))
-    changed_ranges = editor.get_changed_ranges(old_tree, new_tree)
-    assert len(changed_ranges) > 0
+    new_code = "def test(): return True"
+    
+    old_tree = editor.parse_code(old_code)
+    new_tree = editor.parse_code(new_code)
+    
+    ranges = editor.get_changed_ranges(old_tree, new_tree)
+    assert len(ranges) > 0
 
-def test_visualize_tree(editor, simple_tree, tmp_path):
+def test_update_tree_with_edits(editor):
+    """Test updating a tree with edits."""
+    code = "def test(): pass"
+    tree = editor.parse_code(code)
+    
+    # Create an edit operation
+    start_point = Point(0, 13)  # After 'pass'
+    end_point = Point(0, 13)
+    new_text = "\n    return True"
+    
+    tree = editor.update_tree_with_edits(tree, [(start_point, end_point, new_text)])
+    assert isinstance(tree, Tree)
+    assert not tree.root_node.has_error
+
+def test_visualize_tree(editor, tmp_path):
     """Test visualizing a tree."""
-    output_file = tmp_path / "tree.svg"
-    editor.visualize_tree(simple_tree, output_file)
-    assert output_file.exists()
+    code = "def test(): pass"
+    tree = editor.parse_code(code)
+    
+    # Test visualization without output path
+    visualization = editor.visualize_tree(tree)
+    assert isinstance(visualization, str)
+    assert "module" in visualization
+    
+    # Test visualization with output path
+    output_path = tmp_path / "tree.txt"
+    visualization = editor.visualize_tree(tree, output_path)
+    assert output_path.exists()
+    assert isinstance(visualization, str)
 
-def test_is_valid_position(editor, simple_tree):
-    """Test checking if a position is valid."""
-    position = Point(0, 0)
-    assert editor.is_valid_position(simple_tree, position)
+def test_is_valid_position(editor):
+    """Test position validation."""
+    code = "def test():\n    pass"
+    tree = editor.parse_code(code)
+    
+    # Test valid positions
+    assert editor.is_valid_position(tree.root_node, Point(0, 0))  # Start of file
+    assert editor.is_valid_position(tree.root_node, Point(0, 11))  # End of first line
+    assert editor.is_valid_position(tree.root_node, Point(1, 4))  # Indented 'pass'
+    
+    # Test invalid positions
+    assert not editor.is_valid_position(tree.root_node, Point(-1, 0))  # Negative row
+    assert not editor.is_valid_position(tree.root_node, Point(0, -1))  # Negative column
+    assert not editor.is_valid_position(tree.root_node, Point(2, 0))  # Past end of file
 
-def test_create_edit_operation(editor, simple_tree):
+def test_create_edit_operation(editor):
     """Test creating an edit operation."""
-    start = Point(0, 0)
-    end = Point(0, 4)
-    new_text = "def test():\n    pass"
-    edit_operation = editor.create_edit_operation(simple_tree, start, end, new_text)
-    assert edit_operation is not None
+    code = "def test(): pass"
+    tree = editor.parse_code(code)
+    
+    start_point = Point(0, 13)  # After 'pass'
+    end_point = Point(0, 13)
+    new_text = "\n    return True"
+    
+    edit = editor.create_edit_operation(tree, start_point, end_point, new_text)
+    assert edit.start_byte == 13
+    assert edit.old_end_byte == 13
+    assert edit.new_end_byte == 13 + len(new_text)
+    assert edit.start_point == start_point
+    assert edit.old_end_point == end_point
+    assert edit.new_end_point == Point(1, 14)
 
-def test_apply_edit(editor, simple_tree):
-    """Test applying an edit to a tree."""
-    start = Point(0, 0)
-    end = Point(0, 4)
-    new_text = "def test():\n    pass"
-    edit_operation = editor.create_edit_operation(simple_tree, start, end, new_text)
-    editor.apply_edit(simple_tree, edit_operation)
-    assert simple_tree.root_node is not None
-
-def test_reparse_tree(editor, python_parser, simple_tree):
-    """Test reparsing a tree after an edit."""
-    start = Point(0, 0)
-    end = Point(0, 4)
-    new_text = "def test():\n    pass"
-    edit_operation = editor.create_edit_operation(simple_tree, start, end, new_text)
-    editor.apply_edit(simple_tree, edit_operation)
-    new_tree = editor.reparse_tree(python_parser, simple_tree)
-    assert new_tree.root_node is not None
-
-def test_validate_tree(editor, simple_tree):
-    """Test validating a tree."""
-    assert editor.validate_tree(simple_tree)
-
-def test_verify_edit_position(editor, simple_tree):
-    """Test verifying an edit position."""
-    start = Point(0, 0)
-    end = Point(0, 4)
-    assert editor.verify_edit_position(simple_tree, start, end)
-
-def test_update_tree_with_edits(editor, python_parser, simple_tree):
-    """Test updating a tree with multiple edits."""
-    edits = [
-        editor.create_edit_operation(simple_tree, Point(0, 0), Point(0, 4), "def test():\n    pass"),
-        editor.create_edit_operation(simple_tree, Point(1, 0), Point(1, 4), "print('Hello')")
-    ]
-    new_tree = editor.update_tree_with_edits(python_parser, simple_tree, edits)
-    assert new_tree.root_node is not None
+def test_structured_logging(editor, caplog):
+    """Test structured logging output."""
+    with caplog.at_level(logging.DEBUG, logger='tree_sitter'):
+        code = "def test(): pass"
+        tree = editor.parse_code(code)
+        assert tree is not None
+        assert all(isinstance(record.msg, dict) for record in caplog.records)

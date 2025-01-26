@@ -1,6 +1,7 @@
 """
-GitHub Code Analysis Tool
-A tool for analyzing and processing GitHub repositories
+GithubAnalyzer package.
+
+This package provides tools for analyzing GitHub repositories.
 """
 
 import logging
@@ -15,79 +16,43 @@ logging.basicConfig(
 # Version
 __version__ = "0.1.0"
 
-# Core layer imports
-from .core.models import (
-    FileInfo,
-    FileFilterConfig,
-    ParseResult,
-    ParserError,
-    LanguageError,
-    QueryError,
-    FileOperationError
+# Models
+from GithubAnalyzer.models.core.database import (
+    CodeSnippet,
+    Function,
+    File,
+    CodebaseQuery,
 )
 
-from .core.services import (
-    FileService,
-    ParserService
-)
+# Services
+from GithubAnalyzer.services.core.database.database_service import DatabaseService
+from GithubAnalyzer.services.core.database.embedding_service import CodeEmbeddingService as EmbeddingService
+from GithubAnalyzer.services.core.database.neo4j_service import Neo4jService
+from GithubAnalyzer.services.core.database.postgres_service import PostgresService
+from GithubAnalyzer.services.core.file_service import FileService
+from GithubAnalyzer.services.core.parser_service import ParserService
 
-from .core.config import (
-    settings,
-    Settings,
-    get_logging_config
-)
-
-# Analysis layer imports
-from .analysis.models import (
-    get_node_text,
-    node_to_dict,
-    format_error_context,
-    count_nodes,
-    CodeAnalysisResult,
-    AnalysisResult
-)
-
-from .analysis.services import (
-    TreeSitterQueryHandler,
-    TreeSitterTraversal
-)
-
-# Utils imports
-from .core.utils import (
-    Timer,
-    StructuredLogger
-)
+# Utils
+from GithubAnalyzer.utils.timing import Timer, timer
+from GithubAnalyzer.utils.logging.logging_config import get_logger
 
 __all__ = [
-    # Core models
-    'FileInfo',
-    'FileFilterConfig',
-    'ParseResult',
-    'ParserError',
-    'LanguageError',
-    'QueryError',
-    'FileOperationError',
-    # Core services
+    # Models
+    'CodeSnippet',
+    'Function',
+    'File',
+    'CodebaseQuery',
+    
+    # Services
+    'DatabaseService',
+    'EmbeddingService',
+    'Neo4jService',
+    'PostgresService',
     'FileService',
     'ParserService',
-    # Core config
-    'settings',
-    'Settings',
-    'get_logging_config',
-    # Analysis models
-    'get_node_text',
-    'node_to_dict',
-    'format_error_context',
-    'count_nodes',
-    'CodeAnalysisResult',
-    'AnalysisResult',
-    # Analysis services
-    'TreeSitterQueryHandler',
-    'TreeSitterTraversal',
-    # Utils exports
+    
+    # Utils
     'Timer',
-    'StructuredLogger'
+    'timer',
+    'get_logger',
 ]
-
-# Initialize settings
-settings = Settings()

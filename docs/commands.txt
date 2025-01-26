@@ -15,3 +15,11 @@ pdm run pytest -m performance -v               # Performance tests
 
 # With coverage
 pdm run pytest --cov=src/GithubAnalyzer --cov-report=term-missing
+
+python src/main.py init
+
+python src/main.py process https://github.com/username/repo
+
+python src/main.py query "how to handle authentication"
+
+python src/main.py cleanup

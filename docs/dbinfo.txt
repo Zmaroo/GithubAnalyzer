@@ -1,0 +1,79 @@
+Last login: Sat Jan 25 18:07:12 on console
+➜  ~ sudo -u postgres psql
+sudo: unknown user postgres
+sudo: error initializing audit plugin sudoers_audit
+➜  ~ brew services start postgresql
+Error: Formula `postgresql@14` is not installed.
+➜  ~ brew list --services          
+Usage: brew list, ls [options] [installed_formula|installed_cask ...]
+
+List all installed formulae and casks. If formula is provided, summarise the
+paths within its current keg. If cask is provided, list its artifacts.
+
+      --formula, --formulae        List only formulae, or treat all named
+                                   arguments as formulae.
+      --cask, --casks              List only casks, or treat all named arguments
+                                   as casks.
+      --full-name                  Print formulae with fully-qualified names.
+                                   Unless --full-name, --versions or
+                                   --pinned are passed, other options (i.e.
+                                   -1, -l, -r and -t) are passed to
+                                   ls(1) which produces the actual output.
+      --versions                   Show the version number for installed
+                                   formulae, or only the specified formulae if
+                                   formula are provided.
+      --multiple                   Only show formulae with multiple versions
+                                   installed.
+      --pinned                     List only pinned formulae, or only the
+                                   specified (pinned) formulae if formula are
+                                   provided. See also pin, unpin.
+      --installed-on-request       List the formulae installed on request.
+      --installed-as-dependency    List the formulae installed as dependencies.
+      --poured-from-bottle         List the formulae installed from a bottle.
+      --built-from-source          List the formulae compiled from source.
+  -1                               Force output to be one entry per line. This
+                                   is the default when output is not to a
+                                   terminal.
+  -l                               List formulae and/or casks in long format.
+                                   Has no effect when a formula or cask name is
+                                   passed as an argument.
+  -r                               Reverse the order of the formulae and/or
+                                   casks sort to list the oldest entries first.
+                                   Has no effect when a formula or cask name is
+                                   passed as an argument.
+  -t                               Sort formulae and/or casks by time modified,
+                                   listing most recently modified first. Has no
+                                   effect when a formula or cask name is passed
+                                   as an argument.
+  -d, --debug                      Display any debugging information.
+  -q, --quiet                      Make some output more quiet.
+  -v, --verbose                    Make some output more verbose.
+  -h, --help                       Show this message.
+Error: invalid option: --services
+➜  ~ brew services list
+Name          Status  User          File
+ollama        started michaelmarler ~/Library/LaunchAgents/homebrew.mxcl.ollama.plist
+postgresql@17 started michaelmarler ~/Library/LaunchAgents/homebrew.mxcl.postgresql@17.plist
+redis         started michaelmarler ~/Library/LaunchAgents/homebrew.mxcl.redis.plist
+unbound       none                  
+➜  ~ psql
+psql (17.2 (Homebrew))
+Type "help" for help.
+
+michaelmarler=# \l
+
+                                                               List of databases
+     Name      |     Owner     | Encoding | Locale Provider |   Collate   |    Ctype    | Locale | ICU Rules |        Access privileges        
+---------------+---------------+----------+-----------------+-------------+-------------+--------+-----------+---------------------------------
+ code_analysis | michaelmarler | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | 
+ michaelmarler | postgres      | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | 
+ postgres      | michaelmarler | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | 
+ template0     | michaelmarler | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | =c/michaelmarler               +
+               |               |          |                 |             |             |        |           | michaelmarler=CTc/michaelmarler
+ template1     | michaelmarler | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | =c/michaelmarler               +
+               |               |          |                 |             |             |        |           | michaelmarler=CTc/michaelmarler
+(5 rows)
+
+~
+~
+(END)

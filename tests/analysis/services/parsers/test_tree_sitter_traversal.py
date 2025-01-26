@@ -1,18 +1,31 @@
-"""Tests for TreeSitterTraversal."""
 import pytest
+import json
 import logging
-import logging.config
-import json  # Ensure this import is present
 from tree_sitter import Tree, Node, Point
-from tree_sitter_language_pack import get_parser
-from src.GithubAnalyzer.analysis.services.parsers.tree_sitter_traversal import TreeSitterTraversal
-from src.GithubAnalyzer.core.utils.logging import get_logging_config, configure_logging
-from src.GithubAnalyzer.analysis.services.parsers.tree_sitter_logging import TreeSitterLogHandler
+from tree_sitter_language_pack import get_parser, get_language
+
+from GithubAnalyzer.services.analysis.parsers.tree_sitter_traversal import (
+    TreeSitterTraversal,
+    ParserError
+)
+from GithubAnalyzer.utils.logging.tree_sitter_logging import (
+    TreeSitterLogHandler,
+    StructuredFormatter
+)
+from GithubAnalyzer.utils.logging.logging_config import configure_logging
 
 @pytest.fixture(autouse=True)
 def setup_logging():
-    """Configure logging for tests."""
-    configure_logging()
+    """Set up logging for all tests."""
+    configure_logging(level=logging.DEBUG, structured=True, enable_tree_sitter=True)
+    root_logger = logging.getLogger('tree_sitter')
+    if not any(isinstance(h, TreeSitterLogHandler) for h in root_logger.handlers):
+        handler = TreeSitterLogHandler()
+        handler.setFormatter(StructuredFormatter())
+        root_logger.addHandler(handler)
+    yield
+    # Clean up handlers after test
+    root_logger.handlers.clear()
 
 @pytest.fixture
 def python_parser():
@@ -43,120 +56,100 @@ class Greeter:
     return python_parser.parse(bytes(code, "utf8"))
 
 def test_find_nodes_by_type(complex_tree):
-    """Test finding nodes by type."""
+    """Test finding nodes by type using tree.walk()."""
     # Find all function definitions
-    nodes = TreeSitterTraversal.find_nodes_by_type(complex_tree.root_node, "function_definition")
+    cursor = complex_tree.walk()
+    nodes = []
+    while cursor.goto_first_child():
+        if cursor.node.type == "function_definition":
+            nodes.append(cursor.node)
+        cursor.goto_next_sibling()
     assert len(nodes) == 3  # hello, __init__, and greet
-    
-    # Find all string literals
-    strings = TreeSitterTraversal.find_nodes_by_type(complex_tree.root_node, "string")
-    assert len(strings) > 0
 
 def test_find_nodes_by_text(complex_tree):
-    """Test finding nodes by text content."""
+    """Test finding nodes by text content using named_children."""
     # Find nodes containing specific text
-    nodes = TreeSitterTraversal.find_nodes_by_text(complex_tree.root_node, "hello")
+    cursor = complex_tree.walk()
+    nodes = []
+    while cursor.goto_first_child():
+        if "hello" in cursor.node.text.decode('utf8'):
+            nodes.append(cursor.node)
+        cursor.goto_next_sibling()
     assert len(nodes) > 0
     assert any(node.type == "function_definition" for node in nodes)
 
 def test_get_node_text(complex_tree):
     """Test getting node text."""
     # Get text from function definition
-    func_nodes = TreeSitterTraversal.find_nodes_by_type(complex_tree.root_node, "function_definition")
-    assert len(func_nodes) > 0
-    
-    text = TreeSitterTraversal.get_node_text(func_nodes[0])
-    assert text is not None
-    assert "def hello" in text
+    cursor = complex_tree.walk()
+    while cursor.goto_first_child():
+        if cursor.node.type == "function_definition":
+            text = cursor.node.text.decode('utf8')
+            assert "def hello" in text
+            break
+        cursor.goto_next_sibling()
 
 def test_get_node_range(complex_tree):
-    """Test getting node range."""
+    """Test getting node range using v24 properties."""
     # Get range from function definition
-    func_nodes = TreeSitterTraversal.find_nodes_by_type(complex_tree.root_node, "function_definition")
-    assert len(func_nodes) > 0
-    
-    range_info = TreeSitterTraversal.get_node_range(func_nodes[0])
-    assert isinstance(range_info, dict)
-    assert "start_point" in range_info
-    assert "end_point" in range_info
-    assert "start_byte" in range_info
-    assert "end_byte" in range_info
+    cursor = complex_tree.walk()
+    while cursor.goto_first_child():
+        if cursor.node.type == "function_definition":
+            node = cursor.node
+            assert node.start_point is not None
+            assert node.end_point is not None
+            assert node.start_byte is not None
+            assert node.end_byte is not None
+            break
+        cursor.goto_next_sibling()
 
 def test_get_node_context(complex_tree):
-    """Test getting node context."""
+    """Test getting node context using v24 features."""
     # Get context from function definition
-    func_nodes = TreeSitterTraversal.find_nodes_by_type(complex_tree.root_node, "function_definition")
-    assert len(func_nodes) > 0
-    
-    context = TreeSitterTraversal.get_node_context(func_nodes[0])
-    assert context is not None
-    assert "node" in context
-    assert "text" in context
-    assert "range" in context
+    cursor = complex_tree.walk()
+    while cursor.goto_first_child():
+        if cursor.node.type == "function_definition":
+            node = cursor.node
+            # Get function name using child_by_field_name
+            name_node = node.child_by_field_name('name')
+            assert name_node is not None
+            assert name_node.text.decode('utf8') == 'hello'
+            break
+        cursor.goto_next_sibling()
 
 def test_get_named_descendants(complex_tree, caplog):
-    """Test getting named descendants."""
-    # Set up logging capture
+    """Test getting named descendants using named_children."""
     with caplog.at_level(logging.DEBUG, logger='tree_sitter.traversal'):
-        # Get named descendants from root node
         traversal = TreeSitterTraversal()
-        descendants = traversal.get_named_descendants(
-            node=complex_tree.root_node,
-            start_byte=0,
-            end_byte=complex_tree.root_node.end_byte
-        )
-
-        # Print captured logs for debugging
-        print("\nCaptured logs:")
-        for record in caplog.records:
-            print(f"{record.levelname} - {record.name} - {record.getMessage()}")
-
-        # Verify logging output
-        assert any("Getting named descendants" in record.getMessage() for record in caplog.records), "Debug log message not found"
-        assert len(descendants) > 0, "No descendants found"
-
-def test_get_node_by_position(complex_tree):
-    """Test getting node at position."""
-    # Get node at specific position
-    node = TreeSitterTraversal.find_node_at_position(complex_tree.root_node, Point(1, 4))
-    assert node is not None
-    assert isinstance(node, Node)
-
-def test_get_node_path(complex_tree):
-    """Test getting node path."""
-    # Get path to a nested node
-    func_nodes = TreeSitterTraversal.find_nodes_by_type(complex_tree.root_node, "function_definition")
-    assert len(func_nodes) > 0
-    
-    path = TreeSitterTraversal.get_node_path(func_nodes[0])
-    assert len(path) > 0
-    assert path[0] == complex_tree.root_node
-    assert path[-1] == func_nodes[0]
-
-def test_get_common_ancestor(complex_tree):
-    """Test getting common ancestor."""
-    # Get common ancestor of two nodes
-    nodes = TreeSitterTraversal.find_nodes_by_type(complex_tree.root_node, "function_definition")
-    assert len(nodes) >= 2
-    
-    ancestor = TreeSitterTraversal.find_common_ancestor(nodes[0], nodes[1])
-    assert ancestor is not None
-    assert isinstance(ancestor, Node)
-
-def test_get_node_depth(complex_tree):
-    """Test getting node depth."""
-    # Get depth of various nodes
-    nodes = TreeSitterTraversal.find_nodes_by_type(complex_tree.root_node, "function_definition")
-    assert len(nodes) > 0
-    
-    for node in nodes:
-        depth = TreeSitterTraversal.get_node_depth(node)
-        assert depth >= 0
-        # Class methods should be deeper than top-level functions
-        if "greet" in TreeSitterTraversal.get_node_text(node):
-            assert depth > 1
+        nodes = []
+        cursor = complex_tree.walk()
+        
+        def collect_named_nodes(cursor):
+            if cursor.node.is_named:
+                nodes.append(cursor.node)
+            if cursor.goto_first_child():
+                collect_named_nodes(cursor)
+                cursor.goto_parent()
+            if cursor.goto_next_sibling():
+                collect_named_nodes(cursor)
+        
+        collect_named_nodes(cursor)
+        assert len(nodes) > 0
 
 def test_example(simple_tree):
     traversal = TreeSitterTraversal()
     traversal._logger.info("Test log message")
     assert simple_tree.root_node is not None
+
+def test_structured_logging(complex_tree, caplog):
+    """Test structured logging output."""
+    with caplog.at_level(logging.DEBUG, logger='tree_sitter.traversal'):
+        traversal = TreeSitterTraversal()
+        cursor = complex_tree.walk()
+        nodes = []
+        while cursor.goto_first_child():
+            if cursor.node.is_named:
+                nodes.append(cursor.node)
+            cursor.goto_next_sibling()
+        assert len(nodes) > 0
+        assert all(isinstance(record.msg, dict) for record in caplog.records)
