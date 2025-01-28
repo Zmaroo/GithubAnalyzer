@@ -6,6 +6,9 @@ import logging
 import importlib.util
 from pathlib import Path
 from typing import Optional
+from dotenv import load_dotenv
+
+from GithubAnalyzer.utils.logging import get_logger
 
 def fix_imports_bootstrap():
     """Bootstrap function to fix imports without requiring package imports."""
@@ -54,9 +57,8 @@ if len(sys.argv) > 1 and sys.argv[1] == 'fix-imports':
 from GithubAnalyzer.services.core.repo_processor import RepoProcessor
 from GithubAnalyzer.services.core.database.database_service import DatabaseService
 from GithubAnalyzer.models.core.database import CodebaseQuery
-from GithubAnalyzer.utils.logging.logging_config import get_logger
 from GithubAnalyzer.services.core.database.postgres_service import PostgresService
-from GithubAnalyzer.config.db_config import get_db_config
+from GithubAnalyzer.services.core.database.db_config import get_postgres_config, get_neo4j_config
 
 logger = get_logger(__name__)
 

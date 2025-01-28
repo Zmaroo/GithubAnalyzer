@@ -1,7 +1,7 @@
 """Parser service for code analysis using tree-sitter."""
 import os
 from pathlib import Path
-from typing import Union, Optional, Callable, Dict, Any
+from typing import Union, Optional, Callable, Dict, Any, Set
 from tree_sitter import Tree, Language, Parser
 from tree_sitter_language_pack import get_parser, get_language
 import logging
@@ -10,7 +10,9 @@ from GithubAnalyzer.models.core.errors import ParserError, LanguageError
 from GithubAnalyzer.utils.timing import timer
 from GithubAnalyzer.models.core.ast import ParseResult
 from GithubAnalyzer.models.core.file import FileInfo
-from GithubAnalyzer.utils.logging.logging_config import get_logger
+from GithubAnalyzer.utils.logging import get_logger
+from GithubAnalyzer.services.analysis.parsers.tree_sitter_query import TreeSitterQueryHandler
+from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
 
 logger = get_logger(__name__)
 
@@ -27,7 +29,6 @@ EXTENSION_MAP = {
     '.cc': 'cpp',
     '.cxx': 'cpp',
     '.c++': 'cpp',
-    '.cs': 'c-sharp',
     
     # Web
     '.js': 'javascript',
@@ -60,10 +61,8 @@ EXTENSION_MAP = {
     
     # Documentation
     '.md': 'markdown',
-    '.txt': 'text',
     '.rst': 'rst',
     '.org': 'org',
-    '.ini': 'ini',
     
     # Other languages
     '.lua': 'lua',
@@ -75,11 +74,8 @@ EXTENSION_MAP = {
     '.hrl': 'erlang',
     '.hs': 'haskell',
     '.lhs': 'haskell',
-    '.ml': 'ocaml',
-    '.mli': 'ocaml',
     '.pl': 'perl',
     '.pm': 'perl',
-    '.proto': 'protobuf',
     '.sql': 'sql',
     '.vue': 'vue',
     '.zig': 'zig'
@@ -88,140 +84,91 @@ EXTENSION_MAP = {
 class ParserService:
     """Service for parsing files using tree-sitter."""
 
-    def __init__(self, timeout_micros: Optional[int] = None):
-        """Initialize parser service.
+    def __init__(self):
+        """Initialize the parser service."""
+        self._language_service = LanguageService()
+        self._query_handler = TreeSitterQueryHandler()
+        
+    @timer
+    def parse_file(self, file_path: Union[str, Path], language: Optional[str] = None) -> ParseResult:
+        """Parse a file using tree-sitter.
         
         Args:
-            timeout_micros: Optional timeout in microseconds for parsing operations
-        """
-        self.timeout_micros = timeout_micros
-        self._logger = logging.getLogger(__name__)
-
-    def _detect_language(self, file_path: Path) -> str:
-        """Detect language from file extension.
-        
-        Args:
-            file_path: Path to file
+            file_path: Path to the file to parse
+            language: Optional language identifier (will be detected from extension if not provided)
             
         Returns:
-            Language identifier based on file extension
+            ParseResult containing the tree and metadata
         """
-        ext = file_path.suffix.lower()
-        return EXTENSION_MAP.get(ext, ext.lstrip('.'))
-
-    def _parse_code(self, content: str, language: str) -> ParseResult:
-        """Parse code content using tree-sitter.
+        file_path = Path(file_path)
+        
+        # Skip license files
+        if file_path.name.lower() in LICENSE_FILES:
+            return ParseResult(None, None, FileInfo(file_path, is_binary=False))
+        
+        # Get language from extension if not provided
+        if not language:
+            language = self._language_service.get_language_for_file(str(file_path))
+            if not language:
+                logger.warning(f"Unsupported file type: {file_path.suffix}")
+                return ParseResult(None, None, FileInfo(file_path, is_unsupported=True))
+            
+        # Read file content
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except UnicodeDecodeError:
+            logger.warning(f"File {file_path} appears to be binary")
+            return ParseResult(None, None, FileInfo(file_path, is_binary=True))
+            
+        return self.parse_content(content, language)
+        
+    @timer
+    def parse_content(self, content: str, language: str) -> ParseResult:
+        """Parse content using tree-sitter.
         
         Args:
             content: Content to parse
             language: Language identifier
             
         Returns:
-            ParseResult containing tree-sitter Tree
-            
-        Raises:
-            ParserError: If parsing fails
-            LanguageError: If language is not supported
+            ParseResult containing the tree and metadata
         """
         try:
-            parser = get_parser(language)
+            # Get parser for language
+            parser = self._language_service.get_parser(language)
             
-            if self.timeout_micros is not None:
-                parser.set_timeout_micros(self.timeout_micros)
-
-            encoded_content = content.encode('utf8')
-            tree = parser.parse(encoded_content)
+            # Parse content
+            tree = parser.parse(bytes(content, 'utf-8'))
             
-            if not isinstance(tree, Tree):
-                raise ParserError("Failed to create parse tree")
+            # Validate syntax using query handler
+            is_valid, errors = self._query_handler.validate_syntax(tree.root_node, language)
             
-            # Check for syntax errors
-            if tree.root_node.has_error:
-                error_nodes = [
-                    node for node in tree.root_node.children 
-                    if node.has_error or node.type == 'ERROR'
-                ]
-                if error_nodes:
-                    error_msg = "Syntax errors found:\n"
-                    for node in error_nodes:
-                        error_msg += f"- ERROR at line {node.start_point[0] + 1}: {node.type}\n"
-                    raise ParserError(error_msg)
+            # Extract functions and other structures
+            functions = self._query_handler.find_functions(tree.root_node, language)
+            classes = self._query_handler.find_nodes(tree, "class", language)
+            imports = self._query_handler.find_nodes(tree, "import", language)
+            
+            # Get any missing or error nodes
+            missing_nodes = self._query_handler.find_missing_nodes(tree.root_node)
+            error_nodes = self._query_handler.find_error_nodes(tree.root_node)
             
             return ParseResult(
                 tree=tree,
                 language=language,
-                content=content,
-                is_code=True
+                functions=functions,
+                classes=classes,
+                imports=imports,
+                is_valid=is_valid,
+                errors=errors,
+                missing_nodes=missing_nodes,
+                error_nodes=error_nodes
             )
-        except LookupError:
-            raise LanguageError(f"Language not supported by tree-sitter: {language}")
+            
         except Exception as e:
+            logger.error(f"Failed to parse content: {str(e)}")
             raise ParserError(f"Failed to parse content: {str(e)}")
-
-    @timer
-    def parse_file(self, file_info: Union[str, Path, FileInfo]) -> ParseResult:
-        """Parse a file using tree-sitter or return raw content for non-code files.
-        
-        Args:
-            file_info: Path or FileInfo object for the file to parse
             
-        Returns:
-            ParseResult containing tree-sitter Tree for code files or raw content for others
-            
-        Raises:
-            ParserError: If parsing fails
-            LanguageError: If language is not supported
-        """
-        try:
-            # Handle FileInfo objects
-            if isinstance(file_info, FileInfo):
-                file_path = file_info.path
-                language = file_info.language
-            else:
-                file_path = Path(file_info)
-                language = None
-            
-            # Get file content
-            content = file_path.read_text()
-            
-            # Handle license files
-            name = file_path.name.lower()
-            if name in LICENSE_FILES:
-                return ParseResult(tree=None, language='license', content=content, is_code=False)
-            
-            # Get language and try to parse
-            if not language:
-                language = self._detect_language(file_path)
-            
-            # Special handling for known non-code files
-            if language in {'rst', 'org', 'ini'}:
-                return ParseResult(tree=None, language='documentation', content=content, is_code=False)
-            
-            try:
-                return self._parse_code(content, language)
-            except LanguageError:
-                # If parsing fails due to unsupported language, treat as non-code file
-                logger.info(f"File {file_path} has unsupported language: {language}")
-                return ParseResult(tree=None, language='unknown', content=content, is_code=False)
-            
-        except (ParserError):
-            raise
-        except Exception as e:
-            raise ParserError(f"Failed to parse file: {str(e)}")
-
-    @timer
-    def parse_content(self, content: str, language: str) -> ParseResult:
-        """Parse content string using tree-sitter.
-        
-        Args:
-            content: Content to parse
-            language: Language identifier
-            
-        Returns:
-            ParseResult containing tree-sitter Tree
-            
-        Raises:
-            ParserError: If parsing fails
-            LanguageError: If language is not supported
-        """
-        return self._parse_code(content, language)
+    def get_supported_languages(self) -> Set[str]:
+        """Get set of supported languages."""
+        return self._language_service.supported_languages

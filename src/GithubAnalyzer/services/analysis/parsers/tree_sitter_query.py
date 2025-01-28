@@ -1,8 +1,13 @@
 from tree_sitter import Query, Node, Tree, QueryError, Language, Point
 from tree_sitter_language_pack import get_binding, get_language, get_parser
 import logging
+import threading
+import time
 
+from ....utils.logging import get_logger
 from ....utils.logging.tree_sitter_logging import TreeSitterLogHandler
+from ....utils.logging.logger_factory import LoggerFactory
+from GithubAnalyzer.models.core.errors import ParserError
 """Tree-sitter query handler."""
 from typing import Dict, List, Any, Optional, Tuple, Set, Union
 from .query_patterns import (
@@ -12,110 +17,147 @@ from .query_patterns import (
     QUERY_PATTERNS
 )
 from .tree_sitter_traversal import TreeSitterTraversal
+from .language_service import LanguageService
 from collections import defaultdict
 
-# Cache language at module level
-_PYTHON_LANGUAGE = None
-
-def get_cached_language():
-    global _PYTHON_LANGUAGE
-    if _PYTHON_LANGUAGE is None:
-        python_binding = get_binding('python')
-        _PYTHON_LANGUAGE = Language(python_binding)
-    return _PYTHON_LANGUAGE
+logger = get_logger(__name__)
 
 class TreeSitterQueryHandler:
     """Handles tree-sitter query operations."""
     
-    def __init__(self, logger: Optional[TreeSitterLogHandler] = None):
+    def __init__(self, default_language: str = "python"):
         """Initialize TreeSitterQueryHandler.
-
+        
         Args:
-            logger: Optional logger for structured logging
+            default_language: Default language to use for queries
         """
+        self._logger = get_logger('tree_sitter.query')
         self._traversal = TreeSitterTraversal()
-        self._pattern_queries = {}
+        self._language_service = LanguageService()
+        self._default_language = default_language
+        
+        # Initialize query components
+        self._pattern_queries = {}  # Dict[str, Dict[str, Query]]
         self._disabled_captures = set()
         self._disabled_patterns = set()
         
-        # Use cached language
-        self._language = get_cached_language()
-        self._logger = logger
+        # Initialize performance metrics
+        self._operation_times = {}
         
-        if self._logger:
-            self._logger.debug({
-                "message": "Initializing TreeSitterQueryHandler",
-                "context": {
-                    "language": "python",
-                    "patterns": list(QUERY_PATTERNS["python"].keys())
-                }
-            })
-
-        # Initialize pattern queries
-        for pattern_type in QUERY_PATTERNS["python"]:
-            pattern = get_query_pattern("python", pattern_type)
-            try:
-                self._pattern_queries[pattern_type] = self.create_query(pattern)
-                if self._logger:
-                    self._logger.debug({
-                        "message": f"Created query for pattern {pattern_type}",
-                        "context": {"pattern": pattern}
-                    })
-            except Exception as e:
-                if self._logger:
-                    self._logger.error({
-                        "message": f"Failed to create query for pattern {pattern_type}",
-                        "context": {
-                            "error": str(e),
-                            "pattern": pattern
-                        }
-                    })
-
-    def create_query(self, language_or_query: Union[Language, str], query_string: Optional[str] = None) -> Query:
-        """Create a tree-sitter query from a string.
+        # Get query patterns for default language
+        self._function_pattern = get_query_pattern(default_language, "function")
+        self._class_pattern = get_query_pattern(default_language, "class")
         
-        This method can be called in two ways:
-        1. create_query(language, query_string)
-        2. create_query(query_string)
+        # Log initialization
+        self._logger.debug({
+            "message": "TreeSitterQueryHandler initialized",
+            "context": {
+                'module': 'tree_sitter.query',
+                'thread': threading.get_ident(),
+                'language': default_language,
+                'patterns': list(QUERY_PATTERNS[default_language].keys())
+            }
+        })
+
+    def create_query(self, query_string: str, language: Optional[str] = None) -> Query:
+        """Create an optimized tree-sitter query.
         
         Args:
-            language_or_query: Either a Language object or a query string
-            query_string: The query string if language is provided, otherwise None
+            query_string: The query pattern string
+            language: Optional language identifier (uses default if not specified)
             
         Returns:
-            Query: The created query
+            Configured Query object
             
         Raises:
-            QueryError: If the query cannot be created
+            QueryError: If query creation fails
         """
-        details = {
-            "language": str(language_or_query) if isinstance(language_or_query, Language) else "default",
-            "query_string": query_string or language_or_query
-        }
+        start_time = self._time_operation('create_query')
         
         try:
-            if isinstance(language_or_query, Language):
-                if query_string is None:
-                    self._logger.error({
-                        "message": "Query string must be provided when language is provided",
-                        "context": details
-                    })
-                    raise ValueError("query_string must be provided when language is provided")
-                return Query(language_or_query, query_string)
-            else:
-                # If only query string provided, use default language
-                return Query(self._language, language_or_query)
+            # Get language directly from tree-sitter-language-pack
+            lang = language or self._default_language
+            lang_obj = get_language(lang)
+                
+            query = Query(lang_obj, query_string)
+            
+            # Check query validity
+            for i in range(query.pattern_count):
+                if not query.is_pattern_rooted(i):
+                    self._logger.warning(f"Pattern {i} is not rooted")
+                    
+            return query
+            
         except Exception as e:
-            error_details = {**details, "error": str(e)}
-            if self._logger:
-                self._logger.error({
-                    "message": "Failed to create query",
-                    "context": error_details
-                })
-            raise QueryError(
-                message=f"Failed to create query: {e}",
-                details=str(error_details)
-            )
+            raise QueryError(f"Failed to create query: {e}")
+            
+        finally:
+            self._end_operation('create_query', start_time)
+
+    def execute_query(self, query: Query, node: Union[Node, Tree]) -> Dict[str, List[Node]]:
+        """Execute a query with native tree-sitter optimizations.
+        
+        Args:
+            query: Query to execute
+            node: Node or Tree to execute query on
+            
+        Returns:
+            Dictionary mapping capture names to lists of captured nodes
+            
+        Raises:
+            QueryError: If query execution fails
+        """
+        start_time = self._time_operation('execute_query')
+        
+        try:
+            target_node = node.root_node if isinstance(node, Tree) else node
+            
+            # Get query stats before execution
+            stats = self.get_query_stats(query)
+            self._logger.debug({
+                "message": "Executing query",
+                "context": {
+                    "stats": stats,
+                    "node_type": target_node.type
+                }
+            })
+            
+            # Execute query and get all captures
+            captures = defaultdict(list)
+            for pattern_idx, match in query.matches(target_node):
+                if pattern_idx not in self._disabled_patterns:
+                    # Add captures from match
+                    for name, nodes in match.items():
+                        if name not in self._disabled_captures:
+                            captures[name].extend(nodes)
+            
+            # Check execution status
+            if query.did_exceed_match_limit:
+                self._logger.warning("Query exceeded match limit")
+                
+            return dict(captures)
+            
+        except Exception as e:
+            raise QueryError(f"Query execution failed: {e}")
+            
+        finally:
+            self._end_operation('execute_query', start_time)
+
+    def _time_operation(self, operation: str) -> float:
+        """Start timing an operation."""
+        return time.time()
+
+    def _end_operation(self, operation: str, start_time: float):
+        """End timing an operation and store result."""
+        duration = time.time() - start_time
+        self._operation_times[operation] = duration
+
+    def get_query_stats(self, query: Query) -> Dict[str, Any]:
+        """Get statistics about a query."""
+        return {
+            'pattern_count': query.pattern_count,
+            'capture_names': query.capture_names()
+        }
 
     def disable_capture(self, capture: str) -> None:
         """Disable a capture in future queries.
@@ -133,85 +175,127 @@ class TreeSitterQueryHandler:
         """
         self._disabled_patterns.add(pattern_index)
 
-    def get_query_stats(self, query: Query) -> Dict[str, Any]:
-        """Get statistics about a query.
-
-        Args:
-            query: Query to get statistics for
-
-        Returns:
-            Dictionary containing query statistics:
-                - pattern_count: Number of patterns in query
-                - match_limit: Maximum number of matches allowed
-                - timeout_micros: Query timeout in microseconds
-                - did_exceed_match_limit: Whether match limit was exceeded (boolean)
-        """
-        try:
-            return {
-                "pattern_count": query.pattern_count,
-                "match_limit": query.match_limit,
-                "timeout_micros": query.timeout_micros,
-                "did_exceed_match_limit": bool(query.did_exceed_match_limit)
-            }
-        except Exception as e:
-            if self._logger:
-                self._logger.error(f"Failed to get query stats: {str(e)}")
-            raise QueryError(str(e))
-
-    def execute_query(self, query: Query, node: Union[Node, Tree]) -> Dict[str, List[Node]]:
-        """Execute a query on a node or tree.
+    def find_nodes(self, tree: Tree, pattern_type: str, language: Optional[str] = None) -> List[Dict[str, Node]]:
+        """Find nodes using native tree-sitter query methods.
         
         Args:
-            query: Query to execute
-            node: Node or Tree to execute query on
+            tree: The tree to search
+            pattern_type: Type of pattern to match
+            language: Optional language identifier
             
         Returns:
-            Dictionary mapping capture names to lists of captured nodes
-            
-        Raises:
-            QueryError: If query execution failed
+            List of dictionaries containing captured nodes
         """
-        details = {
-            "query_stats": self.get_query_stats(query),
-            "node_type": node.root_node.type if isinstance(node, Tree) else node.type,
-            "disabled_captures": list(self._disabled_captures),
-            "disabled_patterns": list(self._disabled_patterns)
-        }
-        
         try:
-            # Get the node to query
-            target_node = node.root_node if isinstance(node, Tree) else node
+            # Get pattern for language
+            lang = language or self._default_language
+            pattern_lang = self._language_service.get_language_map().get(lang, lang)
+            pattern = self.get_query_pattern(pattern_type, lang)
             
-            self._logger.debug({
-                "message": "Executing query",
-                "context": details
-            })
-            
-            # Get captures directly as a dictionary
-            captures = query.captures(target_node)
-            
-            # Filter out disabled captures
-            results = {
-                name: nodes 
-                for name, nodes in captures.items()
-                if name not in self._disabled_captures
-            }
-            
-            return results
-            
+            # Create and execute query
+            query = self.create_query(pattern, lang)
+            if not query:
+                return []
+                
+            # Use native matches() method
+            matches = []
+            for pattern_idx, match in query.matches(tree.root_node):
+                # Verify pattern is valid
+                if (query.is_pattern_rooted(pattern_idx) and
+                    pattern_idx not in self._disabled_patterns):
+                    matches.append(match)
+                    
+            return matches
         except Exception as e:
-            error_details = {**details, "error": str(e)}
-            self._logger.error({
-                "message": "Failed to execute query",
-                "context": error_details
-            })
-            raise QueryError(
-                message=f"Failed to execute query: {e}",
-                details=str(error_details)
+            self._logger.error(f"Error finding nodes: {str(e)}")
+            return []
+
+    def validate_node(self, node: Node) -> Tuple[bool, List[str]]:
+        """Validate node using native tree-sitter methods.
+        
+        Args:
+            node: Node to validate
+            
+        Returns:
+            Tuple of (is_valid, error_messages)
+        """
+        errors = []
+        
+        # Check node state
+        if node.has_error:
+            # Get valid symbols that could appear
+            valid_symbols = self.get_valid_symbols_at_error(node)
+            errors.append(
+                f"Syntax error at {node.start_point}. "
+                f"Expected one of: {', '.join(valid_symbols)}"
             )
+            
+        # Check pattern validity
+        query = self._get_pattern_query(node.type)
+        if query:
+            for i in range(query.pattern_count):
+                if not query.is_pattern_guaranteed_at_step(i):
+                    errors.append(
+                        f"Node {node.type} is not guaranteed at "
+                        f"position {node.start_point}"
+                    )
+                    
+        return len(errors) == 0, errors
 
-    def get_matches(self, query: Query, node: Union[Node, Tree]) -> List[Dict[str, List[Node]]]:
-        """Get matches from a query execution.
+    def get_valid_symbols_at_error(self, node: Node, language: Optional[str] = None) -> List[str]:
+        """Get valid symbols that could appear at an error node.
+        
+        Uses Tree-sitter's LookaheadIterator to find valid symbols.
+        
+        Args:
+            node: The error node to analyze
+            language: Optional language identifier
+            
+        Returns:
+            List of valid symbol names
+        """
+        if not node or not node.has_error:
+            return []
+            
+        lang = language or self._default_language
+        lang_obj = get_language(lang)
+        if not lang_obj:
+            return []
+            
+        try:
+            # Get first leaf node state
+            cursor = node.walk()
+            while cursor.goto_first_child():
+                pass
+                
+            # Create lookahead iterator
+            lookahead = lang_obj.lookahead_iterator(
+                cursor.node.parse_state
+            )
+            
+            # Get all valid symbol names
+            return list(lookahead.iter_names())
+            
+        except Exception as e:
+            self._logger.error(f"Error getting valid symbols: {e}")
+            return []
+
+    def configure_query(self, query: Query, settings: QueryOptimizationSettings):
+        """Configure query with optimization settings."""
+        if settings.match_limit:
+            query.set_match_limit(settings.match_limit)
+            
+        if settings.timeout_micros:
+            query.set_timeout_micros(settings.timeout_micros)
+            
+        if settings.byte_range:
+            query.set_byte_range(settings.byte_range)
+            
+        if settings.point_range:
+            query.set_point_range(settings.point_range)
+
+    def get_matches(self, query: Query, node: Union[Node, Tree]) -> List[Dict[str, Node]]:
+        """Get matches from a query execution using native tree-sitter matches.
         
         Args:
             query: Query to execute
@@ -220,47 +304,54 @@ class TreeSitterQueryHandler:
         Returns:
             List of match dictionaries
         """
+        start_time = self._time_operation('get_matches')
+        
         try:
             target_node = node.root_node if isinstance(node, Tree) else node
-            matches = query.matches(target_node)
-            return [
-                match for pattern_idx, match in matches
-                if pattern_idx not in self._disabled_patterns
-            ]
+            
+            # Get matches using native method
+            matches = []
+            for pattern_idx, match in query.matches(target_node):
+                if pattern_idx not in self._disabled_patterns:
+                    # Check pattern validity
+                    if query.is_pattern_rooted(pattern_idx):
+                        matches.append(match)
+                        
+            return matches
+            
         except Exception as e:
-            self._logger.error(f"Failed to get matches: {e}", exc_info=True)
-            raise
-
-    def configure_query(self, query: Query, settings: QueryOptimizationSettings):
-        """Configure query with optimization settings."""
-        try:
-            if settings.match_limit:
-                query.match_limit = settings.match_limit
-            if settings.timeout_micros:
-                query.timeout_micros = settings.timeout_micros
-        except Exception as e:
-            if self._logger:
-                self._logger.warning(f"Query configuration settings are no longer supported: {str(e)}")
+            self._logger.error(f"Failed to get matches: {e}")
+            return []
+            
+        finally:
+            self._end_operation('get_matches', start_time)
 
     def get_pattern_info(self, query: Query, pattern_index: int) -> Dict[str, Any]:
         """Get information about a query pattern."""
-        return {
-            "is_rooted": query.is_pattern_rooted(pattern_index),
-            "is_non_local": query.is_pattern_non_local(pattern_index),
-            "assertions": query.pattern_assertions(pattern_index),
-            "settings": query.pattern_settings(pattern_index)
-        }
+        start_time = self._time_operation('get_pattern_info')
+        
+        try:
+            return {
+                "is_rooted": query.is_pattern_rooted(pattern_index),
+                "is_non_local": query.is_pattern_non_local(pattern_index),
+                "assertions": query.pattern_assertions(pattern_index),
+                "settings": query.pattern_settings(pattern_index)
+            }
+        finally:
+            self._end_operation('get_pattern_info', start_time)
 
-    def _get_pattern_query(self, pattern_type: str) -> Optional[Query]:
+    def _get_pattern_query(self, pattern_type: str, language: Optional[str] = None) -> Optional[Query]:
         """Get cached query for pattern type.
 
         Args:
             pattern_type: Type of pattern to get query for
+            language: Optional language identifier
 
         Returns:
             Cached query or None if not found
         """
-        return self._pattern_queries.get(pattern_type)
+        lang = language or self._default_language
+        return self._pattern_queries.get(lang, {}).get(pattern_type)
 
     def _process_captures(self, captures: Dict[str, List[Node]]) -> Dict[str, List[Node]]:
         """Process captures into a dictionary mapping capture names to node lists.
@@ -272,34 +363,6 @@ class TreeSitterQueryHandler:
             Dictionary mapping capture names to lists of nodes
         """
         return captures  # Tree-sitter already returns the format we want
-
-    def find_nodes(self, tree: Tree, pattern_type: str) -> List[Node]:
-        """Find nodes matching a pattern type.
-
-        Args:
-            tree: The tree to search
-            pattern_type: The type of pattern to match
-
-        Returns:
-            List[Node]: The matching nodes
-
-        Raises:
-            QueryError: If the pattern type is invalid
-        """
-        query = self._get_pattern_query(pattern_type)
-        if not query:
-            # Create the query if it doesn't exist
-            pattern = get_query_pattern("python", pattern_type)
-            if not pattern:
-                return []
-            query = self.create_query(pattern)
-            self._pattern_queries[pattern_type] = query
-
-        # Always use the root node for searching
-        captures = self.execute_query(query, tree.root_node)
-        
-        # Return nodes for the pattern type if any were captured
-        return captures.get(pattern_type, [])
 
     def find_missing_nodes(self, node: Node) -> List[Node]:
         """Find missing nodes using TreeSitterTraversal.
@@ -323,135 +386,175 @@ class TreeSitterQueryHandler:
         """
         return self._traversal.find_error_nodes(node)
 
-    def validate_syntax(self, node: Node) -> Tuple[bool, List[str]]:
-        """Validate syntax using error and missing node queries.
+    def validate_syntax(self, node: Node, language: Optional[str] = None) -> Tuple[bool, List[str]]:
+        """Validate syntax using error patterns.
         
         Args:
             node: Node to validate
+            language: Optional language identifier
             
         Returns:
-            Tuple[bool, List[str]]: (is_valid, error_messages)
+            Tuple of (is_valid, error_messages)
         """
         errors = []
         
-        # Check for error nodes
-        error_nodes = self._traversal.find_error_nodes(node)
-        for error_node in error_nodes:
-            errors.append(f"Syntax error at line {error_node.start_point[0] + 1}, column {error_node.start_point[1]}")
+        # Find error nodes
+        error_matches = self.find_nodes(node, "error", language)
+        for match in error_matches:
+            if 'error.syntax' in match:
+                errors.append(f"Syntax error at {match['error.syntax'].start_point}")
+            if 'error.missing' in match:
+                errors.append(f"Missing node at {match['error.missing'].start_point}")
                 
-        # Check for missing nodes
-        missing_nodes = self._traversal.find_missing_nodes(node)
-        for missing_node in missing_nodes:
-            errors.append(f"Missing node at line {missing_node.start_point[0] + 1}, column {missing_node.start_point[1]}")
-                
-        # Check for general tree errors
-        if node.has_error:
-            errors.append("Tree contains syntax errors")
-            
         return len(errors) == 0, errors
 
-    def find_functions(self, node: Node) -> List[Dict[str, Node]]:
-        """Find function definitions with their components.
+    def find_functions(self, node: Union[Node, Tree], language: Optional[str] = None) -> List[Dict[str, Node]]:
+        """Find function nodes in a tree.
         
         Args:
-            node: Root node to search in
+            node: Node or Tree to search
+            language: Optional language identifier
             
         Returns:
-            List of dictionaries containing function components:
-                - function.def: Complete function node
-                - function.name: Function name node
-                - function.params: Parameters node
-                - function.body: Function body node
+            List of dictionaries containing function nodes
         """
-        query = self.create_query(get_language('python'), self._FUNCTION_PATTERN)
-        if not query:
-            return []
-            
-        try:
-            # Get all captures at once
-            captures = query.captures(node)
-            
-            # Group captures by function definition
-            functions = []
-            current_func = {}
-            
-            # Process captures to group by function
-            for capture_name, nodes in captures.items():
-                for node in nodes:
-                    if capture_name == 'function.def':
-                        if current_func:
-                            functions.append(current_func)
-                        current_func = {'function.def': node}
-                    else:
-                        current_func[capture_name] = node
-                        
-            # Add last function if exists
-            if current_func:
-                functions.append(current_func)
-                
-            return functions
-        except Exception as e:
-            if self._logger:
-                self._logger.error(f"Failed to find functions: {str(e)}")
-            return []
+        return self.find_nodes(node, "function", language)
 
-    def find_classes(self, node: Node) -> List[Dict[str, Node]]:
+    def find_classes(self, node: Node, language: Optional[str] = None) -> List[Dict[str, Node]]:
         """Find class definitions with their components.
         
         Args:
             node: Root node to search in
+            language: Optional language identifier
             
         Returns:
-            List of dictionaries containing class components:
-                - class.def: Complete class node
-                - class.name: Class name node
-                - class.body: Class body node
+            List of dictionaries containing class components
         """
-        query = self.create_query(get_language('python'), self._CLASS_PATTERN)
+        lang = language or self._default_language
+        lang_obj = get_language(lang)
+        if not lang_obj:
+            return []
+            
+        pattern = get_query_pattern(lang, 'class')
+        if not pattern:
+            return []
+            
+        query = self.create_query(pattern, lang)
         if not query:
             return []
             
         try:
-            # Get all captures at once
-            captures = query.captures(node)
-            
-            # Group captures by class definition
-            classes = []
-            current_class = {}
-            
-            # Process captures to group by class
-            for capture_name, nodes in captures.items():
-                for node in nodes:
-                    if capture_name == 'class.def':
-                        if current_class:
-                            classes.append(current_class)
-                        current_class = {'class.def': node}
-                    else:
-                        current_class[capture_name] = node
+            # Get all matches at once
+            matches = []
+            for pattern_idx, match in query.matches(node):
+                if pattern_idx not in self._disabled_patterns:
+                    # Get required fields for this language
+                    required_fields = self._get_required_fields(lang, 'class')
+                    if all(k in match for k in required_fields):
+                        matches.append(match)
                         
-            # Add last class if exists
-            if current_class:
-                classes.append(current_class)
-                
-            return classes
+            return matches
+            
         except Exception as e:
-            if self._logger:
-                self._logger.error(f"Failed to find classes: {str(e)}")
+            self._logger.error(f"Failed to find classes: {e}")
             return []
 
-    def find_nodes_by_type(self, node: Node, node_type: str) -> List[Node]:
-        """Find nodes of a specific type using query pattern."""
-        pattern = f"({node_type}) @target"
-        query = self.create_query(get_language('python'), pattern)
-        if not query:
+    def find_nodes_by_type(self, node: Node, node_type: str, language: Optional[str] = None) -> List[Node]:
+        """Find nodes of a specific type using native tree-sitter query.
+        
+        Args:
+            node: Root node to search in
+            node_type: Type of nodes to find
+            language: Optional language identifier
+            
+        Returns:
+            List of matching nodes
+        """
+        lang = language or self._default_language
+        lang_obj = get_language(lang)
+        if not lang_obj:
             return []
             
-        return [capture[0] for capture in query.captures(node)]
+        # Create query pattern with target capture
+        pattern = f"""
+            ({node_type}) @target
+            (#is-not? @target error)
+            (#is-not? @target missing)
+        """
+        
+        try:
+            query = self.create_query(pattern, lang)
+            if not query:
+                return []
+                
+            # Get matches and extract target nodes
+            matches = []
+            for pattern_idx, match in query.matches(node):
+                if 'target' in match:
+                    matches.append(match['target'])
+                    
+            return matches
+            
+        except Exception as e:
+            self._logger.error(f"Failed to find nodes by type: {e}")
+            return []
 
-    def is_valid_node(self, node: Node) -> bool:
-        """Check if a node is valid (no errors or missing parts)."""
+    def is_valid_node(self, node: Node, language: Optional[str] = None) -> bool:
+        """Check if a node is valid using native tree-sitter validation.
+        
+        Args:
+            node: Node to validate
+            language: Optional language identifier
+            
+        Returns:
+            True if node is valid
+        """
         if not node:
             return False
             
-        is_valid, _ = self.validate_syntax(node)
-        return is_valid
+        # Check basic node validity
+        if node.has_error or node.is_missing:
+            return False
+            
+        lang = language or self._default_language
+        lang_obj = get_language(lang)
+        if not lang_obj:
+            return False
+            
+        # Get node type pattern
+        pattern = f"""
+            ({node.type}) @node
+            (#is? @node complete)
+            (#is-not? @node error)
+            (#is-not? @node missing)
+        """
+        
+        try:
+            query = self.create_query(pattern, lang)
+            if not query:
+                return False
+                
+            # Check if node matches validity pattern
+            matches = query.matches(node)
+            return len(matches) > 0
+            
+        except Exception as e:
+            self._logger.error(f"Error validating node: {e}")
+            return False
+
+    def get_query_pattern(self, pattern_type: str, language: Optional[str] = None) -> str:
+        """Get a query pattern for a specific language and pattern type.
+        
+        Args:
+            pattern_type: Type of pattern to get
+            language: Optional language identifier (uses default if not specified)
+            
+        Returns:
+            Query pattern string
+            
+        Raises:
+            KeyError: If language or pattern type not found
+        """
+        lang = language or self._default_language
+        pattern_lang = self._language_service.get_language_map().get(lang, lang)
+        return get_query_pattern(pattern_lang, pattern_type)

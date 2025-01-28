@@ -35,59 +35,121 @@ class Neo4jService:
                 FOR (fn:Function) REQUIRE fn.id IS UNIQUE
             """)
 
-    def create_file_node(self, repo_id: str, file_path: str) -> None:
-        """Create a file node in the graph."""
+    def create_file_node(self, repo_id: int, file_path: str) -> None:
+        """Create a file node in the graph.
+        
+        Args:
+            repo_id: Repository identifier (integer)
+            file_path: Path to the file
+        """
         with self._driver.session() as session:
             session.run("""
                 MERGE (f:File {path: $path})
                 SET f.repo_id = $repo_id
             """, path=file_path, repo_id=repo_id)
 
+    def create_function_node(self, repo_id: int, file_path: str, name: str) -> None:
+        """Create a function node in the graph.
+        
+        Args:
+            repo_id: Repository identifier (integer)
+            file_path: Path to the file containing the function
+            name: Function name
+        """
+        with self._driver.session() as session:
+            session.run("""
+                MATCH (f:File {path: $path})
+                MERGE (fn:Function {id: $path + '/' + $name})
+                ON CREATE SET fn.name = $name, fn.repo_id = $repo_id
+                MERGE (fn)-[:DEFINED_IN]->(f)
+            """, path=file_path, name=name, repo_id=repo_id)
+
+    def create_class_node(self, repo_id: int, file_path: str, name: str) -> None:
+        """Create a class node in the graph.
+        
+        Args:
+            repo_id: Repository identifier (integer)
+            file_path: Path to the file containing the class
+            name: Class name
+        """
+        with self._driver.session() as session:
+            session.run("""
+                MATCH (f:File {path: $path})
+                MERGE (c:Class {id: $path + '/' + $name})
+                ON CREATE SET c.name = $name, c.repo_id = $repo_id
+                MERGE (c)-[:DEFINED_IN]->(f)
+            """, path=file_path, name=name, repo_id=repo_id)
+
+    def create_import_relationship(self, repo_id: int, file_path: str, module_name: str) -> None:
+        """Create an import relationship in the graph.
+        
+        Args:
+            repo_id: Repository identifier (integer)
+            file_path: Path to the file containing the import
+            module_name: Name of the imported module
+        """
+        with self._driver.session() as session:
+            session.run("""
+                MATCH (f:File {path: $path})
+                MERGE (m:Module {name: $module_name})
+                ON CREATE SET m.repo_id = $repo_id
+                MERGE (f)-[:IMPORTS]->(m)
+            """, path=file_path, module_name=module_name, repo_id=repo_id)
+
     def create_function_relationship(self, caller_path: str, callee_path: str,
                                    caller_name: str, callee_name: str) -> None:
         """Create a relationship between functions in different files."""
         with self._driver.session() as session:
+            # First, create the function nodes and their relationships to files
             session.run("""
                 MATCH (f1:File {path: $caller_path})
-                MATCH (f2:File {path: $callee_path})
                 MERGE (fn1:Function {id: $caller_path + '/' + $caller_name})
                 ON CREATE SET fn1.name = $caller_name
+                MERGE (fn1)-[:DEFINED_IN]->(f1)
+            """, caller_path=caller_path, caller_name=caller_name)
+
+            session.run("""
+                MATCH (f2:File {path: $callee_path})
                 MERGE (fn2:Function {id: $callee_path + '/' + $callee_name})
                 ON CREATE SET fn2.name = $callee_name
+                MERGE (fn2)-[:DEFINED_IN]->(f2)
+            """, callee_path=callee_path, callee_name=callee_name)
+
+            # Then create the CALLS relationship between functions
+            session.run("""
+                MATCH (fn1:Function {id: $caller_path + '/' + $caller_name})
+                MATCH (fn2:Function {id: $callee_path + '/' + $callee_name})
                 MERGE (fn1)-[:CALLS]->(fn2)
-                MERGE (f1)-[:CONTAINS]->(fn1)
-                MERGE (f2)-[:CONTAINS]->(fn2)
             """, caller_path=caller_path, callee_path=callee_path,
                  caller_name=caller_name, callee_name=callee_name)
 
     def get_file_relationships(self, file_path: str) -> List[Dict[str, Any]]:
-        """Get all function relationships for a file.
+        """Get function relationships for a file.
         
         Args:
             file_path: Path to the file
             
         Returns:
-            List of dictionaries containing function relationships
+            List of function relationships
         """
         with self._driver.session() as session:
-            result = session.run("""
-                MATCH (f:File {path: $path})-[:CONTAINS]->(fn:Function)
-                OPTIONAL MATCH (fn)-[r:CALLS]->(called:Function)<-[:CONTAINS]-(cf:File)
+            result = session.run('''
+                MATCH (f:File {path: $path})<-[:DEFINED_IN]-(fn:Function)
+                OPTIONAL MATCH (fn)-[r:CALLS]->(called:Function)-[:DEFINED_IN]->(cf:File)
                 RETURN fn.name as function_name,
                        collect({
                            function: called.name,
                            file: cf.path
                        }) as calls
-            """, path=file_path)
+            ''', path=file_path)
             
-            relationships = []
-            for record in result:
-                relationships.append({
+            return [
+                {
                     'function': record['function_name'],
                     'calls': record['calls']
-                })
-            
-            return relationships
+                }
+                for record in result
+            ]
 
     def get_function_callers(self, function_name: str) -> List[Dict[str, Any]]:
         """Get all functions that call a specific function.

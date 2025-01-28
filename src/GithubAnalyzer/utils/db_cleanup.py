@@ -4,7 +4,7 @@ from neo4j.exceptions import ServiceUnavailable
 from GithubAnalyzer.services.core.database.neo4j_service import Neo4jService
 import psycopg2
 from GithubAnalyzer.services.core.database.postgres_service import PostgresService
-from GithubAnalyzer.utils.logging.logging_config import get_logger
+from GithubAnalyzer.utils.logging import get_logger
 
 logger = get_logger(__name__)
 

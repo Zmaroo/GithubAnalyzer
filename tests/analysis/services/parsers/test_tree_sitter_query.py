@@ -34,8 +34,7 @@ def setup_logging():
 @pytest.fixture
 def query_handler():
     """Create a TreeSitterQueryHandler instance."""
-    logger = TreeSitterLogHandler('tree_sitter.query')
-    return TreeSitterQueryHandler(logger)
+    return TreeSitterQueryHandler()
 
 @pytest.fixture
 def python_parser():

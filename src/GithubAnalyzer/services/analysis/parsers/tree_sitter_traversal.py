@@ -1,8 +1,11 @@
 from dataclasses import dataclass
 from typing import List, Optional, Generator, Dict, Any, Tuple, Union, TypeVar
 import threading
+import time
 
-from GithubAnalyzer.utils.logging.logging_config import get_logger, StructuredFormatter
+from GithubAnalyzer.utils.logging import get_logger
+from GithubAnalyzer.utils.logging.formatters import StructuredFormatter
+from GithubAnalyzer.utils.logging.logger_factory import LoggerFactory
 """Tree-sitter node traversal utilities."""
 
 import logging
@@ -17,6 +20,7 @@ from tree_sitter import (
     Language,
     Parser
 )
+from tree_sitter_language_pack import get_language, get_parser
 
 from GithubAnalyzer.models.core.errors import ParserError
 from ....utils.logging.tree_sitter_logging import TreeSitterLogHandler
@@ -29,25 +33,58 @@ class TreeSitterTraversal:
 
     def __init__(self):
         """Initialize traversal with logging."""
-        # Get or create logger for this module
-        self._logger = logging.getLogger('tree_sitter.traversal')
+        # Get logger from factory
+        self._logger = LoggerFactory().get_tree_sitter_logger('tree_sitter.traversal')
         
-        # Set logger level to DEBUG
-        self._logger.setLevel(logging.DEBUG)
+        # Initialize performance metrics
+        self._operation_times = {}
         
-        # Only add handler if not already present
-        if not any(isinstance(h, TreeSitterLogHandler) for h in self._logger.handlers):
-            handler = TreeSitterLogHandler('tree_sitter.traversal')
-            handler.setFormatter(StructuredFormatter())
-            handler.setLevel(logging.DEBUG)
-            self._logger.addHandler(handler)
-            
-        # Initialize with structured logging
+        # Log initialization
         self._logger.debug({
             "message": "TreeSitterTraversal initialized",
             "context": {
                 'module': 'tree_sitter.traversal',
                 'thread': threading.get_ident()
+            }
+        })
+
+    def _time_operation(self, operation_name: str) -> float:
+        """Record timing for an operation.
+        
+        Args:
+            operation_name: Name of the operation to time
+            
+        Returns:
+            Start time for the operation
+        """
+        start_time = time.time()
+        if operation_name not in self._operation_times:
+            self._operation_times[operation_name] = []
+        return start_time
+
+    def _end_operation(self, operation_name: str, start_time: float) -> None:
+        """End timing for an operation and log metrics.
+        
+        Args:
+            operation_name: Name of the operation
+            start_time: Start time from _time_operation
+        """
+        duration = (time.time() - start_time) * 1000  # Convert to milliseconds
+        self._operation_times[operation_name].append(duration)
+        
+        # Calculate statistics
+        times = self._operation_times[operation_name]
+        avg_time = sum(times) / len(times)
+        max_time = max(times)
+        
+        self._logger.debug({
+            "message": f"Operation timing: {operation_name}",
+            "context": {
+                "operation": operation_name,
+                "duration_ms": duration,
+                "avg_duration_ms": avg_time,
+                "max_duration_ms": max_time,
+                "call_count": len(times)
             }
         })
 
@@ -148,7 +185,15 @@ class TreeSitterTraversal:
             return None
 
     def find_nodes_in_range(self, root: Node, range_obj: Range) -> List[Node]:
-        """Find nodes in range using tree-sitter's native API."""
+        """Find nodes in range using tree-sitter queries.
+        
+        Args:
+            root: Root node to search in
+            range_obj: Range to find nodes in
+            
+        Returns:
+            List of nodes in the range
+        """
         try:
             if not root:
                 self._logger.error({
@@ -170,32 +215,23 @@ class TreeSitterTraversal:
                         'start': range_obj.start_point,
                         'end': range_obj.end_point
                     },
-                    'root_type': root.type,
-                    'root_range': self.get_node_range(root)
+                    'root_type': root.type
                 }
             })
             
-            # Get smallest node containing range
-            node = root.descendant_for_point_range(
-                range_obj.start_point,
-                range_obj.end_point
-            )
-            
-            if not node:
-                self._logger.debug({
-                    "message": "No nodes found in range",
-                    "context": {
-                        'range': {
-                            'start': range_obj.start_point,
-                            'end': range_obj.end_point
-                        }
-                    }
-                })
+            # Create query to find nodes in range
+            query_str = f"""
+                ({root.type}) @node
+            """
+            # Get language from root node's grammar name
+            language = root.grammar_name
+            if not language:
+                self._logger.error("Could not determine language from root node")
                 return []
                 
-            # Get all nodes within that node that overlap the range
-            nodes = [n for n in self.walk_tree(node)
-                    if self.node_in_range(n, range_obj)]
+            query = Query(get_language(language), query_str)
+            captures = query.captures(root)
+            nodes = [capture[0] for capture in captures]
                     
             self._logger.debug({
                 "message": f"Found {len(nodes)} nodes in range",
@@ -218,8 +254,7 @@ class TreeSitterTraversal:
                         'start': range_obj.start_point,
                         'end': range_obj.end_point
                     },
-                    'error': str(e),
-                    'stack_trace': str(e.__traceback__)
+                    'error': str(e)
                 }
             })
             return []
@@ -384,73 +419,61 @@ class TreeSitterTraversal:
             return None
 
     def get_named_descendants(self, node: Node, start_byte: int = 0, end_byte: Optional[int] = None) -> List[Node]:
-        """Get all named descendants in byte range.
+        """Get all named descendants in a byte range.
         
         Args:
-            node: Root node to search from
+            node: Root node to search in
             start_byte: Start byte offset
-            end_byte: End byte offset (optional)
+            end_byte: Optional end byte offset
             
         Returns:
             List of named descendant nodes
         """
-        if not node:
-            self._logger.error("No node provided")
-            return []
-            
-        # Log start of operation with structured message
-        self._logger.debug({
-            "message": "Getting named descendants",
-            "context": {
-                'node_type': node.type,
-                'start_byte': start_byte,
-                'end_byte': end_byte if end_byte is not None else 'None'
-            }
-        })
+        start_time = self._time_operation('get_named_descendants')
         
-        descendants = []
-        cursor = node.walk()
-        
-        def visit_node(current: Node) -> None:
-            if current.is_named and current.start_byte >= start_byte and (end_byte is None or current.end_byte <= end_byte):
-                # Log each named node found with structured message
-                self._logger.debug({
-                    "message": "Found named node",
-                    "context": {
-                        'node_type': current.type,
-                        'start_byte': current.start_byte,
-                        'end_byte': current.end_byte
-                    }
-                })
-                descendants.append(current)
-        
-        # Visit root node
-        visit_node(node)
-        
-        # Visit children
-        while True:
-            visit_node(cursor.node)
-            
-            if cursor.goto_first_child():
-                continue
+        try:
+            # Get language from root node's grammar name
+            language = node.grammar_name
+            if not language:
+                self._logger.error("Could not determine language from root node")
+                return []
                 
-            if cursor.goto_next_sibling():
-                continue
+            # Create parser for getting node text
+            parser = get_parser(language)
+            
+            # Get text content
+            text = node.text.decode('utf8')
+            
+            # Default end_byte to text length if not specified
+            if end_byte is None:
+                end_byte = len(text.encode('utf8'))
                 
-            retracing = True
-            while retracing:
-                if not cursor.goto_parent():
-                    retracing = False
-                    break
+            # Track visited nodes to avoid duplicates
+            visited = set()
+            nodes = []
+            
+            def visit_node(current: Node) -> None:
+                if current.id in visited:
+                    return
+                visited.add(current.id)
+                
+                # Check if node is in range
+                if (current.start_byte >= start_byte and 
+                    current.end_byte <= end_byte and
+                    current.is_named):
+                    nodes.append(current)
                     
-                if cursor.goto_next_sibling():
-                    retracing = False
-                    break
+                # Visit children
+                for child in current.children:
+                    if (child.start_byte < end_byte and 
+                        child.end_byte > start_byte):
+                        visit_node(child)
+                        
+            visit_node(node)
+            return nodes
             
-            if not retracing:
-                break
-                
-        return descendants
+        finally:
+            self._end_operation('get_named_descendants', start_time)
 
     def get_node_at_byte_range(self, node: Optional[Node], start_byte: int, end_byte: int) -> Optional[Node]:
         """Get the smallest node that spans the given byte range."""
@@ -830,31 +853,92 @@ class TreeSitterTraversal:
         return depth
 
     def is_valid_position(self, node: Node, position: Point) -> bool:
-        """Check if a position is valid for a node.
+        """Check if a position is valid within a node's range.
         
         Args:
             node: Node to check position against
             position: Position to validate
             
         Returns:
-            True if position is valid, False otherwise
+            True if position is valid
         """
-        if not node:
-            return False
-            
-        # Get text and split into lines
-        text = node.text.decode('utf8')
-        lines = text.split('\n')
+        start_time = self._time_operation('is_valid_position')
         
-        # Check row bounds (allow position at end of file)
-        if position.row < 0 or position.row > len(lines):
-            return False
+        try:
+            if not node:
+                return False
+                
+            # Check for negative values
+            if position.row < 0 or position.column < 0:
+                return False
+                
+            # Get text content and split into lines
+            text = node.text.decode('utf8')
+            lines = text.split('\n')
             
-        # Check column bounds (allow position at end of line)
-        if position.row < len(lines):
+            # Check row bounds
+            if position.row >= len(lines):
+                return False
+                
+            # Check column bounds for the specific row
             line = lines[position.row]
-            # Allow column to be at or one past end of line for end positions
-            return position.column >= 0 and position.column <= len(line) + 1
-        else:
-            # At end of file, only column 0 is valid
-            return position.column == 0
+            if position.column > len(line):
+                return False
+                
+            return True
+            
+        finally:
+            self._end_operation('is_valid_position', start_time)
+
+    def get_valid_symbols_at_error(self, node: Node) -> List[str]:
+        """Get valid symbols that could appear at an error node.
+        
+        Uses Tree-sitter's LookaheadIterator to find valid symbols that could
+        appear at the position of an error node. This is useful for:
+        1. Providing better error messages
+        2. Suggesting valid alternatives
+        3. Validating edits before applying them
+        
+        Args:
+            node: The error node to analyze
+            
+        Returns:
+            List of valid symbol names that could appear at this position
+        """
+        if not node or not node.has_error:
+            return []
+            
+        try:
+            # Get the first leaf node state for errors
+            cursor = node.walk()
+            while cursor.goto_first_child():
+                pass
+                
+            # Create lookahead iterator from this state
+            lookahead = node.tree.language.lookahead_iterator(cursor.node.parse_state)
+            
+            # Get all valid symbol names
+            valid_symbols = []
+            for symbol_name in lookahead.iter_names():
+                valid_symbols.append(symbol_name)
+                
+            self._logger.debug({
+                "message": "Found valid symbols at error node",
+                "context": {
+                    "node_type": node.type,
+                    "node_range": self.get_node_range(node),
+                    "valid_symbols": valid_symbols
+                }
+            })
+                
+            return valid_symbols
+            
+        except Exception as e:
+            self._logger.error({
+                "message": "Error getting valid symbols",
+                "context": {
+                    "node_type": node.type,
+                    "error": str(e)
+                }
+            })
+            return []

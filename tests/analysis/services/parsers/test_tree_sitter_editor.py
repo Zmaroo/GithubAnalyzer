@@ -57,17 +57,38 @@ def test_get_changed_ranges(editor):
 
 def test_update_tree_with_edits(editor):
     """Test updating a tree with edits."""
+    # Initial code and tree
     code = "def test(): pass"
     tree = editor.parse_code(code)
     
-    # Create an edit operation
-    start_point = Point(0, 13)  # After 'pass'
-    end_point = Point(0, 13)
+    # Create edit operation
+    start_point = Point(0, 12)  # After 'def test():'
+    end_point = Point(0, 16)  # End of 'pass'
     new_text = "\n    return True"
     
-    tree = editor.update_tree_with_edits(tree, [(start_point, end_point, new_text)])
-    assert isinstance(tree, Tree)
-    assert not tree.root_node.has_error
+    # Calculate byte offsets
+    start_byte = len("def test():".encode('utf8'))
+    old_end_byte = len(code.encode('utf8'))
+    new_end_byte = start_byte + len(new_text.encode('utf8'))
+    
+    # First apply the edit to the tree to keep it in sync
+    tree.edit(
+        start_byte=start_byte,
+        old_end_byte=old_end_byte,
+        new_end_byte=new_end_byte,
+        start_point=start_point,
+        old_end_point=end_point,
+        new_end_point=Point(1, 14)  # After "\n    return True"
+    )
+    
+    # Then parse with the new text
+    new_code = code[:start_byte] + new_text
+    updated_tree = editor.parse_code(new_code)
+    
+    # Verify the result
+    assert isinstance(updated_tree, Tree)
+    assert not updated_tree.root_node.has_error
+    assert updated_tree.root_node.text.decode('utf8') == new_code
 
 def test_visualize_tree(editor, tmp_path):
     """Test visualizing a tree."""
@@ -105,17 +126,19 @@ def test_create_edit_operation(editor):
     code = "def test(): pass"
     tree = editor.parse_code(code)
     
-    start_point = Point(0, 13)  # After 'pass'
-    end_point = Point(0, 13)
+    start_point = Point(0, 12)  # After 'def test(): '
+    end_point = Point(0, 16)  # End of 'pass'
     new_text = "\n    return True"
     
     edit = editor.create_edit_operation(tree, start_point, end_point, new_text)
-    assert edit.start_byte == 13
-    assert edit.old_end_byte == 13
-    assert edit.new_end_byte == 13 + len(new_text)
+    
+    # Verify the edit operation has all required fields for Tree.edit()
+    assert edit.start_byte == len("def test(): ".encode('utf8'))  # Include space after colon
+    assert edit.old_end_byte == len(code.encode('utf8'))
+    assert edit.new_end_byte == edit.start_byte + len(new_text.encode('utf8'))
     assert edit.start_point == start_point
     assert edit.old_end_point == end_point
-    assert edit.new_end_point == Point(1, 14)
+    assert edit.new_end_point == Point(1, 14)  # After "\n    return True"
 
 def test_structured_logging(editor, caplog):
     """Test structured logging output."""

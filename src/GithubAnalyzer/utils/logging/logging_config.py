@@ -2,83 +2,99 @@
 
 import logging
 import sys
-from pathlib import Path
-from typing import Optional, Union
-from .formatters import StructuredFormatter
-from .tree_sitter_logging import TreeSitterLogHandler
+import json
+from typing import Optional, Dict, Any
+
+class JsonFormatter(logging.Formatter):
+    """Format log records as JSON."""
+    
+    def __init__(self, indent: Optional[int] = None):
+        """Initialize formatter.
+        
+        Args:
+            indent: Optional JSON indentation level
+        """
+        super().__init__()
+        self.indent = indent
+        
+    def format(self, record: logging.LogRecord) -> str:
+        """Format a log record as JSON."""
+        if isinstance(record.msg, dict):
+            message = record.msg.get("message", str(record.msg))
+            context = record.msg.get("context", {})
+        else:
+            message = str(record.msg)
+            context = {}
+            
+        output = {
+            "message": message,
+            "timestamp": self.formatTime(record),
+            "level": record.levelname,
+            "logger": record.name
+        }
+        
+        if context:
+            # Pretty format nested dictionaries
+            if isinstance(context, dict):
+                for key, value in context.items():
+                    if isinstance(value, dict):
+                        context[key] = json.dumps(value, indent=2)
+            output["context"] = context
+            
+        return json.dumps(output, indent=self.indent)
 
 def configure_logging(
     level: int = logging.INFO,
-    log_file: Optional[Union[str, Path]] = None,
-    structured: bool = False,
+    structured: bool = True,
     enable_tree_sitter: bool = False,
+    log_file: Optional[str] = None,
+    indent: Optional[int] = 2
 ) -> None:
-    """Configure logging for GithubAnalyzer.
+    """Configure logging for the application.
     
     Args:
-        level: The logging level to use. Defaults to INFO.
-        log_file: Optional path to a log file. If provided, logs will be written to this file.
-        structured: Whether to use structured logging format. Defaults to False.
-        enable_tree_sitter: Whether to enable tree-sitter logging. Defaults to False.
+        level: Logging level
+        structured: Whether to use structured JSON logging
+        enable_tree_sitter: Whether to enable tree-sitter specific logging
+        log_file: Optional file to write logs to
+        indent: JSON indentation level for structured logging
     """
-    # Remove any existing handlers to prevent duplicates
+    # Remove any existing handlers
     root_logger = logging.getLogger()
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
     
-    # Create formatters
-    if structured:
-        formatter = StructuredFormatter()
-    else:
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+    # Create formatter
+    formatter = JsonFormatter(indent=indent) if structured else logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     
-    # Add console handler
+    # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
     
-    # Add file handler if log_file is provided
+    # File handler if specified
     if log_file:
         file_handler = logging.FileHandler(log_file)
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
     
-    # Set root logger level
+    # Set level
     root_logger.setLevel(level)
     
-    # Configure tree-sitter logger if enabled
+    # Configure tree-sitter logging if enabled
     if enable_tree_sitter:
-        tree_sitter_logger = logging.getLogger('tree-sitter')
-        tree_sitter_logger.setLevel(logging.DEBUG)
-        
-        # Remove any existing handlers
-        for handler in tree_sitter_logger.handlers[:]:
-            tree_sitter_logger.removeHandler(handler)
-            
-        # Add TreeSitterLogHandler
-        tree_sitter_handler = TreeSitterLogHandler()
-        tree_sitter_handler.setFormatter(formatter)
-        tree_sitter_logger.addHandler(tree_sitter_handler)
-        
-        # Log that tree-sitter logging is enabled
-        tree_sitter_logger.debug({
-            "message": "Tree-sitter logging enabled",
-            "context": {
-                "level": logging.getLevelName(level),
-                "structured": structured,
-                "log_file": str(log_file) if log_file else None
-            }
-        })
+        ts_logger = logging.getLogger('tree_sitter')
+        ts_logger.setLevel(level)
 
 def get_logger(name: str) -> logging.Logger:
-    """Get a logger with the given name.
+    """Get a logger instance.
     
     Args:
-        name: The name of the logger.
+        name: Logger name
         
     Returns:
-        A logger instance.
+        Logger instance
     """
     return logging.getLogger(name) 

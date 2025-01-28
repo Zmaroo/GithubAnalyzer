@@ -1,53 +1,65 @@
-"""Logging formatters."""
+"""Logging formatters for GithubAnalyzer."""
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Optional, Dict, Any
+from datetime import datetime
 
 class StructuredFormatter(logging.Formatter):
-    """Formatter that outputs JSON formatted logs."""
+    """Format log records as structured JSON with context."""
     
-    def __init__(self, fmt: Optional[str] = None):
+    def __init__(self, indent: Optional[int] = None):
         """Initialize formatter.
         
         Args:
-            fmt: Optional format string
+            indent: Optional JSON indentation level
         """
         super().__init__()
-        self.fmt = fmt or json.dumps({
-            "timestamp": "%(asctime)s",
-            "level": "%(levelname)s",
-            "logger": "%(name)s",
-            "message": "%(message)s"
-        })
+        self.indent = indent
         
     def format(self, record: logging.LogRecord) -> str:
-        """Format the log record as JSON.
+        """Format a log record as JSON with context.
         
         Args:
-            record: Log record to format
+            record: The log record to format
             
         Returns:
             JSON formatted string
         """
-        # Create a copy of the record to avoid modifying the original
-        record_dict = record.__dict__.copy()
-        
-        # Convert the message to a dict if it isn't already
-        if isinstance(record_dict["msg"], dict):
-            message = record_dict["msg"]
+        # Extract message and context
+        if isinstance(record.msg, dict):
+            message = record.msg.get("message", str(record.msg))
+            context = record.msg.get("context", {})
         else:
-            message = {"message": str(record_dict["msg"])}
+            message = str(record.msg)
+            context = getattr(record, 'context', {})
             
-        # Add standard fields
-        message.update({
-            "timestamp": self.formatTime(record),
+        # Build output dictionary
+        output = {
+            "message": message,
+            "timestamp": datetime.fromtimestamp(record.created).isoformat(),
             "level": record.levelname,
-            "logger": record.name
-        })
+            "logger": record.name,
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno
+        }
         
-        # Add context if present
-        if hasattr(record, "context"):
-            message["context"] = record.context
+        # Add duration if available
+        if hasattr(record, 'duration_ms'):
+            output['duration_ms'] = record.duration_ms
             
-        return json.dumps(message) 
+        # Add context if present
+        if context:
+            # Format nested dictionaries
+            if isinstance(context, dict):
+                for key, value in context.items():
+                    if isinstance(value, dict):
+                        context[key] = json.dumps(value, indent=2)
+            output["context"] = context
+            
+        # Add exception info if present
+        if record.exc_info:
+            output["exception"] = self.formatException(record.exc_info)
+            
+        return json.dumps(output, indent=self.indent) 

@@ -4,7 +4,7 @@ import re
 """Utility to fix imports across the project."""
 import os
 from pathlib import Path
-from GithubAnalyzer.utils.logging.logging_config import get_logger
+from GithubAnalyzer.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -30,14 +30,12 @@ class ImportFixer:
              lambda m: 'from GithubAnalyzer.services.core.database.embedding_service import'),
             
             # Logging structure
-            (r'from\s+GithubAnalyzer\.config\.logging_config\s+import',
-             lambda m: 'from GithubAnalyzer.utils.logging.logging_config import'),
-            (r'from\s+GithubAnalyzer\.utils\.logging_config\s+import', 
-             lambda m: 'from GithubAnalyzer.utils.logging.logging_config import'),
-            (r'from\s+GithubAnalyzer\.utils\.formatters\s+import',
-             lambda m: 'from GithubAnalyzer.utils.logging.formatters import'),
-            (r'from\s+GithubAnalyzer\.services\.analysis\.parsers\.tree_sitter_logging\s+import',
-             lambda m: 'from GithubAnalyzer.utils.logging.tree_sitter_logging import'),
+            (r'from\s+GithubAnalyzer\.utils\.log_utils\.base\s+import',
+             lambda m: 'from GithubAnalyzer.utils.logging import'),
+            (r'from\s+GithubAnalyzer\.utils\.log_utils\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.utils.logging.{m.group(1)} import'),
+            (r'from\s+GithubAnalyzer\.utils\.log_utils\s+import',
+             lambda m: 'from GithubAnalyzer.utils.logging import'),
             
             # Core/Analysis structure
             (r'from\s+GithubAnalyzer\.core\.models\.([\w\.]+)\s+import', 
@@ -62,8 +60,6 @@ class ImportFixer:
             # Handle old utils structure
             (r'from\s+GithubAnalyzer\.core\.utils\.([\w\.]+)\s+import',
              lambda m: f'from GithubAnalyzer.utils.{m.group(1)} import'),
-            (r'from\s+GithubAnalyzer\.utils\.log_utils\s+import',
-             lambda m: 'from GithubAnalyzer.utils.logging.logging_config import'),
             
             # Remove settings imports since they're unused
             (r'from\s+GithubAnalyzer\.config\.settings\s+import\s+[\w\s,]+\n', lambda m: ''),

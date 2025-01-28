@@ -2,7 +2,7 @@
 import time
 import functools
 from typing import Callable, TypeVar, ParamSpec
-from GithubAnalyzer.utils.logging.logging_config import get_logger
+from GithubAnalyzer.utils.logging import get_logger
 
 logger = get_logger(__name__)
 

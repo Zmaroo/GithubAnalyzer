@@ -3,10 +3,11 @@ import logging
 
 from GithubAnalyzer.models.core.errors import ParserError, QueryError
 """Tree-sitter models for code analysis."""
-from dataclasses import dataclass
-from tree_sitter import Node, Tree, Point
+from dataclasses import dataclass, field
+from tree_sitter import Node, Tree, Point, Language, Parser
+import json
 
-from GithubAnalyzer.utils.logging.logging_config import get_logger
+from GithubAnalyzer.utils.logging import get_logger
 
 logger = get_logger(__name__)
 

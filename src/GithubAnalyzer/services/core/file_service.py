@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from typing import List, Optional, Union
 
-from GithubAnalyzer.utils.logging.logging_config import get_logger
+from GithubAnalyzer.utils.logging import get_logger
 from GithubAnalyzer.models.core.file import FileInfo, FileFilterConfig
 
 logger = get_logger(__name__)

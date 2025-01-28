@@ -27,27 +27,89 @@ class PostgresService:
             cur.execute('CREATE EXTENSION IF NOT EXISTS vector;')
             self._conn.commit()
 
+    def drop_tables(self) -> None:
+        """Drop existing tables."""
+        with self._conn.cursor() as cur:
+            cur.execute('''
+                DROP TABLE IF EXISTS code_snippets CASCADE;
+                DROP TABLE IF EXISTS functions CASCADE;
+                DROP TABLE IF EXISTS classes CASCADE;
+                DROP TABLE IF EXISTS comments CASCADE;
+                DROP TABLE IF EXISTS repositories CASCADE;
+            ''')
+            self._conn.commit()
+
     def create_tables(self) -> None:
         """Create necessary tables for code storage with vector embeddings."""
         with self._conn.cursor() as cur:
+            # Repositories table
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS repositories (
+                    id SERIAL PRIMARY KEY,
+                    repo_url TEXT NOT NULL UNIQUE,
+                    repo_name TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            ''')
+            
             # Code snippets table with vector embeddings
             cur.execute('''
                 CREATE TABLE IF NOT EXISTS code_snippets (
                     id SERIAL PRIMARY KEY,
-                    repo_id TEXT NOT NULL,
+                    repo_id INTEGER REFERENCES repositories(id),
                     file_path TEXT NOT NULL,
                     code_text TEXT NOT NULL,
-                    embedding vector(384),  -- Dimension depends on embedding model
+                    embedding vector(768),  -- GraphCodeBERT embedding dimension
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             ''')
+            
+            # Functions table
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS functions (
+                    id SERIAL PRIMARY KEY,
+                    repo_id INTEGER REFERENCES repositories(id),
+                    file_path TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    docstring TEXT,
+                    docstring_embedding vector(768),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            ''')
+            
+            # Classes table
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS classes (
+                    id SERIAL PRIMARY KEY,
+                    repo_id INTEGER REFERENCES repositories(id),
+                    file_path TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    docstring TEXT,
+                    docstring_embedding vector(768),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            ''')
+            
+            # Comments table
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS comments (
+                    id SERIAL PRIMARY KEY,
+                    repo_id INTEGER REFERENCES repositories(id),
+                    file_path TEXT NOT NULL,
+                    comment_type TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    embedding vector(768),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            ''')
+            
             self._conn.commit()
 
-    def store_code_with_embedding(self, repo_id: str, file_path: str, code_text: str) -> None:
+    def store_code_with_embedding(self, repo_id: int, file_path: str, code_text: str) -> None:
         """Store code snippet with its embedding vector.
         
         Args:
-            repo_id: Repository identifier
+            repo_id: Repository identifier (integer)
             file_path: Path to the file containing the code
             code_text: The actual code snippet
         """
@@ -74,19 +136,19 @@ class PostgresService:
         
         with self._conn.cursor() as cur:
             cur.execute('''
-                SELECT file_path, code_text, 1 - (embedding <=> %s) as similarity
+                SELECT file_path, code_text, 1 - (embedding <=> %s::vector) as similarity
                 FROM code_snippets
-                ORDER BY embedding <=> %s
+                ORDER BY embedding <=> %s::vector
                 LIMIT %s
             ''', (query_embedding, query_embedding, limit))
             
             return [(row[0], row[1], row[2]) for row in cur.fetchall()]
 
-    def batch_store_code(self, code_entries: List[Tuple[str, str, str]]) -> None:
+    def batch_store_code(self, code_entries: List[Tuple[int, str, str]]) -> None:
         """Store multiple code snippets with their embeddings in batch.
         
         Args:
-            code_entries: List of tuples containing (repo_id, file_path, code_text)
+            code_entries: List of tuples containing (repo_id: int, file_path: str, code_text: str)
         """
         code_texts = [entry[2] for entry in code_entries]
         embeddings = self._embedding_service.get_embeddings(code_texts)
@@ -99,19 +161,30 @@ class PostgresService:
                 ''', (repo_id, file_path, code_text, embedding))
             self._conn.commit()
 
-    def create_repository(self, repo_url: str) -> str:
+    def create_repository(self, repo_url: str) -> int:
         """Create a new repository entry.
         
         Args:
             repo_url: URL of the GitHub repository
             
         Returns:
-            Repository ID
+            Repository ID as integer
         """
         with self._conn.cursor() as cur:
             # Extract repo name from URL
-            repo_name = repo_url.split('/')[-1]
+            repo_name = repo_url.split('/')[-1].replace('.git', '')
             
+            # Check if repository already exists
+            cur.execute('''
+                SELECT id FROM repositories
+                WHERE repo_url = %s
+            ''', (repo_url,))
+            
+            existing = cur.fetchone()
+            if existing:
+                return existing[0]
+            
+            # Create new repository
             cur.execute('''
                 INSERT INTO repositories (repo_url, repo_name)
                 VALUES (%s, %s)
@@ -120,7 +193,7 @@ class PostgresService:
             
             repo_id = cur.fetchone()[0]
             self._conn.commit()
-            return str(repo_id)
+            return repo_id
 
     def semantic_search(self, query: str, limit: int = 5, 
                        filter_repo: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -144,19 +217,11 @@ class PostgresService:
                     SELECT 
                         cs.id,
                         cs.file_path,
-                        cs.content,
-                        1 - (cs.content_embedding <=> %s) as similarity,
-                        f.name as function_name,
-                        f.docstring as function_doc,
-                        c.name as class_name,
-                        c.docstring as class_doc,
-                        cm.content as comments
+                        cs.code_text as content,
+                        1 - (cs.embedding <=> %s::vector) as similarity
                     FROM code_snippets cs
-                    LEFT JOIN functions f ON cs.id = f.code_snippet_id
-                    LEFT JOIN classes c ON cs.id = c.code_snippet_id
-                    LEFT JOIN comments cm ON cs.id = cm.code_snippet_id
                     {filter_clause}
-                    ORDER BY cs.content_embedding <=> %s
+                    ORDER BY cs.embedding <=> %s::vector
                     LIMIT %s
                 )
                 SELECT * FROM ranked_snippets
@@ -168,12 +233,7 @@ class PostgresService:
                 results.append({
                     'file_path': row[1],
                     'content': row[2],
-                    'similarity': row[3],
-                    'context': {
-                        'function': {'name': row[4], 'docstring': row[5]},
-                        'class': {'name': row[6], 'docstring': row[7]},
-                        'comments': row[8]
-                    }
+                    'similarity': row[3]
                 })
             
             return results

@@ -1,31 +1,29 @@
-from dotenv import load_dotenv
-from neo4j import GraphDatabase
+import logging
+import sys
+import json
 from typing import Dict, List, Any, Optional, Tuple
 import argparse
 import os
+from pathlib import Path
+import psycopg2
 
+# Set up basic logging first
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
+logger = logging.getLogger(__name__)
+
+# Now import other modules
+from dotenv import load_dotenv
+from neo4j import GraphDatabase
 from GithubAnalyzer.services.core.database.db_config import get_postgres_config, get_neo4j_config
 """Manual database testing and inspection utility.
 
 This script provides direct access to database operations for testing and debugging purposes.
 It can be run directly to test database connections and inspect database structures.
 """
-
-import sys
-from pathlib import Path
-import psycopg2
-import logging
-# Add src directory to Python path
-src_path = Path(__file__).resolve().parent.parent.parent.parent
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
-
-# Set up basic logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 class DatabaseManualTester:
     """Manual database testing utility."""
