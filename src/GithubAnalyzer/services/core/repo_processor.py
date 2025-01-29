@@ -3,7 +3,10 @@ from typing import List, Dict, Any, Optional
 import git
 import tempfile
 import os
+import time
+import threading
 from pathlib import Path
+from dataclasses import dataclass
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -26,13 +29,26 @@ from GithubAnalyzer.services.analysis.parsers.utils import (
 )
 
 load_dotenv()
-logger = get_logger(__name__)
+# Initialize logger
+logger = get_logger("core.repo_processor")
 
+@dataclass
 class RepoProcessor:
     """Service for processing GitHub repositories."""
     
-    def __init__(self):
+    def __post_init__(self):
         """Initialize the repository processor."""
+        self._logger = logger
+        self._start_time = time.time()
+        
+        self._logger.debug("Initializing repository processor", extra={
+            'context': {
+                'module': 'repo_processor',
+                'thread': threading.get_ident(),
+                'duration_ms': 0
+            }
+        })
+        
         self.pg_service = PostgresService()
         self.neo4j_service = Neo4jService()
         self.file_service = FileService()
@@ -40,44 +56,62 @@ class RepoProcessor:
         self.language_service = LanguageService()
         self._query_handler = TreeSitterQueryHandler()
         
-    def process_repo(self, repo_url: str) -> bool:
-        """Process a repository from its URL.
+        self._logger.info("Repository processor initialized", extra={
+            'context': {
+                'module': 'repo_processor',
+                'thread': threading.get_ident(),
+                'duration_ms': (time.time() - self._start_time) * 1000
+            }
+        })
+        
+    def _get_context(self, **kwargs) -> Dict[str, Any]:
+        """Get standard context for logging.
         
         Args:
-            repo_url: URL of the repository to process
+            **kwargs: Additional context key-value pairs
             
         Returns:
-            True if processing was successful, False otherwise
+            Dict with standard context fields plus any additional fields
         """
+        context = {
+            'module': 'repo_processor',
+            'thread': threading.get_ident(),
+            'duration_ms': (time.time() - self._start_time) * 1000
+        }
+        context.update(kwargs)
+        return context
+
+    def _log(self, level: str, message: str, **kwargs) -> None:
+        """Log with consistent context.
+        
+        Args:
+            level: Log level (debug, info, warning, error, critical)
+            message: Message to log
+            **kwargs: Additional context key-value pairs
+        """
+        context = self._get_context(**kwargs)
+        getattr(self._logger, level)(message, extra={'context': context})
+        
+    def process_repo(self, repo_url: str) -> bool:
+        """Process a repository from its URL."""
+        start_time = time.time()
+        self._log("info", "Starting repository processing",
+                 repo_url=repo_url)
+        
         try:
             # Clone repository
-            logger.info({
-                "message": "Cloning repository",
-                "context": {
-                    "url": repo_url
-                }
-            })
-            
             repo_path = self.file_service.clone_repository(repo_url)
             if not repo_path:
-                logger.error({
-                    "message": "Failed to clone repository",
-                    "context": {
-                        "url": repo_url
-                    }
-                })
+                self._log("error", "Failed to clone repository",
+                         repo_url=repo_url)
                 return False
                 
             # Get repository files
             files = self.file_service.get_repository_files(repo_path)
             if not files:
-                logger.warning({
-                    "message": "No files found in repository",
-                    "context": {
-                        "url": repo_url,
-                        "path": str(repo_path)
-                    }
-                })
+                self._log("warning", "No files found in repository",
+                         repo_url=repo_url,
+                         repo_path=str(repo_path))
                 return False
                 
             # Process each file
@@ -99,56 +133,35 @@ class RepoProcessor:
                         
                 except Exception as e:
                     error_count += 1
-                    logger.error({
-                        "message": "Error processing file",
-                        "context": {
-                            "file": str(file_info.path),
-                            "error": str(e)
-                        }
-                    })
+                    self._log("error", "Error processing file",
+                             file=str(file_info.path),
+                             error=str(e))
                     
-            # Log summary
-            logger.info({
-                "message": "Repository processing completed",
-                "context": {
-                    "url": repo_url,
-                    "total_files": len(files),
-                    "processed": processed_count,
-                    "skipped": skipped_count,
-                    "errors": error_count
-                }
-            })
+            duration = (time.time() - start_time) * 1000
+            self._log("info", "Repository processing completed",
+                     repo_url=repo_url,
+                     total_files=len(files),
+                     processed=processed_count,
+                     skipped=skipped_count,
+                     errors=error_count,
+                     duration_ms=duration)
             
             return True
             
         except Exception as e:
-            logger.error({
-                "message": "Repository processing failed",
-                "context": {
-                    "url": repo_url,
-                    "error": str(e)
-                }
-            })
+            self._log("error", "Repository processing failed",
+                     repo_url=repo_url,
+                     error=str(e))
             return False
             
     def _process_file(self, file_info: FileInfo) -> Optional[CodeSnippet]:
-        """Process a single file from the repository.
-        
-        Args:
-            file_info: Information about the file to process
-            
-        Returns:
-            CodeSnippet if processing was successful, None otherwise
-        """
+        """Process a single file from the repository."""
+        start_time = time.time()
         try:
             # Skip if no language detected
             if not file_info.language:
-                logger.debug({
-                    "message": "Skipping file - no language detected",
-                    "context": {
-                        "file": str(file_info.path)
-                    }
-                })
+                self._log("debug", "Skipping file - no language detected",
+                         file=str(file_info.path))
                 return None
 
             # Read file content
@@ -157,12 +170,8 @@ class RepoProcessor:
 
             # Skip empty files
             if not content.strip():
-                logger.debug({
-                    "message": "Skipping empty file",
-                    "context": {
-                        "file": str(file_info.path)
-                    }
-                })
+                self._log("debug", "Skipping empty file",
+                         file=str(file_info.path))
                 return None
 
             # Always try custom parser first for supported file types
@@ -170,13 +179,9 @@ class RepoProcessor:
             if custom_parser:
                 ast_data = self._parse_with_custom_parser(content, file_info.path)
                 if ast_data:
-                    logger.debug({
-                        "message": "Successfully parsed with custom parser",
-                        "context": {
-                            "file": str(file_info.path),
-                            "parser_type": "custom"
-                        }
-                    })
+                    self._log("debug", "Successfully parsed with custom parser",
+                             file=str(file_info.path),
+                             parser_type="custom")
                     return CodeSnippet(
                         file_path=str(file_info.path),
                         content=content,
@@ -185,18 +190,20 @@ class RepoProcessor:
                         syntax_valid=True
                     )
                 else:
-                    logger.warning({
-                        "message": "Custom parser failed",
-                        "context": {
-                            "file": str(file_info.path)
-                        }
-                    })
+                    self._log("warning", "Custom parser failed",
+                             file=str(file_info.path))
                     # Don't return None here - try tree-sitter as fallback
 
             # Process with tree-sitter if language is supported
             if self.language_service.is_language_supported(file_info.language):
                 ast_data = self._parse_with_tree_sitter(content, file_info.language)
                 if ast_data:
+                    duration = (time.time() - start_time) * 1000
+                    self._log("debug", "File processed successfully",
+                             file=str(file_info.path),
+                             language=file_info.language,
+                             parser_type="tree-sitter",
+                             duration_ms=duration)
                     return CodeSnippet(
                         file_path=str(file_info.path),
                         content=content,
@@ -205,23 +212,15 @@ class RepoProcessor:
                         syntax_valid=True
                     )
                 else:
-                    logger.warning({
-                        "message": "Tree-sitter parsing failed",
-                        "context": {
-                            "file": str(file_info.path),
-                            "language": file_info.language
-                        }
-                    })
+                    self._log("warning", "Tree-sitter parsing failed",
+                             file=str(file_info.path),
+                             language=file_info.language)
                     return None
 
             # Store file without AST data if no parser was successful
-            logger.debug({
-                "message": "No parser available",
-                "context": {
-                    "file": str(file_info.path),
-                    "language": file_info.language
-                }
-            })
+            self._log("debug", "No parser available",
+                     file=str(file_info.path),
+                     language=file_info.language)
             return CodeSnippet(
                 file_path=str(file_info.path),
                 content=content,
@@ -231,21 +230,13 @@ class RepoProcessor:
             )
 
         except UnicodeDecodeError:
-            logger.debug({
-                "message": "Skipping file - encoding error",
-                "context": {
-                    "file": str(file_info.path)
-                }
-            })
+            self._log("debug", "Skipping file - encoding error",
+                     file=str(file_info.path))
             return None
         except Exception as e:
-            logger.error({
-                "message": "Error processing file",
-                "context": {
-                    "file": str(file_info.path),
-                    "error": str(e)
-                }
-            })
+            self._log("error", "Error processing file",
+                     file=str(file_info.path),
+                     error=str(e))
             return None
 
     def _parse_with_tree_sitter(self, content: str, language: str) -> Optional[Dict]:
@@ -270,13 +261,9 @@ class RepoProcessor:
             return ast_data
             
         except Exception as e:
-            logger.error({
-                "message": "Tree-sitter parsing error",
-                "context": {
-                    "language": language,
-                    "error": str(e)
-                }
-            })
+            self._log("error", "Tree-sitter parsing error",
+                     language=language,
+                     error=str(e))
             return None
             
     def _parse_with_custom_parser(self, content: str, file_path: Path) -> Optional[Dict[str, Any]]:
@@ -295,13 +282,9 @@ class RepoProcessor:
                 return parser.parse(content)
             return None
         except Exception as e:
-            logger.error({
-                "message": "Custom parser error",
-                "context": {
-                    "file": str(file_path),
-                    "error": str(e)
-                }
-            })
+            self._log("error", "Custom parser error",
+                     file=str(file_path),
+                     error=str(e))
             return None
 
     def _extract_ast_data(self, parse_result) -> Dict[str, Any]:
@@ -334,29 +317,36 @@ class RepoProcessor:
             self.neo4j_service.create_function_node(function, ast_data)
             
         # Create function relationships
-        for caller, _ in snippet.ast_data.items():
-            for callee, _ in snippet.ast_data.items():
+        for caller, caller_data in snippet.ast_data.items():
+            for callee, callee_data in snippet.ast_data.items():
                 if caller != callee:
-                    # Check if caller calls callee
-                    caller_node = None
-                    for node in parse_result.tree.root_node.children:
-                        if node.type == 'function_definition':
-                            for child in node.children:
-                                if child.type == 'identifier' and get_node_text(child) == caller:
-                                    caller_node = node
-                                    break
-                            if caller_node:
-                                break
-                                
-                    if caller_node:
-                        # Look for calls to callee
-                        for node in caller_node.children:
-                            if node.type == 'call' and any(
-                                child.type == 'identifier' and get_node_text(child) == callee
-                                for child in node.children
-                            ):
-                                self.neo4j_service.create_function_relationship(caller, callee)
-                                break
+                    # Check for function calls in the caller's AST data
+                    if self._has_function_call(caller_data, callee):
+                        self.neo4j_service.create_function_relationship(caller, callee)
+
+    def _has_function_call(self, ast_data: Dict[str, Any], function_name: str) -> bool:
+        """Check if the AST data contains a call to the given function.
+        
+        Args:
+            ast_data: AST data to search in
+            function_name: Name of the function to look for
+            
+        Returns:
+            True if a call to the function is found, False otherwise
+        """
+        # If this is a call node, check if it's calling our target function
+        if ast_data.get('type') == 'call':
+            for child in ast_data.get('children', []):
+                if (child.get('type') == 'identifier' and 
+                    child.get('text') == function_name):
+                    return True
+                    
+        # Recursively check children
+        for child in ast_data.get('children', []):
+            if isinstance(child, dict) and self._has_function_call(child, function_name):
+                return True
+                
+        return False
 
     def query_codebase(self, query: str, limit: int = 5) -> Dict[str, Any]:
         """Query the codebase using natural language."""

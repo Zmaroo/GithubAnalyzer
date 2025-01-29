@@ -1,4 +1,7 @@
 from typing import List, Dict, Any, Optional
+import time
+import threading
+from dataclasses import dataclass
 
 from GithubAnalyzer.services.core.database.postgres_service import PostgresService
 from GithubAnalyzer.utils.db_cleanup import DatabaseCleaner
@@ -22,7 +25,8 @@ from GithubAnalyzer.services.analysis.parsers.query_patterns import QUERY_PATTER
 from GithubAnalyzer.utils.logging import get_logger
 from GithubAnalyzer.services.core.repo_processor import RepoProcessor
 
-logger = get_logger(__name__)
+# Initialize logger
+logger = get_logger("database")
 
 """Service for coordinated database operations and AI agent interactions.
 
@@ -50,10 +54,23 @@ This dual approach allows for both:
 - Low-level structural analysis (how the code works)
 """
 
+@dataclass
 class DatabaseService:
-    """Service for coordinated database operations and AI agent interactions."""
+    """Service for managing database operations."""
     
-    def __init__(self):
+    def __post_init__(self):
+        """Initialize database service."""
+        self._logger = logger
+        self._start_time = time.time()
+        
+        self._logger.debug("DatabaseService initialized", extra={
+            'context': {
+                'module': 'database',
+                'thread': threading.get_ident(),
+                'duration_ms': 0
+            }
+        })
+        
         self.pg_service = PostgresService()
         self.neo4j_service = Neo4jService()
         self.cleaner = DatabaseCleaner()
@@ -63,6 +80,34 @@ class DatabaseService:
         self._language_service = LanguageService()
         self._parser_service = ParserService()
         self._repo_processor = RepoProcessor()
+    
+    def _get_context(self, **kwargs) -> Dict[str, Any]:
+        """Get standard context for logging.
+        
+        Args:
+            **kwargs: Additional context key-value pairs
+            
+        Returns:
+            Dict with standard context fields plus any additional fields
+        """
+        context = {
+            'module': 'database',
+            'thread': threading.get_ident(),
+            'duration_ms': (time.time() - self._start_time) * 1000
+        }
+        context.update(kwargs)
+        return context
+
+    def _log(self, level: str, message: str, **kwargs) -> None:
+        """Log with consistent context.
+        
+        Args:
+            level: Log level (debug, info, warning, error, critical)
+            message: Message to log
+            **kwargs: Additional context key-value pairs
+        """
+        context = self._get_context(**kwargs)
+        getattr(self._logger, level)(message, extra={'context': context})
     
     def initialize_databases(self) -> None:
         """Initialize database schemas and constraints."""

@@ -18,6 +18,7 @@ dependencies = [
     "torch>=2.5.1",
     "pgvector>=0.3.6",
     "gitpython>=3.1.44",
+    "toml>=0.10.2",
 ]
 requires-python = ">=3.12,<3.13"
 readme = "README.md"
@@ -34,7 +35,9 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 log_cli = true
-log_cli_level = "INFO"
+log_cli_level = "DEBUG"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(name)s: %(message)s (%(filename)s:%(lineno)s)"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 addopts = "-v --cov=src.GithubAnalyzer --cov-report=term-missing"
 
 [tool.coverage.run]

@@ -6,10 +6,8 @@ from dataclasses import dataclass
 from tree_sitter import Node, Tree, TreeCursor, Parser, Range, Point, Query
 
 from tree_sitter_language_pack import get_binding, get_language, get_parser
-
 from GithubAnalyzer.models.core.errors import ParserError
-from GithubAnalyzer.utils.logging import get_logger, LoggerFactory, StructuredFormatter
-from GithubAnalyzer.utils.logging.tree_sitter_logging import TreeSitterLogHandler
+from GithubAnalyzer.utils.logging import get_logger
 from .utils import (
     get_node_text,
     node_to_dict,
@@ -23,27 +21,59 @@ from .language_service import LanguageService
 # Type variables for better type hints
 T = TypeVar('T', bound=Node)
 
-logger = get_logger(__name__)
+# Initialize logger
+logger = get_logger("tree_sitter.traversal")
 
 @dataclass
 class TreeSitterTraversal(TreeSitterServiceBase):
     """Utility class for traversing tree-sitter ASTs."""
 
     def __post_init__(self):
-        """Initialize traversal with logging."""
+        """Initialize traversal."""
         super().__post_init__()
         
         # Initialize language service
         self._language_service = LanguageService()
         
         # Log initialization
-        self._logger.debug({
-            "message": "TreeSitterTraversal initialized",
-            "context": {
-                'module': 'tree_sitter.traversal',
-                'thread': threading.get_ident()
+        self._logger = logger
+        self._start_time = time.time()
+        
+        self._logger.debug("TreeSitterTraversal initialized", extra={
+            'context': {
+                'module': 'traversal',
+                'thread': threading.get_ident(),
+                'duration_ms': 0
             }
         })
+
+    def _get_context(self, **kwargs) -> Dict[str, Any]:
+        """Get standard context for logging.
+        
+        Args:
+            **kwargs: Additional context key-value pairs
+            
+        Returns:
+            Dict with standard context fields plus any additional fields
+        """
+        context = {
+            'module': 'traversal',
+            'thread': threading.get_ident(),
+            'duration_ms': (time.time() - self._start_time) * 1000
+        }
+        context.update(kwargs)
+        return context
+
+    def _log(self, level: str, message: str, **kwargs) -> None:
+        """Log with consistent context.
+        
+        Args:
+            level: Log level (debug, info, warning, error, critical)
+            message: Message to log
+            **kwargs: Additional context key-value pairs
+        """
+        context = self._get_context(**kwargs)
+        getattr(self._logger, level)(message, extra={'context': context})
 
     def enable_parser_logging(self, parser: Parser) -> None:
         """Enable logging for a parser.
@@ -51,8 +81,15 @@ class TreeSitterTraversal(TreeSitterServiceBase):
         Args:
             parser: Parser to enable logging for
         """
-        # This method is kept for backward compatibility but delegates to the editor
-        pass
+        def log_callback(log_type: int, msg: str) -> None:
+            context = {
+                'source': 'tree-sitter',
+                'type': 'parser',
+                'log_type': 'parse' if log_type == 0 else 'lex'
+            }
+            self._logger.debug(msg, extra={'context': context})
+        
+        parser.logger = log_callback
 
     def disable_parser_logging(self, parser: Parser) -> None:
         """Disable logging for a parser.
@@ -60,8 +97,7 @@ class TreeSitterTraversal(TreeSitterServiceBase):
         Args:
             parser: Parser to disable logging for
         """
-        # This method is kept for backward compatibility but delegates to the editor
-        pass
+        parser.logger = None
 
     def find_nodes_in_range(self, root: Node, range_obj: Range) -> List[Node]:
         """Find nodes in range using tree-sitter queries.
@@ -83,7 +119,9 @@ class TreeSitterTraversal(TreeSitterServiceBase):
                             'start': range_obj.start_point,
                             'end': range_obj.end_point
                         },
-                        'operation': 'find_nodes_in_range'
+                        'operation': 'find_nodes_in_range',
+                        'type': 'query',
+                        'source': 'tree-sitter'
                     }
                 })
                 return []
@@ -95,7 +133,9 @@ class TreeSitterTraversal(TreeSitterServiceBase):
                         'start': range_obj.start_point,
                         'end': range_obj.end_point
                     },
-                    'root_type': root.type
+                    'root_type': root.type,
+                    'type': 'query',
+                    'source': 'tree-sitter'
                 }
             })
             
@@ -371,7 +411,6 @@ class TreeSitterTraversal(TreeSitterServiceBase):
     @staticmethod
     def find_child_by_field(node: Node, field_name: str) -> Optional[Node]:
         """Find a child node by its field name."""
-        logger = TreeSitterLogHandler().logger
         try:
             return node.child_by_field_name(field_name)
         except Exception as e:
@@ -539,7 +578,6 @@ class TreeSitterTraversal(TreeSitterServiceBase):
     @staticmethod
     def create_cursor_at_point(node: Node, point: tuple) -> Optional[TreeCursor]:
         """Create a cursor at a specific point in the tree."""
-        logger = TreeSitterLogHandler().logger
         try:
             # Check if point is within node's range
             point_row, point_col = point

@@ -12,7 +12,7 @@ from tree_sitter import Tree, Node, Point, Parser, Range, Query, Language
 from tree_sitter_language_pack import get_binding, get_language, get_parser
 
 from GithubAnalyzer.models.core.errors import ParserError
-from GithubAnalyzer.utils.logging import get_logger, LoggerFactory, StructuredFormatter
+from GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger, LoggerFactory, StructuredFormatter
 from GithubAnalyzer.utils.logging.tree_sitter_logging import TreeSitterLogHandler
 
 from .utils import TreeSitterServiceBase
@@ -20,7 +20,8 @@ from .language_service import LanguageService
 from .traversal_service import TreeSitterTraversal
 from .query_service import TreeSitterQueryHandler
 
-logger = get_logger(__name__)
+# Use tree-sitter logger instead of standard logger
+logger = get_tree_sitter_logger("tree_sitter.editor")
 
 @dataclass
 class EditOperation:
@@ -52,12 +53,17 @@ class TreeSitterEditor(TreeSitterServiceBase):
         """Initialize the editor."""
         super().__post_init__()
         
-        # Set up logging
-        self._logger = get_logger(__name__)
-        self._log_handler = TreeSitterLogHandler()
-        self._log_handler.setFormatter(StructuredFormatter())
-        self._logger.addHandler(self._log_handler)
-        self._logger.debug("TreeSitterEditor initialized")
+        # Set up logging with tree-sitter specific context
+        self._logger = get_tree_sitter_logger("tree_sitter.editor")
+        self._logger.debug({
+            "message": "TreeSitterEditor initialized",
+            "context": {
+                'source': 'tree-sitter',
+                'type': 'editor',
+                'log_type': 'initialization',
+                'thread': threading.get_ident()
+            }
+        })
 
     def parse_code(self, code: str, language: Optional[str] = None, file_path: Optional[str] = None) -> Tree:
         """Parse code into a tree.
@@ -193,25 +199,11 @@ class TreeSitterEditor(TreeSitterServiceBase):
             self._end_operation('is_valid_position', start_time)
 
     def create_edit_operation(self, tree: Tree, start_position: Point, end_position: Point, new_text: str) -> EditOperation:
-        """Create an edit operation for a tree.
-        
-        Args:
-            tree: Tree to create edit for
-            start_position: Start position of edit
-            end_position: End position of edit 
-            new_text: New text to insert
-            
-        Returns:
-            EditOperation with the edit details
-            
-        Raises:
-            ValueError: If positions are invalid or if the edit would create invalid syntax
-        """
+        """Create an edit operation for a tree."""
         if not self.is_valid_position(tree.root_node, start_position, end_position):
             raise ValueError(f"Invalid edit positions: {start_position} -> {end_position}")
             
         # Get text and convert positions to byte offsets
-        # Store text in instance to keep it alive
         self._text = tree.root_node.text.decode('utf8')
         text = self._text
         
@@ -219,6 +211,9 @@ class TreeSitterEditor(TreeSitterServiceBase):
         self._logger.debug({
             "message": "Text analysis for byte calculations",
             "context": {
+                'source': 'tree-sitter',
+                'type': 'editor',
+                'log_type': 'edit_analysis',
                 "full_text": text,
                 "text_length": len(text),
                 "text_bytes": len(text.encode('utf8')),

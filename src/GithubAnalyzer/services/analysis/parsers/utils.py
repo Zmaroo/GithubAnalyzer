@@ -4,7 +4,7 @@ from tree_sitter import Language, Parser, Node, Tree, Query
 import time
 import logging
 from dataclasses import dataclass, field
-from GithubAnalyzer.utils.logging import get_logger
+from GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger
 from GithubAnalyzer.models.analysis.types import (
     LanguageId,
     QueryPattern,
@@ -29,7 +29,8 @@ class TreeSitterServiceBase:
     
     def __post_init__(self):
         """Initialize base service."""
-        self._logger = get_logger(self.__class__.__name__.lower())
+        # Use tree-sitter specific logger
+        self._logger = get_tree_sitter_logger(self.__class__.__name__.lower())
     
     def _time_operation(self, operation_name: str) -> float:
         """Record timing for an operation.
@@ -60,6 +61,7 @@ class TreeSitterServiceBase:
         avg_time = sum(times) / len(times)
         max_time = max(times)
         
+        # Use query logger for traversal operations
         self._logger.debug({
             "message": f"Operation timing: {operation_name}",
             "context": {
@@ -67,7 +69,9 @@ class TreeSitterServiceBase:
                 "duration_ms": duration,
                 "avg_duration_ms": avg_time,
                 "max_duration_ms": max_time,
-                "call_count": len(times)
+                "call_count": len(times),
+                "type": "query",  # Mark as query operation for proper logging
+                "source": "tree-sitter"
             }
         })
 

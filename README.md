@@ -22,6 +22,7 @@ The main entry point for AI agents is through the `DatabaseService` class in `sr
 - Language support information
 
 Example usage:
+
 ```python
 from GithubAnalyzer.services.core.database.database_service import DatabaseService
 

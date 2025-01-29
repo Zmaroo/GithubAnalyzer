@@ -3,6 +3,12 @@
 from pathlib import Path
 from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod
+import time
+import threading
+from GithubAnalyzer.utils.logging import get_logger
+
+# Initialize logger
+logger = get_logger("parsers.custom")
 
 class CustomParser(ABC):
     """Base class for custom file parsers."""
@@ -178,14 +184,32 @@ def get_custom_parser(file_path: str) -> Optional[CustomParser]:
     Returns:
         CustomParser instance if available, None otherwise
     """
+    start_time = time.time()
+    context = {
+        'module': 'custom_parsers',
+        'thread': threading.get_ident(),
+        'duration_ms': 0,
+        'file_path': file_path
+    }
+    
     # Check exact filename matches first
     filename = Path(file_path).name
     if filename in CUSTOM_PARSERS:
-        return CUSTOM_PARSERS[filename]
+        parser = CUSTOM_PARSERS[filename]
+        context['duration_ms'] = (time.time() - start_time) * 1000
+        context['parser_type'] = parser.__class__.__name__
+        logger.debug("Found custom parser by filename", extra={'context': context})
+        return parser
         
     # Check extension matches
     extension = Path(file_path).suffix
     if extension in CUSTOM_PARSERS:
-        return CUSTOM_PARSERS[extension]
+        parser = CUSTOM_PARSERS[extension]
+        context['duration_ms'] = (time.time() - start_time) * 1000
+        context['parser_type'] = parser.__class__.__name__
+        logger.debug("Found custom parser by extension", extra={'context': context})
+        return parser
         
+    context['duration_ms'] = (time.time() - start_time) * 1000
+    logger.debug("No custom parser found", extra={'context': context})
     return None 

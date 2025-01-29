@@ -102,10 +102,7 @@ def test_repo_processing_flow(sample_repo, setup_test_logging, python_parser_wit
     assert not tree.root_node.has_error
     
     # Verify parser logged information
-    parser_logs = [
-        r for r in loggers['ts_handler'].records 
-        if 'tree-sitter.parser' in r.name.lower()
-    ]
+    parser_logs = loggers['ts_handler'].parse_records
     assert len(parser_logs) > 0
     loggers['main_logger'].info(f"Tree-sitter parse logs: {len(parser_logs)} records")
     
@@ -130,6 +127,10 @@ def test_repo_processing_flow(sample_repo, setup_test_logging, python_parser_wit
 def test_tree_sitter_logging(setup_test_logging, python_parser_with_logging):
     """Test tree-sitter v24 logging integration."""
     loggers = setup_test_logging
+    ts_handler = loggers['ts_handler']
+    
+    # Clear any existing logs
+    ts_handler.clear()
     
     # Parse some code with potential issues to generate logs
     code = """
@@ -141,31 +142,27 @@ def test_tree_sitter_logging(setup_test_logging, python_parser_with_logging):
     assert tree.root_node.has_error
     
     # Verify parser logged the syntax error
-    error_logs = [
-        r for r in loggers['ts_handler'].records 
-        if 'error' in r.levelname.lower() and 'tree-sitter' in r.name.lower()
-    ]
-    assert len(error_logs) > 0
+    assert len(ts_handler.error_records) > 0, "No error records found"
+    assert len(ts_handler.parse_records) > 0, "No parse records found"
     
-    # Check log content
-    for log in error_logs:
-        assert any(err in log.message.lower() for err in ['syntax error', 'parse error', 'missing node'])
-        loggers['main_logger'].info(f"Tree-sitter error log: {log.message}")
-        
-    # Verify tree-sitter v24 logging
-    parser_logs = [
-        r for r in loggers['ts_handler'].records 
-        if 'tree-sitter.parser' in r.name.lower()
-    ]
-    assert len(parser_logs) > 0
+    # Check error log content
+    for log in ts_handler.error_records:
+        assert any(err in log.msg.lower() for err in ['syntax error', 'parse error', 'missing'])
+        loggers['main_logger'].info(f"Tree-sitter error log: {log.msg}")
     
-    # Check parser log content
-    for log in parser_logs:
-        loggers['main_logger'].info(f"Tree-sitter parser log: {log.message}")
+    # Check parse log content
+    for log in ts_handler.parse_records:
+        assert hasattr(log, 'msecs'), "Log record missing timing information"
+        assert hasattr(log, 'thread'), "Log record missing thread information"
+        loggers['main_logger'].info(f"Tree-sitter parse log: {log.msg}")
 
 def test_query_optimization_logging(setup_test_logging, python_parser_with_logging):
     """Test query optimization logging."""
     loggers = setup_test_logging
+    ts_handler = loggers['ts_handler']
+    
+    # Clear any existing logs
+    ts_handler.clear()
     
     # Create query handler with logging
     query_handler = TreeSitterQueryHandler()
@@ -181,13 +178,11 @@ def test_query_optimization_logging(setup_test_logging, python_parser_with_loggi
     # Create and execute query
     query = query_handler.create_query(query_str, "python")
     
-    # Verify optimization logs
-    optimization_logs = [
-        r for r in loggers['ts_handler'].records 
-        if 'tree-sitter.query' in r.name.lower()
-    ]
-    assert len(optimization_logs) > 0
+    # Verify query logs
+    assert len(ts_handler.query_records) > 0, "No query records found"
     
-    # Check optimization log content
-    for log in optimization_logs:
-        loggers['main_logger'].info(f"Query optimization log: {log.message}") 
+    # Check query log content
+    for log in ts_handler.query_records:
+        assert hasattr(log, 'msecs'), "Log record missing timing information"
+        assert hasattr(log, 'thread'), "Log record missing thread information"
+        loggers['main_logger'].info(f"Query optimization log: {log.msg}") 

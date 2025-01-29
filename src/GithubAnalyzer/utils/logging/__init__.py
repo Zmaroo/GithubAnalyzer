@@ -141,26 +141,57 @@ class LoggerFactory:
         name: str = "tree_sitter",
         level: Optional[int] = None
     ) -> 'logging.Logger':
-        """Get a tree-sitter specific logger."""
-        logger = logging.getLogger(name)
+        """Get a tree-sitter specific logger.
+        
+        This creates a logger hierarchy:
+        1. tree_sitter - Main logger for all tree-sitter operations
+        2. tree_sitter.parser - For Parser.parse() callback logging
+        3. tree_sitter.query - For Query operations
+        
+        Args:
+            name: Base name for the logger (default: "tree_sitter")
+            level: Logging level (default: DEBUG)
+            
+        Returns:
+            The main tree-sitter logger
+        """
         if level is None:
             level = DEBUG
-        logger.setLevel(level)
-
-        # Remove any existing handlers
-        for handler in logger.handlers[:]:
-            logger.removeHandler(handler)
-
-        # Add TreeSitterLogHandler
+            
+        # Create main logger
+        main_logger = logging.getLogger(name)
+        main_logger.setLevel(level)
+        
+        # Create parser logger as child of main logger
+        parser_logger = main_logger.getChild("parser")
+        parser_logger.setLevel(level)
+        parser_logger.propagate = True  # Ensure logs propagate to parent
+        
+        # Create query logger as child of main logger
+        query_logger = main_logger.getChild("query")
+        query_logger.setLevel(level)
+        query_logger.propagate = True  # Ensure logs propagate to parent
+        
+        # Remove any existing handlers from all loggers
+        for logger in [main_logger, parser_logger, query_logger]:
+            for handler in logger.handlers[:]:
+                logger.removeHandler(handler)
+        
+        # Add TreeSitterLogHandler to all loggers to ensure direct capture
         from .tree_sitter_logging import TreeSitterLogHandler
         ts_handler = TreeSitterLogHandler(name)
         ts_handler.setFormatter(self._formatter)
-        logger.addHandler(ts_handler)
-
-        # Configure common settings
-        self._configure_logger(logger)
-
-        return logger
+        ts_handler.setLevel(level)
+        
+        for logger in [main_logger, parser_logger, query_logger]:
+            logger.addHandler(ts_handler)
+        
+        # Configure common settings but skip file handlers for test loggers
+        if not name.startswith('test'):
+            for logger in [main_logger, parser_logger, query_logger]:
+                self._configure_logger(logger)
+        
+        return main_logger
 
 # Create singleton instance
 _factory = LoggerFactory()
@@ -170,7 +201,20 @@ def get_logger(name: str, level: Optional[int] = None, correlation_id: Optional[
     return _factory.get_logger(name, level, correlation_id)
 
 def get_tree_sitter_logger(name: str = "tree_sitter", level: Optional[int] = None) -> 'logging.Logger':
-    """Get a tree-sitter specific logger."""
+    """Get a tree-sitter specific logger.
+    
+    This creates a hierarchy of loggers:
+    - {name} - Main tree-sitter logger
+    - {name}.parser - For Parser.parse() callback logging
+    - {name}.query - For Query operations
+    
+    Args:
+        name: Base name for the logger (default: "tree_sitter")
+        level: Logging level (default: DEBUG)
+        
+    Returns:
+        The main tree-sitter logger
+    """
     return _factory.get_tree_sitter_logger(name, level)
 
 # Initialize logging with basic configuration

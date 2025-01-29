@@ -12,7 +12,22 @@ def repo_url():
 @pytest.fixture
 def test_data_dir():
     """Get the test data directory."""
-    return Path(__file__).parent / "data"
+    data_dir = Path(__file__).parent / "data"
+    assert data_dir.exists(), "Test data directory not found"
+    
+    # Check that test files exist
+    test_files = [
+        "test.py",
+        ".env",
+        "requirements.txt",
+        ".editorconfig",
+        ".gitignore"
+    ]
+    
+    for file in test_files:
+        assert (data_dir / file).exists(), f"Test file {file} not found"
+        
+    return data_dir
 
 @pytest.fixture
 def python_binding():
@@ -28,7 +43,7 @@ def python_language():
 def python_parser(python_language):
     """Create a Python parser with proper language initialization."""
     parser = Parser()
-    parser.set_language(python_language)
+    parser.language = python_language  # v24 API change
     return parser
 
 @pytest.fixture
@@ -56,40 +71,13 @@ class Greeter:
 
 @pytest.fixture
 def test_logging_setup():
-    """Set up test logging with tree-sitter v24 integration."""
-    from GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger
-    from GithubAnalyzer.utils.logging.tree_sitter_logging import TreeSitterLogHandler
-    import logging
-    
-    # Create loggers
-    main_logger = get_logger('test')
-    ts_logger = get_tree_sitter_logger('tree_sitter')
-    parser_logger = get_logger('tree_sitter.parser')
-    
-    # Configure handler
-    ts_handler = TreeSitterLogHandler('tree_sitter')
-    ts_handler.setLevel(logging.DEBUG)
-    
-    # Add handler to all loggers
-    main_logger.addHandler(ts_handler)
-    ts_logger.addHandler(ts_handler)
-    parser_logger.addHandler(ts_handler)
-    
-    # Set debug level for all loggers
-    main_logger.setLevel(logging.DEBUG)
-    ts_logger.setLevel(logging.DEBUG)
-    parser_logger.setLevel(logging.DEBUG)
-    
-    return {
-        'main_logger': main_logger,
-        'ts_logger': ts_logger,
-        'parser_logger': parser_logger,
-        'ts_handler': ts_handler
-    }
+    """Set up logging for tests."""
+    from GithubAnalyzer.utils.logging.config import configure_test_logging
+    return configure_test_logging()
 
 @pytest.fixture
 def python_parser_with_logging(python_parser, test_logging_setup):
     """Create a Python parser with tree-sitter v24 logging enabled."""
-    ts_handler = test_logging_setup['ts_handler']
-    ts_handler.enable_parser_logging(python_parser)
+    from GithubAnalyzer.utils.logging.config import configure_parser_logging
+    configure_parser_logging(python_parser, "tree_sitter")
     return python_parser 

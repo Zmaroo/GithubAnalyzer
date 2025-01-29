@@ -3,6 +3,9 @@ import json
 from pathlib import Path
 from typing import Dict, Optional, Set, Any, List
 from tree_sitter import Language, Parser, Node
+import time
+import threading
+from dataclasses import dataclass
 
 from tree_sitter_language_pack import get_binding, get_language, get_parser
 
@@ -13,7 +16,7 @@ from GithubAnalyzer.models.analysis.types import (
     NodeList,
     QueryResult
 )
-from GithubAnalyzer.models.core.errors import LanguageError
+from GithubAnalyzer.models.core.errors import LanguageError, ParserError
 from GithubAnalyzer.utils.logging import get_logger
 from .utils import (
     get_node_text,
@@ -29,17 +32,58 @@ from .query_patterns import (
     SPECIAL_FILENAMES
 )
 
-logger = get_logger(__name__)
+# Initialize logger
+logger = get_logger("tree_sitter.language")
 
+@dataclass
 class LanguageService(TreeSitterServiceBase):
-    """Service for managing tree-sitter language operations."""
+    """Service for managing tree-sitter languages."""
     
-    def __init__(self):
-        """Initialize the language service."""
-        super().__init__()
+    def __post_init__(self):
+        """Initialize language service."""
+        super().__post_init__()
+        self._logger = logger
+        self._start_time = time.time()
+        
+        self._logger.debug("LanguageService initialized", extra={
+            'context': {
+                'module': 'language',
+                'thread': threading.get_ident(),
+                'duration_ms': 0
+            }
+        })
+        
         self._supported_languages = set(EXTENSION_TO_LANGUAGE.values())
         self._extension_to_language = EXTENSION_TO_LANGUAGE
         
+    def _get_context(self, **kwargs) -> Dict[str, Any]:
+        """Get standard context for logging.
+        
+        Args:
+            **kwargs: Additional context key-value pairs
+            
+        Returns:
+            Dict with standard context fields plus any additional fields
+        """
+        context = {
+            'module': 'language',
+            'thread': threading.get_ident(),
+            'duration_ms': (time.time() - self._start_time) * 1000
+        }
+        context.update(kwargs)
+        return context
+
+    def _log(self, level: str, message: str, **kwargs) -> None:
+        """Log with consistent context.
+        
+        Args:
+            level: Log level (debug, info, warning, error, critical)
+            message: Message to log
+            **kwargs: Additional context key-value pairs
+        """
+        context = self._get_context(**kwargs)
+        getattr(self._logger, level)(message, extra={'context': context})
+
     @property
     def supported_languages(self) -> Set[str]:
         """Get the set of supported languages."""

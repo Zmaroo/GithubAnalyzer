@@ -5,11 +5,12 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Any, Optional, Tuple, Set, Union
 from tree_sitter import Query, Node, Tree, QueryError, Language, Point
+import logging
 
 from tree_sitter_language_pack import get_binding, get_language, get_parser
 
 from GithubAnalyzer.models.core.errors import ParserError
-from GithubAnalyzer.utils.logging import get_logger, LoggerFactory
+from GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger, LoggerFactory
 from GithubAnalyzer.utils.logging.tree_sitter_logging import TreeSitterLogHandler
 
 from .utils import (
@@ -37,7 +38,8 @@ from .query_patterns import (
 from .language_service import LanguageService
 from .traversal_service import TreeSitterTraversal
 
-logger = get_logger(__name__)
+# Initialize logger
+logger = get_logger("tree_sitter.query")
 
 @dataclass
 class TreeSitterQueryHandler(TreeSitterServiceBase):
@@ -47,16 +49,24 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
     language_name: str = "python"
     
     def __post_init__(self):
-        """Initialize query handler.
-        
-        Args:
-            language: Tree-sitter Language object to use for queries
-            language_name: Name of the language (e.g. "python", "javascript")
-        """
+        """Initialize query handler."""
         super().__post_init__()
-        self._traversal = TreeSitterTraversal()
-        self._language_name = self.language_name
+        self._logger = logger
+        self._start_time = time.time()
+        
+        self._logger.debug("QueryHandler initialized", extra={
+            'context': {
+                'module': 'query',
+                'thread': threading.get_ident(),
+                'duration_ms': 0
+            }
+        })
+        
+        # Initialize services
         self._language_service = LanguageService()
+        self._traversal = TreeSitterTraversal()
+        
+        self._language_name = self.language_name
         
         # Initialize language - either use provided Language object or get from service
         self._language = self.language if self.language else self._language_service.get_language_object(self.language_name)
@@ -73,24 +83,44 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
         
         # Initialize performance metrics
         self._operation_times = {}
-        
-        # Log initialization
-        self._logger.debug("TreeSitterQueryHandler initialized", extra={
-            'component': 'tree_sitter.query',
-            'thread_id': threading.get_ident(),
-            'language': self._language_name,
-            'patterns': list(QUERY_PATTERNS.get(self._language_name, {}).keys())
-        })
 
-    def create_query(self, query_string: str, language: Optional[str] = None) -> Query:
+    def _get_context(self, **kwargs) -> Dict[str, Any]:
+        """Get standard context for logging.
+        
+        Args:
+            **kwargs: Additional context key-value pairs
+            
+        Returns:
+            Dict with standard context fields plus any additional fields
+        """
+        context = {
+            'module': 'query',
+            'thread': threading.get_ident(),
+            'duration_ms': (time.time() - self._start_time) * 1000
+        }
+        context.update(kwargs)
+        return context
+
+    def _log(self, level: str, message: str, **kwargs) -> None:
+        """Log with consistent context.
+        
+        Args:
+            level: Log level (debug, info, warning, error, critical)
+            message: Message to log
+            **kwargs: Additional context key-value pairs
+        """
+        context = self._get_context(**kwargs)
+        getattr(self._logger, level)(message, extra={'context': context})
+
+    def create_query(self, query_string: str, language_name: Optional[str] = None) -> Query:
         """Create an optimized tree-sitter query.
         
         Args:
-            query_string: Query pattern string
-            language: Optional language identifier (uses default if not specified)
+            query_string: Query string to parse
+            language_name: Optional language name override
             
         Returns:
-            Configured Query object
+            Optimized Query object
             
         Raises:
             QueryError: If query creation fails
@@ -98,26 +128,66 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
         start_time = self._time_operation('create_query')
         
         try:
-            # Get language from service
-            lang = language or self._language_name
-            lang_obj = self._language_service.get_language_object(lang)
-            if not lang_obj:
-                raise QueryError(f"Could not get language object for {lang}")
+            # Get language
+            lang = self._language_service.get_language_object(language_name or self._language_name)
+            if not lang:
+                raise ValueError(f"Could not get language for {language_name or self._language_name}")
             
-            query = Query(lang_obj, query_string)
+            # Create and optimize query
+            query = lang.query(query_string)
             
-            # Check query validity
-            for i in range(query.pattern_count):
-                if not query.is_pattern_rooted(i):
-                    self._logger.warning(f"Pattern {i} is not rooted")
-                    
+            # Log optimization info using tree-sitter logger
+            self._log("debug", "Query created and optimized", extra={
+                'context': {
+                    'source': 'tree-sitter',
+                    'type': 'query',
+                    'log_type': 'optimization',
+                    'language': language_name or self._language_name,
+                    'pattern_count': query.pattern_count,
+                    'capture_count': query.capture_count,
+                    'match_limit': query.match_limit,
+                    'query_string': query_string
+                }
+            })
+            
+            # Check for unrooted patterns
+            for pattern_index in range(query.pattern_count):
+                if not query.is_pattern_rooted(pattern_index):
+                    self._log("warning", f"Pattern {pattern_index} is not rooted", extra={
+                        'context': {
+                            'source': 'tree-sitter',
+                            'type': 'query',
+                            'log_type': 'validation',
+                            'pattern_index': pattern_index
+                        }
+                    })
+            
             return query
             
         except Exception as e:
-            raise QueryError(f"Failed to create query: {e}")
+            self._log("error", f"Failed to create query: {str(e)}", extra={
+                'context': {
+                    'source': 'tree-sitter',
+                    'type': 'query',
+                    'log_type': 'error',
+                    'error': str(e),
+                    'query_string': query_string
+                }
+            })
+            raise
             
         finally:
-            self._end_operation('create_query', start_time)
+            # Log timing
+            duration = (time.time() - start_time) * 1000
+            self._log("debug", "Query creation completed", extra={
+                'context': {
+                    'source': 'tree-sitter',
+                    'type': 'query',
+                    'log_type': 'timing',
+                    'operation': 'create_query',
+                    'duration_ms': duration
+                }
+            })
 
     def execute_query(self, query: Query, node: Union[Node, Tree]) -> Dict[str, List[Node]]:
         """Execute a query with native tree-sitter optimizations.
@@ -139,34 +209,63 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
             
             # Get query stats before execution
             stats = self.get_query_stats(query)
-            self._logger.debug({
-                "message": "Executing query",
-                "context": {
-                    "stats": stats,
-                    "node_type": target_node.type
+            self._log("debug", "Executing query", extra={
+                'context': {
+                    'source': 'tree-sitter',
+                    'type': 'query',
+                    'log_type': 'execution',
+                    'stats': stats,
+                    'node_type': target_node.type,
+                    'node_start_point': target_node.start_point,
+                    'node_end_point': target_node.end_point
                 }
             })
             
-            # Execute query and get all captures
-            captures = defaultdict(list)
-            for pattern_idx, match in query.matches(target_node):
-                if pattern_idx not in self._disabled_patterns:
-                    # Add captures from match
-                    for name, nodes in match.items():
-                        if name not in self._disabled_captures:
-                            captures[name].extend(nodes)
+            # Execute query and get captures
+            captures = query.captures(target_node)
             
-            # Check execution status
-            if query.did_exceed_match_limit:
-                self._logger.warning("Query exceeded match limit")
-                
-            return dict(captures)
+            # Log each capture
+            for name, nodes in captures.items():
+                for node in nodes:
+                    self._log("debug", f"Query captured node", extra={
+                        'context': {
+                            'source': 'tree-sitter',
+                            'type': 'query',
+                            'log_type': 'capture',
+                            'capture_name': name,
+                            'node_type': node.type,
+                            'node_text': get_node_text_safe(node),
+                            'node_start_point': node.start_point,
+                            'node_end_point': node.end_point
+                        }
+                    })
+            
+            return captures
             
         except Exception as e:
-            raise QueryError(f"Query execution failed: {e}")
+            self._log("error", f"Failed to execute query: {e}", extra={
+                'context': {
+                    'source': 'tree-sitter',
+                    'type': 'query',
+                    'log_type': 'error',
+                    'error': str(e),
+                    'node_type': target_node.type if target_node else None
+                }
+            })
+            raise QueryError(f"Failed to execute query: {e}")
             
         finally:
-            self._end_operation('execute_query', start_time)
+            duration = self._end_operation('execute_query', start_time)
+            self._log("debug", "Query execution completed", extra={
+                'context': {
+                    'source': 'tree-sitter',
+                    'type': 'query',
+                    'log_type': 'timing',
+                    'operation': 'execute_query',
+                    'duration_ms': duration * 1000,
+                    'capture_count': len(captures) if 'captures' in locals() else 0
+                }
+            })
 
     def _time_operation(self, operation: str) -> float:
         """Start timing an operation."""
@@ -176,12 +275,15 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
         """End timing an operation and store result."""
         duration = time.time() - start_time
         self._operation_times[operation] = duration
+        return duration
 
     def get_query_stats(self, query: Query) -> Dict[str, Any]:
         """Get statistics about a query."""
         return {
             'pattern_count': query.pattern_count,
-            'capture_names': query.capture_names()
+            'capture_count': query.capture_count,
+            'match_limit': query.match_limit,
+            'did_exceed_match_limit': query.did_exceed_match_limit
         }
 
     def disable_capture(self, capture: str) -> None:
@@ -200,11 +302,11 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
         """
         self._disabled_patterns.add(pattern_index)
 
-    def find_nodes(self, tree: Tree, pattern_type: str, language: Optional[str] = None) -> List[Dict[str, Node]]:
+    def find_nodes(self, tree_or_node: Union[Tree, Node], pattern_type: str, language: Optional[str] = None) -> List[Dict[str, Node]]:
         """Find nodes using native tree-sitter query methods.
         
         Args:
-            tree: The tree to search
+            tree_or_node: The tree or node to search
             pattern_type: Type of pattern to match
             language: Optional language identifier
             
@@ -223,9 +325,12 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
             if not query:
                 return []
                 
+            # Get target node
+            target_node = tree_or_node.root_node if isinstance(tree_or_node, Tree) else tree_or_node
+                
             # Use native matches() method
             matches = []
-            for pattern_idx, match in query.matches(tree.root_node):
+            for pattern_idx, match in query.matches(target_node):
                 # Verify pattern is valid
                 if (query.is_pattern_rooted(pattern_idx) and
                     pattern_idx not in self._disabled_patterns):
@@ -238,7 +343,7 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
                     
             return matches
         except Exception as e:
-            self._logger.error(f"Error finding nodes: {str(e)}")
+            self._log("error", f"Error finding nodes: {str(e)}")
             return []
 
     def validate_node(self, node: Node) -> Tuple[bool, List[str]]:
@@ -308,7 +413,7 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
             return list(lookahead.iter_names())
             
         except Exception as e:
-            self._logger.error(f"Error getting valid symbols: {e}")
+            self._log("error", f"Error getting valid symbols: {e}")
             return []
 
     def configure_query(self, query: Query, settings: QueryOptimizationSettings):
@@ -351,7 +456,7 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
             return matches
             
         except Exception as e:
-            self._logger.error(f"Failed to get matches: {e}")
+            self._log("error", f"Failed to get matches: {e}")
             return []
             
         finally:
@@ -439,17 +544,68 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
                 
         return len(errors) == 0, errors
 
-    def find_functions(self, node: Union[Node, Tree], language: Optional[str] = None) -> List[Dict[str, Node]]:
-        """Find function nodes in a tree.
+    def find_functions(self, node: Union[Node, Tree]) -> List[Dict[str, Node]]:
+        """Find function definitions in the tree using tree-sitter captures.
         
         Args:
             node: Node or Tree to search
-            language: Optional language identifier
             
         Returns:
-            List of dictionaries containing function nodes
+            List of dictionaries containing function nodes and their components
         """
-        return self.find_nodes(node, "function", language)
+        try:
+            # Get pattern for language
+            pattern = get_query_pattern(self._language_name, "function")
+            if not pattern:
+                return []
+                
+            # Create optimized query
+            query = self.create_query(pattern, self._language_name)
+            if not query:
+                return []
+                
+            # Set query optimizations
+            query.set_match_limit(1000)  # Reasonable limit for functions
+            query.set_max_start_depth(5)  # Functions usually not deeply nested
+                
+            # Get target node
+            target_node = node.root_node if isinstance(node, Tree) else node
+                
+            # Get matches and check assertions
+            functions = []
+            for pattern_idx, match in query.matches(target_node):
+                # Check pattern assertions
+                assertions = query.pattern_assertions(pattern_idx)
+                if assertions:
+                    # Skip if assertions don't validate
+                    valid = True
+                    for prop, (value, is_positive) in assertions.items():
+                        if prop == "function":
+                            if is_positive and value != "function":
+                                valid = False
+                            elif not is_positive and value == "function":
+                                valid = False
+                    if not valid:
+                        continue
+                
+                # Convert capture names from bytes to str and build function dict
+                function_dict = {}
+                for name, node in match.items():
+                    name_str = name.decode('utf-8') if isinstance(name, bytes) else str(name)
+                    # Map @definition.function to function for backwards compatibility
+                    if name_str == "definition.function":
+                        function_dict["function"] = node
+                    else:
+                        function_dict[name_str] = node
+                        
+                if "function" in function_dict:  # Only add if we have the main function node
+                    functions.append(function_dict)
+                    
+            return functions
+            
+        except Exception as e:
+            self._log("error", f"Error finding functions: {str(e)}")
+            return []
 
     def find_classes(self, node: Node, language: Optional[str] = None) -> List[Dict[str, Node]]:
         """Find class definitions with their components.
@@ -500,7 +656,7 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
             return matches
             
         except Exception as e:
-            self._logger.error(f"Failed to find nodes by type: {e}")
+            self._log("error", f"Failed to find nodes by type: {e}")
             return []
 
     def is_valid_node(self, node: Node, language: Optional[str] = None) -> bool:
@@ -543,7 +699,7 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
             return len(matches) > 0
             
         except Exception as e:
-            self._logger.error(f"Error validating node: {e}")
+            self._log("error", f"Error validating node: {e}")
             return False
 
     def get_query_pattern(self, pattern_type: str, language: Optional[str] = None) -> str:

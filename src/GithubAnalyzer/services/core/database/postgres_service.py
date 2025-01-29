@@ -4,6 +4,9 @@ import json
 from datetime import datetime
 from psycopg2.extras import execute_values
 import numpy as np
+import time
+import threading
+from dataclasses import dataclass
 
 from GithubAnalyzer.services.core.database.embedding_service import CodeEmbeddingService
 from psycopg2.extensions import connection
@@ -11,29 +14,60 @@ from GithubAnalyzer.services.core.database.db_config import get_postgres_config
 from GithubAnalyzer.models.core.database import CodeSnippet
 from GithubAnalyzer.utils.logging import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("core.database.postgres")
 
+@dataclass
 class PostgresService:
-    def __init__(self):
+    def __post_init__(self):
+        """Initialize the PostgreSQL service."""
         self._conn: Optional[connection] = None
         self._config = get_postgres_config()
         self._embedding_service = CodeEmbeddingService()
+        self._start_time = time.time()
         self.connect()  # Auto-connect on initialization
+
+    def _get_context(self, **kwargs) -> Dict[str, Any]:
+        """Get standardized logging context."""
+        context = {
+            'module': 'postgres_service',
+            'thread': threading.get_ident(),
+            'duration_ms': int((time.time() - self._start_time) * 1000),
+        }
+        context.update(kwargs)
+        return context
+
+    def _log(self, level: str, message: str, **kwargs):
+        """Log with consistent context."""
+        context = self._get_context(**kwargs)
+        getattr(logger, level)(message, extra={'context': context})
 
     def connect(self) -> None:
         """Establish connection to PostgreSQL database."""
-        if not self._conn or self._conn.closed:
-            self._conn = psycopg2.connect(**self._config)
+        try:
+            if not self._conn or self._conn.closed:
+                self._conn = psycopg2.connect(**self._config)
+                self._log('info', 'Connected to PostgreSQL database', 
+                         host=self._config.get('host'),
+                         port=self._config.get('port'),
+                         database=self._config.get('database'))
+        except Exception as e:
+            self._log('error', 'Failed to connect to PostgreSQL database',
+                     error=str(e),
+                     host=self._config.get('host'),
+                     port=self._config.get('port'))
+            raise
 
     def ensure_connection(self) -> None:
         """Ensure we have an active connection."""
         if not self._conn or self._conn.closed:
+            self._log('debug', 'Reconnecting to database')
             self.connect()
 
     def disconnect(self) -> None:
         """Close the database connection."""
         if self._conn and not self._conn.closed:
             self._conn.close()
+            self._log('info', 'Disconnected from PostgreSQL database')
 
     def setup_vector_extension(self) -> None:
         """Setup pgvector extension for code embeddings."""
@@ -190,6 +224,7 @@ class PostgresService:
 
     def store_code_with_embedding(self, snippet: CodeSnippet) -> None:
         """Store code snippet with its embedding vector and metadata."""
+        start_time = time.time()
         self.ensure_connection()
         try:
             embedding = self._embedding_service.get_embedding(snippet.code_text)
@@ -213,571 +248,549 @@ class PostgresService:
                 ))
                 self._conn.commit()
                 
-                logger.debug({
-                    "message": "Stored code snippet",
-                    "context": {
-                        "file_path": snippet.file_path,
-                        "language": snippet.language,
-                        "has_embedding": bool(embedding),
-                        "has_metadata": hasattr(snippet, 'metadata')
-                    }
-                })
+                self._log('debug', 'Stored code snippet',
+                         file_path=snippet.file_path,
+                         language=snippet.language,
+                         has_embedding=bool(embedding),
+                         has_metadata=hasattr(snippet, 'metadata'),
+                         duration_ms=int((time.time() - start_time) * 1000))
         except Exception as e:
-            logger.error({
-                "message": "Failed to store code snippet",
-                "context": {
-                    "file_path": snippet.file_path,
-                    "error": str(e)
-                }
-            })
+            self._log('error', 'Failed to store code snippet',
+                     file_path=snippet.file_path,
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
             self._conn.rollback()
             raise
 
     def find_similar_code(self, query: str, language: Optional[str] = None,
                          limit: int = 5) -> List[Dict[str, Any]]:
         """Find similar code snippets using vector similarity search."""
+        start_time = time.time()
         self.ensure_connection()
-        query_embedding = self._embedding_service.get_embedding(query)
-        
-        with self._conn.cursor() as cur:
-            # Build query with optional language filter
-            query_sql = '''
-                SELECT 
-                    file_path,
-                    code_text,
-                    language,
-                    metadata,
-                    1 - (embedding <=> %s::vector) as similarity
-                FROM code_snippets
-                WHERE is_supported = true
-            '''
-            params = [query_embedding]
+        try:
+            query_embedding = self._embedding_service.get_embedding(query)
             
-            if language:
-                query_sql += ' AND language = %s'
-                params.append(language)
+            with self._conn.cursor() as cur:
+                # Build query with optional language filter
+                query_sql = '''
+                    SELECT 
+                        file_path,
+                        code_text,
+                        language,
+                        metadata,
+                        1 - (embedding <=> %s::vector) as similarity
+                    FROM code_snippets
+                    WHERE is_supported = true
+                '''
+                params = [query_embedding]
                 
-            query_sql += '''
-                ORDER BY embedding <=> %s::vector
-                LIMIT %s
-            '''
-            params.extend([query_embedding, limit])
-            
-            cur.execute(query_sql, params)
-            
-            return [
-                {
-                    'file_path': row[0],
-                    'code_text': row[1],
-                    'language': row[2],
-                    'metadata': row[3],
-                    'similarity': row[4]
-                }
-                for row in cur.fetchall()
-            ]
+                if language:
+                    query_sql += ' AND language = %s'
+                    params.append(language)
+                
+                query_sql += ' ORDER BY similarity DESC LIMIT %s'
+                params.append(limit)
+                
+                cur.execute(query_sql, params)
+                results = cur.fetchall()
+                
+                self._log('debug', 'Found similar code snippets',
+                         query_length=len(query),
+                         language=language,
+                         result_count=len(results),
+                         duration_ms=int((time.time() - start_time) * 1000))
+                
+                return [
+                    {
+                        'file_path': r[0],
+                        'code_text': r[1],
+                        'language': r[2],
+                        'metadata': r[3],
+                        'similarity': float(r[4])
+                    }
+                    for r in results
+                ]
+        except Exception as e:
+            self._log('error', 'Failed to find similar code',
+                     query_length=len(query),
+                     language=language,
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            raise
 
     def batch_store_code(self, code_entries: List[Tuple[int, str, str, str, Optional[Dict[str, Any]], bool]]) -> None:
-        """Store multiple code snippets with their embeddings in batch.
-        
-        Args:
-            code_entries: List of tuples containing (repo_id: int, file_path: str, code_text: str, language: str, metadata: Optional[Dict], is_supported: bool)
-        """
-        self.ensure_connection()
-        code_texts = [entry[2] for entry in code_entries]
-        embeddings = self._embedding_service.get_embeddings(code_texts)
-        
-        with self._conn.cursor() as cur:
-            for (repo_id, file_path, code_text, language, metadata, is_supported), embedding in zip(code_entries, embeddings):
-                # Use empty string for unsupported languages
-                language = language or ""
-                
-                cur.execute('''
-                    INSERT INTO code_snippets (
-                        repo_id, file_path, code_text, language, embedding, metadata, is_supported
-                    )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ''', (
-                    repo_id, 
-                    file_path, 
-                    code_text, 
-                    language,
-                    embedding,
-                    json.dumps(metadata) if metadata else None,
-                    is_supported
-                ))
-            self._conn.commit()
+        """Batch store code snippets with embeddings."""
+        start_time = time.time()
+        if not code_entries:
+            self._log('debug', 'No code entries to store')
+            return
 
-    def create_repository(self, repo_url: str) -> int:
-        """Create a new repository entry.
-        
-        Args:
-            repo_url: URL of the GitHub repository
-            
-        Returns:
-            Repository ID as integer
-        """
         self.ensure_connection()
-        with self._conn.cursor() as cur:
-            # Extract repo name from URL
-            repo_name = repo_url.split('/')[-1].replace('.git', '')
-            
-            # Check if repository already exists
-            cur.execute('''
-                SELECT id FROM repositories
-                WHERE repo_url = %s
-            ''', (repo_url,))
-            
-            existing = cur.fetchone()
-            if existing:
-                return existing[0]
-            
-            # Create new repository
-            cur.execute('''
-                INSERT INTO repositories (repo_url, repo_name)
-                VALUES (%s, %s)
-                RETURNING id
-            ''', (repo_url, repo_name))
-            
-            repo_id = cur.fetchone()[0]
-            self._conn.commit()
-            return repo_id
-
-    def semantic_search(self, query: str, limit: int = 5, 
-                       filter_repo: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Semantic search across code, docstrings, and comments."""
-        self.ensure_connection()
-        query_embedding = self._embedding_service.get_embedding(query)
-        
-        with self._conn.cursor() as cur:
-            # Search in code snippets
-            filter_clause = "WHERE repo_id = %s" if filter_repo else ""
-            cur.execute(f'''
-                WITH ranked_snippets AS (
-                    SELECT 
-                        cs.id,
-                        cs.file_path,
-                        cs.code_text as content,
-                        1 - (cs.embedding <=> %s::vector) as similarity
-                    FROM code_snippets cs
-                    {filter_clause}
-                    ORDER BY cs.embedding <=> %s::vector
-                    LIMIT %s
-                )
-                SELECT * FROM ranked_snippets
-                WHERE similarity > 0.7
-            ''', (query_embedding, query_embedding, limit))
-            
-            results = []
-            for row in cur.fetchall():
-                results.append({
-                    'file_path': row[1],
-                    'content': row[2],
-                    'similarity': row[3]
-                })
-            
-            return results
-
-    def get_code_context(self, file_path: str, line_number: int) -> Dict[str, Any]:
-        """Get comprehensive context for a code location."""
-        self.ensure_connection()
-        with self._conn.cursor() as cur:
-            cur.execute('''
-                WITH target_snippet AS (
-                    SELECT id, content
-                    FROM code_snippets
-                    WHERE file_path = %s
-                    AND start_line <= %s
-                    AND end_line >= %s
-                )
-                SELECT 
-                    ts.content as code,
-                    f.name as function_name,
-                    f.docstring as function_doc,
-                    c.name as class_name,
-                    c.docstring as class_doc,
-                    array_agg(cm.content) as comments
-                FROM target_snippet ts
-                LEFT JOIN functions f ON ts.id = f.code_snippet_id
-                LEFT JOIN classes c ON ts.id = c.code_snippet_id
-                LEFT JOIN comments cm ON ts.id = cm.code_snippet_id
-                GROUP BY ts.id, ts.content, f.name, f.docstring, c.name, c.docstring
-            ''', (file_path, line_number, line_number))
-            
-            row = cur.fetchone()
-            if not row:
-                return {}
-                
-            return {
-                'code': row[0],
-                'function': {'name': row[1], 'docstring': row[2]},
-                'class': {'name': row[3], 'docstring': row[4]},
-                'comments': row[5] or []
-            }
-
-    def get_documentation_context(self, query: str) -> Dict[str, Any]:
-        """Get documentation context for a query."""
-        self.ensure_connection()
-        query_embedding = self._embedding_service.get_embedding(query)
-        
-        with self._conn.cursor() as cur:
-            # Search in docstrings and comments
-            cur.execute('''
-                WITH doc_matches AS (
-                    SELECT 
-                        'function' as type,
-                        name,
-                        docstring as content,
-                        1 - (docstring_embedding <=> %s) as similarity
-                    FROM functions
-                    WHERE docstring IS NOT NULL
-                    UNION ALL
-                    SELECT 
-                        'class' as type,
-                        name,
-                        docstring as content,
-                        1 - (docstring_embedding <=> %s) as similarity
-                    FROM classes
-                    WHERE docstring IS NOT NULL
-                    UNION ALL
-                    SELECT 
-                        'comment' as type,
-                        comment_type as name,
-                        content,
-                        1 - (embedding <=> %s) as similarity
-                    FROM comments
-                    ORDER BY similarity DESC
-                    LIMIT 10
-                )
-                SELECT * FROM doc_matches
-                WHERE similarity > 0.7
-            ''', (query_embedding, query_embedding, query_embedding))
-            
-            results = {
-                'docstrings': [],
-                'comments': [],
-                'examples': []
-            }
-            
-            for row in cur.fetchall():
-                item = {
-                    'type': row[0],
-                    'name': row[1],
-                    'content': row[2],
-                    'similarity': row[3]
-                }
-                
-                if row[0] in ('function', 'class'):
-                    results['docstrings'].append(item)
-                else:
-                    results['comments'].append(item)
-            
-            return results
-
-    def get_all_code_snippets(self) -> List[Dict[str, Any]]:
-        """Get all code snippets from the database."""
-        with self._conn.cursor() as cur:
-            cur.execute("""
-                SELECT file_path, language, metadata, is_supported
-                FROM code_snippets
-            """)
-            return [
-                {
-                    'file_path': row[0],
-                    'language': row[1],
-                    'metadata': row[2],
-                    'is_supported': row[3]
-                }
-                for row in cur.fetchall()
-            ]
-            
-    def delete_file_snippets(self, file_path: str) -> None:
-        """Delete all code snippets related to a file.
-        
-        Args:
-            file_path: Path to the file
-        """
-        with self._conn.cursor() as cur:
-            cur.execute("""
-                DELETE FROM code_snippets
-                WHERE file_path = %s
-            """, (file_path,))
-            self._conn.commit()
-            
-    def get_languages(self) -> Set[str]:
-        """Get all languages present in the database."""
-        self.ensure_connection()
-        with self._conn.cursor() as cur:
-            cur.execute("""
-                SELECT DISTINCT language
-                FROM code_snippets
-                WHERE language IS NOT NULL
-            """)
-            return {row[0] for row in cur.fetchall()}
-            
-    def update_file_language(self, file_path: str, language: str) -> None:
-        """Update the language of all code snippets for a file.
-        
-        Args:
-            file_path: Path to the file
-            language: New language identifier
-        """
-        self.ensure_connection()
-        with self._conn.cursor() as cur:
-            cur.execute("""
-                UPDATE code_snippets
-                SET language = %s
-                WHERE file_path = %s
-            """, (language, file_path))
-            self._conn.commit()
-
-    def update_ast_relationships(self, file_path: str, relationships: Dict[str, Any]) -> None:
-        """Update AST relationships in code snippets.
-        
-        Args:
-            file_path: Path to the file
-            relationships: Dictionary of relationships from Neo4j
-        """
-        self.ensure_connection()
-        with self._conn.cursor() as cur:
-            # Get current metadata
-            cur.execute('''
-                SELECT metadata
-                FROM code_snippets
-                WHERE file_path = %s
-            ''', (file_path,))
-            
-            row = cur.fetchone()
-            if not row or not row[0]:
-                return
-                
-            metadata = json.loads(row[0])
-            
-            # Update relationships in metadata
-            if 'elements' in metadata:
-                for element_type, elements in metadata['elements'].items():
-                    for element in elements:
-                        if element['name'] in relationships:
-                            element['relationships'] = relationships[element['name']]
-                            
-            # Store updated metadata
-            cur.execute('''
-                UPDATE code_snippets
-                SET metadata = %s
-                WHERE file_path = %s
-            ''', (json.dumps(metadata), file_path))
-            
-            self._conn.commit()
-            
-    def delete_code_snippet(self, repo_id: str, file_path: str) -> None:
-        """Delete a code snippet and its related data.
-        
-        Args:
-            repo_id: Repository identifier
-            file_path: Path to the file
-        """
-        with self._conn.cursor() as cur:
-            # Delete from code_snippets
-            cur.execute('''
-                DELETE FROM code_snippets
-                WHERE repo_id = %s AND file_path = %s
-            ''', (repo_id, file_path))
-            
-            # Delete from functions
-            cur.execute('''
-                DELETE FROM functions
-                WHERE repo_id = %s AND file_path = %s
-            ''', (repo_id, file_path))
-            
-            # Delete from classes
-            cur.execute('''
-                DELETE FROM classes
-                WHERE repo_id = %s AND file_path = %s
-            ''', (repo_id, file_path))
-            
-            self._conn.commit()
-            
-    def update_code_snippet(self, repo_id: str, file_path: str, code_text: str,
-                          language: str, metadata: Dict[str, Any]) -> None:
-        """Update a code snippet with new data.
-        
-        Args:
-            repo_id: Repository identifier
-            file_path: Path to the file
-            code_text: New code content
-            language: Programming language
-            metadata: New metadata
-        """
-        embedding = self._embedding_service.get_embedding(code_text)
-        
-        with self._conn.cursor() as cur:
-            # Update code snippet
-            cur.execute('''
-                UPDATE code_snippets
-                SET code_text = %s,
-                    language = %s,
-                    embedding = %s,
-                    metadata = %s,
-                    is_supported = %s
-                WHERE repo_id = %s AND file_path = %s
-            ''', (
-                code_text,
-                language,
-                embedding,
-                json.dumps(metadata),
-                metadata.get('is_supported', True),
-                repo_id,
-                file_path
-            ))
-            
-            # Update functions
-            if 'elements' in metadata and 'function' in metadata['elements']:
-                # First delete old functions
-                cur.execute('''
-                    DELETE FROM functions
-                    WHERE repo_id = %s AND file_path = %s
-                ''', (repo_id, file_path))
-                
-                # Then insert new ones
-                for func in metadata['elements']['function']:
-                    cur.execute('''
-                        INSERT INTO functions (
-                            repo_id, file_path, name, language,
-                            metadata, start_point, end_point
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ''', (
-                        repo_id,
-                        file_path,
-                        func['name'],
-                        language,
-                        json.dumps(func),
-                        json.dumps(func['start_point']),
-                        json.dumps(func['end_point'])
-                    ))
-            
-            self._conn.commit()
-
-    def get_repositories(self) -> List[Dict[str, Any]]:
-        """Get all repositories in the database.
-        
-        Returns:
-            List of dictionaries containing repository information
-        """
-        self.ensure_connection()
-        with self._conn.cursor() as cur:
-            cur.execute('''
-                SELECT id, repo_url, repo_name, created_at
-                FROM repositories
-            ''')
-            rows = cur.fetchall()
-            return [
-                {
-                    'id': row[0],
-                    'url': row[1],
-                    'name': row[2],
-                    'created_at': row[3]
-                }
-                for row in rows
-            ]
-
-    def get_file_count(self, repo_id: Optional[int] = None) -> int:
-        """Get the total number of files stored.
-        
-        Args:
-            repo_id: Optional repository ID to filter by
-            
-        Returns:
-            Number of files stored
-        """
-        query = "SELECT COUNT(*) FROM code_snippets"
-        if repo_id:
-            query += " WHERE repo_id = %s"
-            return self._execute_query(query, (repo_id,))[0][0]
-        return self._execute_query(query)[0][0]
-        
-    def get_language_statistics(self, repo_id: Optional[int] = None) -> Dict[str, int]:
-        """Get breakdown of files by language.
-        
-        Args:
-            repo_id: Optional repository ID to filter by
-            
-        Returns:
-            Dictionary mapping languages to file counts
-        """
-        query = "SELECT language, COUNT(*) FROM code_snippets"
-        if repo_id:
-            query += " WHERE repo_id = %s"
-            query += " GROUP BY language"
-            rows = self._execute_query(query, (repo_id,))
-        else:
-            query += " GROUP BY language"
-            rows = self._execute_query(query)
-            
-        return {row[0]: row[1] for row in rows}
-        
-    def get_recent_files(self, limit: int = 5, repo_id: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Get most recently added files.
-        
-        Args:
-            limit: Maximum number of files to return
-            repo_id: Optional repository ID to filter by
-            
-        Returns:
-            List of recent file entries
-        """
-        query = """
-            SELECT file_path, language, created_at 
-            FROM code_snippets
-        """
-        if repo_id:
-            query += " WHERE repo_id = %s"
-            query += " ORDER BY created_at DESC LIMIT %s"
-            rows = self._execute_query(query, (repo_id, limit))
-        else:
-            query += " ORDER BY created_at DESC LIMIT %s"
-            rows = self._execute_query(query, (limit,))
-            
-        return [
-            {
-                'file_path': row[0],
-                'language': row[1],
-                'created_at': row[2]
-            }
-            for row in rows
-        ]
-
-    def _execute_query(self, query: str, params: Optional[tuple] = None) -> List[tuple]:
-        """Execute a PostgreSQL query.
-        
-        Args:
-            query: SQL query to execute
-            params: Optional query parameters
-            
-        Returns:
-            List of result rows
-            
-        Raises:
-            DatabaseError: If query execution fails
-        """
         try:
+            # Process embeddings in batches
+            processed_entries = []
+            for repo_id, file_path, code_text, language, metadata, is_supported in code_entries:
+                embedding = self._embedding_service.get_embedding(code_text)
+                processed_entries.append((
+                    repo_id, file_path, code_text, language, embedding,
+                    json.dumps(metadata) if metadata else None,
+                    is_supported, datetime.now()
+                ))
+
             with self._conn.cursor() as cur:
-                if params:
-                    cur.execute(query, params)
-                else:
-                    cur.execute(query)
-                    
-                if query.strip().upper().startswith('SELECT'):
-                    return cur.fetchall()
-                return []
+                execute_values(cur, '''
+                    INSERT INTO code_snippets (
+                        repo_id, file_path, code_text, language, embedding,
+                        metadata, is_supported, created_at
+                    ) VALUES %s
+                ''', processed_entries)
+                self._conn.commit()
                 
+                self._log('info', 'Batch stored code snippets',
+                         entry_count=len(code_entries),
+                         duration_ms=int((time.time() - start_time) * 1000))
         except Exception as e:
-            logger.error(f"Error executing query: {str(e)}")
+            self._log('error', 'Failed to batch store code snippets',
+                     entry_count=len(code_entries),
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
             self._conn.rollback()
             raise
 
+    def create_repository(self, repo_url: str) -> int:
+        """Create a new repository entry and return its ID."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            repo_name = repo_url.split('/')[-1]
+            with self._conn.cursor() as cur:
+                # Check if repo already exists
+                cur.execute('SELECT id FROM repositories WHERE repo_url = %s', (repo_url,))
+                existing = cur.fetchone()
+                
+                if existing:
+                    self._log('debug', 'Repository already exists',
+                             repo_url=repo_url,
+                             repo_id=existing[0],
+                             duration_ms=int((time.time() - start_time) * 1000))
+                    return existing[0]
+                
+                # Create new repo
+                cur.execute('''
+                    INSERT INTO repositories (repo_url, repo_name)
+                    VALUES (%s, %s)
+                    RETURNING id
+                ''', (repo_url, repo_name))
+                repo_id = cur.fetchone()[0]
+                self._conn.commit()
+                
+                self._log('info', 'Created new repository',
+                         repo_url=repo_url,
+                         repo_id=repo_id,
+                         duration_ms=int((time.time() - start_time) * 1000))
+                return repo_id
+        except Exception as e:
+            self._log('error', 'Failed to create repository',
+                     repo_url=repo_url,
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            self._conn.rollback()
+            raise
+
+    def semantic_search(self, query: str, limit: int = 5, 
+                       filter_repo: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Perform semantic search over code snippets."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            query_embedding = self._embedding_service.get_embedding(query)
+            
+            with self._conn.cursor() as cur:
+                # Build query with optional repo filter
+                query_sql = '''
+                    SELECT 
+                        cs.file_path,
+                        cs.code_text,
+                        cs.language,
+                        cs.metadata,
+                        r.repo_url,
+                        1 - (cs.embedding <=> %s::vector) as similarity
+                    FROM code_snippets cs
+                    JOIN repositories r ON cs.repo_id = r.id
+                    WHERE cs.is_supported = true
+                '''
+                params = [query_embedding]
+                
+                if filter_repo:
+                    query_sql += ' AND r.repo_url = %s'
+                    params.append(filter_repo)
+                
+                query_sql += ' ORDER BY similarity DESC LIMIT %s'
+                params.append(limit)
+                
+                cur.execute(query_sql, params)
+                results = cur.fetchall()
+                
+                self._log('debug', 'Performed semantic search',
+                         query_length=len(query),
+                         filter_repo=filter_repo,
+                         result_count=len(results),
+                         duration_ms=int((time.time() - start_time) * 1000))
+                
+                return [
+                    {
+                        'file_path': r[0],
+                        'code_text': r[1],
+                        'language': r[2],
+                        'metadata': r[3],
+                        'repo_url': r[4],
+                        'similarity': float(r[5])
+                    }
+                    for r in results
+                ]
+        except Exception as e:
+            self._log('error', 'Failed to perform semantic search',
+                     query_length=len(query),
+                     filter_repo=filter_repo,
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            raise
+
+    def get_code_context(self, file_path: str, line_number: int) -> Dict[str, Any]:
+        """Get context around a specific line of code."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute('''
+                    SELECT code_text, language, metadata
+                    FROM code_snippets
+                    WHERE file_path = %s
+                    LIMIT 1
+                ''', (file_path,))
+                result = cur.fetchone()
+                
+                if not result:
+                    self._log('warning', 'No code context found',
+                             file_path=file_path,
+                             line_number=line_number,
+                             duration_ms=int((time.time() - start_time) * 1000))
+                    return {}
+                
+                code_text, language, metadata = result
+                lines = code_text.split('\n')
+                
+                # Get context window
+                start_line = max(0, line_number - 5)
+                end_line = min(len(lines), line_number + 5)
+                context_lines = lines[start_line:end_line]
+                
+                self._log('debug', 'Retrieved code context',
+                         file_path=file_path,
+                         line_number=line_number,
+                         context_size=len(context_lines),
+                         duration_ms=int((time.time() - start_time) * 1000))
+                
+                return {
+                    'code_context': '\n'.join(context_lines),
+                    'start_line': start_line,
+                    'end_line': end_line,
+                    'language': language,
+                    'metadata': metadata
+                }
+        except Exception as e:
+            self._log('error', 'Failed to get code context',
+                     file_path=file_path,
+                     line_number=line_number,
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            raise
+
+    def get_documentation_context(self, query: str) -> Dict[str, Any]:
+        """Get documentation context for a query."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            query_embedding = self._embedding_service.get_embedding(query)
+            
+            with self._conn.cursor() as cur:
+                # Search in functions
+                cur.execute('''
+                    SELECT 
+                        f.name,
+                        f.docstring,
+                        f.file_path,
+                        f.language,
+                        1 - (f.docstring_embedding <=> %s::vector) as similarity
+                    FROM functions f
+                    WHERE f.docstring IS NOT NULL
+                    ORDER BY similarity DESC
+                    LIMIT 5
+                ''', (query_embedding,))
+                function_results = cur.fetchall()
+                
+                # Search in classes
+                cur.execute('''
+                    SELECT 
+                        c.name,
+                        c.docstring,
+                        c.file_path,
+                        1 - (c.docstring_embedding <=> %s::vector) as similarity
+                    FROM classes c
+                    WHERE c.docstring IS NOT NULL
+                    ORDER BY similarity DESC
+                    LIMIT 5
+                ''', (query_embedding,))
+                class_results = cur.fetchall()
+                
+                # Search in comments
+                cur.execute('''
+                    SELECT 
+                        cm.comment_type,
+                        cm.content,
+                        cm.file_path,
+                        1 - (cm.embedding <=> %s::vector) as similarity
+                    FROM comments cm
+                    ORDER BY similarity DESC
+                    LIMIT 5
+                ''', (query_embedding,))
+                comment_results = cur.fetchall()
+                
+                self._log('debug', 'Retrieved documentation context',
+                         query_length=len(query),
+                         function_count=len(function_results),
+                         class_count=len(class_results),
+                         comment_count=len(comment_results),
+                         duration_ms=int((time.time() - start_time) * 1000))
+                
+                return {
+                    'functions': [
+                        {
+                            'name': r[0],
+                            'docstring': r[1],
+                            'file_path': r[2],
+                            'language': r[3],
+                            'similarity': float(r[4])
+                        }
+                        for r in function_results
+                    ],
+                    'classes': [
+                        {
+                            'name': r[0],
+                            'docstring': r[1],
+                            'file_path': r[2],
+                            'similarity': float(r[3])
+                        }
+                        for r in class_results
+                    ],
+                    'comments': [
+                        {
+                            'type': r[0],
+                            'content': r[1],
+                            'file_path': r[2],
+                            'similarity': float(r[3])
+                        }
+                        for r in comment_results
+                    ]
+                }
+        except Exception as e:
+            self._log('error', 'Failed to get documentation context',
+                     query_length=len(query),
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            raise
+
+    def get_all_code_snippets(self) -> List[Dict[str, Any]]:
+        """Get all code snippets from the database."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute('''
+                    SELECT cs.file_path, cs.code_text, cs.language, cs.metadata, r.repo_url
+                    FROM code_snippets cs
+                    JOIN repositories r ON cs.repo_id = r.id
+                    WHERE cs.is_supported = true
+                ''')
+                results = cur.fetchall()
+                
+                self._log('debug', 'Retrieved all code snippets',
+                         snippet_count=len(results),
+                         duration_ms=int((time.time() - start_time) * 1000))
+                
+                return [
+                    {
+                        'file_path': r[0],
+                        'code_text': r[1],
+                        'language': r[2],
+                        'metadata': r[3],
+                        'repo_url': r[4]
+                    }
+                    for r in results
+                ]
+        except Exception as e:
+            self._log('error', 'Failed to retrieve code snippets',
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            raise
+
+    def delete_file_snippets(self, file_path: str) -> None:
+        """Delete all code snippets for a given file path."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute('DELETE FROM code_snippets WHERE file_path = %s', (file_path,))
+                deleted_count = cur.rowcount
+                self._conn.commit()
+                
+                self._log('info', 'Deleted file snippets',
+                         file_path=file_path,
+                         deleted_count=deleted_count,
+                         duration_ms=int((time.time() - start_time) * 1000))
+        except Exception as e:
+            self._log('error', 'Failed to delete file snippets',
+                     file_path=file_path,
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            self._conn.rollback()
+            raise
+
+    def get_languages(self) -> Set[str]:
+        """Get all unique languages in the database."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute('SELECT DISTINCT language FROM code_snippets WHERE language IS NOT NULL')
+                languages = {row[0] for row in cur.fetchall()}
+                
+                self._log('debug', 'Retrieved unique languages',
+                         language_count=len(languages),
+                         duration_ms=int((time.time() - start_time) * 1000))
+                return languages
+        except Exception as e:
+            self._log('error', 'Failed to retrieve languages',
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            raise
+
+    def update_file_language(self, file_path: str, language: str) -> None:
+        """Update the language of a file's code snippets."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute('''
+                    UPDATE code_snippets 
+                    SET language = %s
+                    WHERE file_path = %s
+                ''', (language, file_path))
+                updated_count = cur.rowcount
+                self._conn.commit()
+                
+                self._log('info', 'Updated file language',
+                         file_path=file_path,
+                         language=language,
+                         updated_count=updated_count,
+                         duration_ms=int((time.time() - start_time) * 1000))
+        except Exception as e:
+            self._log('error', 'Failed to update file language',
+                     file_path=file_path,
+                     language=language,
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            self._conn.rollback()
+            raise
+
+    def update_ast_relationships(self, file_path: str, relationships: Dict[str, Any]) -> None:
+        """Update AST relationships for a file."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            with self._conn.cursor() as cur:
+                # Update functions
+                if 'functions' in relationships:
+                    for func in relationships['functions']:
+                        cur.execute('''
+                            INSERT INTO functions (
+                                repo_id, file_path, name, language, metadata,
+                                start_point, end_point, docstring
+                            )
+                            VALUES (
+                                (SELECT repo_id FROM code_snippets WHERE file_path = %s LIMIT 1),
+                                %s, %s, %s, %s, %s, %s, %s
+                            )
+                            ON CONFLICT (file_path, name) DO UPDATE
+                            SET metadata = EXCLUDED.metadata,
+                                start_point = EXCLUDED.start_point,
+                                end_point = EXCLUDED.end_point,
+                                docstring = EXCLUDED.docstring
+                        ''', (
+                            file_path, file_path, func['name'], func.get('language'),
+                            json.dumps(func.get('metadata')), json.dumps(func.get('start_point')),
+                            json.dumps(func.get('end_point')), func.get('docstring')
+                        ))
+                
+                # Update classes
+                if 'classes' in relationships:
+                    for cls in relationships['classes']:
+                        cur.execute('''
+                            INSERT INTO classes (
+                                repo_id, file_path, name, docstring
+                            )
+                            VALUES (
+                                (SELECT repo_id FROM code_snippets WHERE file_path = %s LIMIT 1),
+                                %s, %s, %s
+                            )
+                            ON CONFLICT (file_path, name) DO UPDATE
+                            SET docstring = EXCLUDED.docstring
+                        ''', (file_path, file_path, cls['name'], cls.get('docstring')))
+                
+                self._conn.commit()
+                
+                self._log('info', 'Updated AST relationships',
+                         file_path=file_path,
+                         function_count=len(relationships.get('functions', [])),
+                         class_count=len(relationships.get('classes', [])),
+                         duration_ms=int((time.time() - start_time) * 1000))
+        except Exception as e:
+            self._log('error', 'Failed to update AST relationships',
+                     file_path=file_path,
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            self._conn.rollback()
+            raise
+
+    def _execute_query(self, query: str, params: Optional[tuple] = None) -> List[tuple]:
+        """Execute a query and return results."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute(query, params)
+                results = cur.fetchall()
+                
+                self._log('debug', 'Executed query',
+                         query_length=len(query),
+                         result_count=len(results),
+                         duration_ms=int((time.time() - start_time) * 1000))
+                return results
+        except Exception as e:
+            self._log('error', 'Failed to execute query',
+                     query_length=len(query),
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            raise
+
     def __enter__(self):
-        self.connect()
+        """Context manager entry."""
+        self.ensure_connection()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        if exc_type is not None:
+            self._log('error', 'Error in context manager',
+                     error=str(exc_val))
         self.disconnect() 

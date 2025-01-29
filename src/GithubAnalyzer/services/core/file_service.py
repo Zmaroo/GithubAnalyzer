@@ -1,7 +1,10 @@
 """File service for GithubAnalyzer."""
 import os
+import time
+import threading
 from pathlib import Path
 from typing import List, Optional, Union, Set, Dict, Any
+from dataclasses import dataclass
 
 from GithubAnalyzer.utils.logging import get_logger
 from GithubAnalyzer.models.core.file import FileInfo, FileFilterConfig
@@ -12,7 +15,8 @@ from GithubAnalyzer.services.analysis.parsers.custom_parsers import (
     GitignoreParser, EditorConfigParser, LockFileParser
 )
 
-logger = get_logger(__name__)
+# Initialize logger
+logger = get_logger("core.file")
 
 # Git-related files and directories to exclude
 GIT_EXCLUDES: Set[str] = {
@@ -611,24 +615,51 @@ EDITOR_EXCLUDES: Set[str] = {
 # Default exclude patterns
 DEFAULT_EXCLUDES: Set[str] = GIT_EXCLUDES | BUILD_EXCLUDES | EDITOR_EXCLUDES
 
+@dataclass
 class FileService:
     """Service for file operations."""
     
-    def __init__(self, base_path: Optional[Union[str, Path]] = None):
-        """Initialize the file service.
+    base_path: Optional[Union[str, Path]] = None
+    
+    def __post_init__(self):
+        """Initialize the file service."""
+        self._logger = logger
+        self._start_time = time.time()
+        self.base_path = Path(self.base_path) if self.base_path else None
+        self._language_service = LanguageService()
+        
+        self._log("debug", "FileService initialized", 
+                 base_path=str(self.base_path))
+        
+    def _get_context(self, **kwargs) -> Dict[str, Any]:
+        """Get standard context for logging.
         
         Args:
-            base_path: Optional base path for relative path resolution
+            **kwargs: Additional context key-value pairs
+            
+        Returns:
+            Dict with standard context fields plus any additional fields
         """
-        self.base_path = Path(base_path) if base_path else None
-        self._language_service = LanguageService()
-        logger.debug({
-            "message": "FileService initialized",
-            "context": {
-                'base_path': str(self.base_path)
-            }
-        })
+        context = {
+            'module': 'file',
+            'thread': threading.get_ident(),
+            'duration_ms': (time.time() - self._start_time) * 1000,
+            'base_path': str(self.base_path) if self.base_path else None
+        }
+        context.update(kwargs)
+        return context
         
+    def _log(self, level: str, message: str, **kwargs) -> None:
+        """Log with consistent context.
+        
+        Args:
+            level: Log level (debug, info, warning, error, critical)
+            message: Message to log
+            **kwargs: Additional context key-value pairs
+        """
+        context = self._get_context(**kwargs)
+        getattr(self._logger, level)(message, extra={'context': context})
+
     def get_repository_files(self, repo_path: Union[str, Path]) -> List[FileInfo]:
         """Get all files from a repository directory.
         
@@ -647,13 +678,9 @@ class FileService:
                 break
             repo_root = repo_root.parent
             
-        logger.debug({
-            "message": "Found repository root",
-            "context": {
-                "repo_path": str(repo_path),
-                "repo_root": str(repo_root)
-            }
-        })
+        self._log("debug", "Found repository root",
+                 repo_path=str(repo_path),
+                 repo_root=str(repo_root))
         
         # Use custom filter config for repository files
         filter_config = FileFilterConfig(
@@ -705,25 +732,17 @@ class FileService:
                 )
                 files.append(file_info)
                 
-            logger.debug({
-                "message": "Files listed successfully",
-                "context": {
-                    "root_path": str(root_path),
-                    "filter_config": filter_config.__dict__ if filter_config else None,
-                    "file_count": len(files)
-                }
-            })
+            self._log("debug", "Files listed successfully",
+                     root_path=str(root_path),
+                     filter_config=filter_config.__dict__ if filter_config else None,
+                     file_count=len(files))
             return files
             
         except (FileNotFoundError, PermissionError) as e:
-            logger.error({
-                "message": "Error listing files",
-                "context": {
-                    "root_path": str(root_path),
-                    "filter_config": filter_config.__dict__ if filter_config else None,
-                    "error": str(e)
-                }
-            })
+            self._log("error", "Error listing files",
+                     root_path=str(root_path),
+                     filter_config=filter_config.__dict__ if filter_config else None,
+                     error=str(e))
             raise
             
     def _is_binary_file(self, file_path: Union[str, Path]) -> bool:
@@ -762,34 +781,22 @@ class FileService:
             
             # Check if file is binary
             if self._is_binary_file(full_path):
-                logger.debug({
-                    "message": "Skipping binary file",
-                    "context": {
-                        "file_path": str(file_path)
-                    }
-                })
+                self._log("debug", "Skipping binary file",
+                         file_path=str(file_path))
                 raise ValueError("Cannot read binary file")
                 
             with open(full_path, 'r') as f:
                 content = f.read()
                 
-            logger.debug({
-                "message": "File read successfully",
-                "context": {
-                    "file_path": str(file_path),
-                    "size_bytes": len(content)
-                }
-            })
+            self._log("debug", "File read successfully",
+                     file_path=str(file_path),
+                     size_bytes=len(content))
             return content
             
         except (FileNotFoundError, PermissionError) as e:
-            logger.error({
-                "message": "Error reading file",
-                "context": {
-                    "file_path": str(file_path),
-                    "error": str(e)
-                }
-            })
+            self._log("error", "Error reading file",
+                     file_path=str(file_path),
+                     error=str(e))
             raise
             
     def write_file(self, file_path: Union[str, Path], content: str) -> None:
@@ -810,22 +817,14 @@ class FileService:
             with open(full_path, 'w') as f:
                 f.write(content)
                 
-            logger.debug({
-                "message": "File written successfully",
-                "context": {
-                    "file_path": str(file_path),
-                    "size_bytes": len(content)
-                }
-            })
+            self._log("debug", "File written successfully",
+                     file_path=str(file_path),
+                     size_bytes=len(content))
             
         except (PermissionError, OSError) as e:
-            logger.error({
-                "message": "Error writing file",
-                "context": {
-                    "file_path": str(file_path),
-                    "error": str(e)
-                }
-            })
+            self._log("error", "Error writing file",
+                     file_path=str(file_path),
+                     error=str(e))
             raise
             
     def _matches_filter(self, file_path: Path, filter_config: FileFilterConfig) -> bool:

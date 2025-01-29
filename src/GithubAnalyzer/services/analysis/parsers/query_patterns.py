@@ -428,40 +428,50 @@ TS_PATTERNS = {
 QUERY_PATTERNS = {
     "python": {
         "function": """
-            (function_definition
-              name: (identifier) @function.name
-              parameters: (parameters) @function.params
-              body: (block) @function.body
-              return_type: (type)? @function.return_type
-              decorators: (decorator_list)? @function.decorators) @function.def
+            [
+                (function_definition
+                  name: (identifier) @name
+                  parameters: (parameters) @params
+                  body: (block) @body
+                  decorator_list: (decorator_list)? @decorators
+                ) @definition.function
+                (#is? @definition.function "function")
+                (#is-not? @definition.function "method")
+                (#is-not? @name "")
+            ]
         """,
         "class": """
-            (class_definition
-              name: (identifier) @class.name
-              body: (block) @class.body
-              superclasses: (argument_list)? @class.superclasses
-              decorators: (decorator_list)? @class.decorators) @class.def
+            [
+                (class_definition
+                  name: (identifier) @name
+                  body: (block) @body
+                )
+            ] @class
         """,
         "method": """
-            (class_definition
-              body: (block 
-                (function_definition) @method.def
-                  name: (identifier) @method.name
-                  parameters: (parameters 
-                    (identifier) @method.self) @method.params
-                  body: (block) @method.body
-                  decorators: (decorator_list)? @method.decorators)
-              (#eq? @method.self "self"))
+            [
+                (class_definition
+                  body: (block 
+                    (function_definition) @method.def
+                      name: (identifier) @method.name
+                      parameters: (parameters 
+                        (identifier) @method.self) @method.params
+                      body: (block) @method.body
+                      decorators: (decorator_list)? @method.decorators)
+                  (#eq? @method.self "self"))
+            ] @method
         """,
         "call": """
-            (call
-              function: [
-                (identifier) @call.name
-                (attribute 
-                  object: (_) @call.object
-                  attribute: (identifier) @call.method)
-              ]
-              arguments: (argument_list) @call.args) @call
+            [
+                (call
+                  function: [
+                    (identifier) @call.name
+                    (attribute 
+                      object: (_) @call.object
+                      attribute: (identifier) @call.method)
+                  ]
+                  arguments: (argument_list) @call.args) @call
+            ]
         """,
         "import": """
             [
@@ -474,9 +484,11 @@ QUERY_PATTERNS = {
             (#is-not? @import.module "__future__")
         """,
         "attribute": """
-            (attribute
-              object: (_) @attribute.object
-              attribute: (identifier) @attribute.name) @attribute
+            [
+                (attribute
+                  object: (_) @attribute.object
+                  attribute: (identifier) @attribute.name) @attribute
+            ]
         """,
         "string": """
             [

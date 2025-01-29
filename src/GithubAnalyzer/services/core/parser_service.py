@@ -1,16 +1,18 @@
 """Parser service for code analysis using tree-sitter."""
 import os
+import time
+import threading
 from pathlib import Path
 from typing import Union, Optional, Callable, Dict, Any, Set
 from tree_sitter import Tree, Language, Parser
 import logging
+from dataclasses import dataclass
 
 from GithubAnalyzer.models.core.errors import ParserError, LanguageError
 from GithubAnalyzer.models.core.ast import ParseResult
 from GithubAnalyzer.models.core.file import FileInfo
-from GithubAnalyzer.utils.logging import get_logger
+from GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger
 from GithubAnalyzer.utils.timing import timer
-from GithubAnalyzer.utils.logging.tree_sitter_logging import TreeSitterLogHandler
 from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
 from GithubAnalyzer.services.analysis.parsers.query_service import TreeSitterQueryHandler
 from GithubAnalyzer.services.analysis.parsers.traversal_service import TreeSitterTraversal
@@ -22,37 +24,55 @@ from GithubAnalyzer.services.analysis.parsers.utils import (
     find_common_ancestor
 )
 
-logger = get_logger(__name__)
+# Initialize logger
+logger = get_logger("core.parser")
+ts_logger = get_tree_sitter_logger()
 
 # Special file types that don't need parsing
 LICENSE_FILES = {'license', 'license.txt', 'license.md', 'copying', 'copying.txt', 'copying.md'}
 
+@dataclass
 class ParserService:
     """Service for parsing files using tree-sitter."""
-
-    def __init__(self):
+    
+    def __post_init__(self):
         """Initialize the parser service."""
+        self._logger = logger
+        self._start_time = time.time()
         self._language_service = LanguageService()
         self._query_handler = TreeSitterQueryHandler()
         
-        # Set up tree-sitter logging
-        self._ts_logger = TreeSitterLogHandler()
-        self._ts_logger.setLevel(logging.DEBUG)
-        logger.addHandler(self._ts_logger)
+        self._log("debug", "Parser service initialized",
+                 supported_languages=list(self._language_service.supported_languages))
         
-        # Log initialization
-        logger.debug({
-            "message": "Parser service initialized",
-            "context": {
-                "supported_languages": list(self._language_service.supported_languages)
-            }
-        })
+    def _get_context(self, **kwargs) -> Dict[str, Any]:
+        """Get standard context for logging.
         
-    def __del__(self):
-        """Clean up logging handlers."""
-        if hasattr(self, '_ts_logger'):
-            logger.removeHandler(self._ts_logger)
+        Args:
+            **kwargs: Additional context key-value pairs
             
+        Returns:
+            Dict with standard context fields plus any additional fields
+        """
+        context = {
+            'module': 'parser',
+            'thread': threading.get_ident(),
+            'duration_ms': (time.time() - self._start_time) * 1000
+        }
+        context.update(kwargs)
+        return context
+        
+    def _log(self, level: str, message: str, **kwargs) -> None:
+        """Log with consistent context.
+        
+        Args:
+            level: Log level (debug, info, warning, error, critical)
+            message: Message to log
+            **kwargs: Additional context key-value pairs
+        """
+        context = self._get_context(**kwargs)
+        getattr(self._logger, level)(message, extra={'context': context})
+        
     @timer
     def parse_file(self, file_path: Union[str, Path], language: Optional[str] = None) -> ParseResult:
         """Parse a file using tree-sitter.
@@ -79,6 +99,9 @@ class ParserService:
         
         # Skip unsupported files
         if not file_info.is_supported:
+            self._log("debug", "Skipping unsupported file",
+                     file=str(file_path),
+                     language=language)
             return ParseResult(None, None, file_info)
         
         # Try to read file content
@@ -86,7 +109,8 @@ class ParserService:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
         except UnicodeDecodeError:
-            logger.warning(f"File {file_path} appears to be binary")
+            self._log("warning", "File appears to be binary",
+                     file=str(file_path))
             file_info.is_supported = False
             return ParseResult(None, None, file_info)
             
@@ -110,26 +134,30 @@ class ParserService:
         try:
             # Get parser for language
             parser = self._language_service.get_parser(language)
-            
-            # Enable tree-sitter logging for the parser
-            self._ts_logger.enable_parser_logging(parser)
+            if not parser:
+                self._log("error", "Language not supported",
+                         language=language)
+                raise LanguageError(f"Language {language} not supported")
+                
+            # Enable tree-sitter logging
+            ts_logger.enable_parser_logging(parser)
             
             # Parse content
-            tree = parser.parse(bytes(content, 'utf-8'))
-            
-            # Log any tree errors
-            if tree and tree.root_node:
-                has_errors = self._ts_logger.log_tree_errors(tree, context=f"Parsing {language} content")
-                if has_errors and logger.isEnabledFor(logging.DEBUG):
-                    # Generate DOT graph for debugging
-                    import tempfile
-                    with tempfile.NamedTemporaryFile(mode='w', suffix='.dot', delete=False) as f:
-                        tree.print_dot_graph(f)
-                        logger.debug(f"DOT graph written to {f.name}")
-            
-            # Validate syntax using query handler
-            is_supported, errors = self._query_handler.validate_syntax(tree.root_node, language)
-            
+            tree = parser.parse(bytes(content, 'utf8'))
+            if not tree:
+                self._log("error", "Failed to parse content",
+                         language=language)
+                raise ParserError("Failed to parse content")
+                
+            # Check for syntax errors
+            is_supported = True
+            errors = []
+            if tree.root_node.has_error:
+                is_supported = False
+                errors.append("Syntax error detected")
+                self._log("warning", "Syntax error detected",
+                         language=language)
+                
             # Extract functions and other structures
             functions = self._query_handler.find_functions(tree.root_node, language)
             classes = self._query_handler.find_nodes(tree, "class", language)
@@ -140,7 +168,15 @@ class ParserService:
             error_nodes = self._query_handler.find_error_nodes(tree.root_node)
             
             # Disable tree-sitter logging for the parser
-            self._ts_logger.disable_parser_logging(parser)
+            ts_logger.disable_parser_logging(parser)
+            
+            self._log("debug", "Content parsed successfully",
+                     language=language,
+                     function_count=len(functions),
+                     class_count=len(classes),
+                     import_count=len(imports),
+                     error_count=len(error_nodes),
+                     missing_count=len(missing_nodes))
             
             return ParseResult(
                 tree=tree,
@@ -156,10 +192,14 @@ class ParserService:
             )
             
         except LanguageError as e:
-            logger.error(f"Language error: {str(e)}")
+            self._log("error", "Language error",
+                     language=language,
+                     error=str(e))
             raise
         except Exception as e:
-            logger.error(f"Failed to parse content: {str(e)}")
+            self._log("error", "Failed to parse content",
+                     language=language,
+                     error=str(e))
             raise ParserError(f"Failed to parse content: {str(e)}")
             
     def get_supported_languages(self) -> Set[str]:
