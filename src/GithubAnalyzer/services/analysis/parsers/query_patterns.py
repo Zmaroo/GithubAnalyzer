@@ -5,6 +5,244 @@ Contains predefined patterns for common code elements and their optimization set
 """
 from dataclasses import dataclass
 
+# Mapping of file extensions to tree-sitter language names
+EXTENSION_TO_LANGUAGE = {
+    # Web Technologies
+    'js': 'javascript',
+    'jsx': 'javascript',
+    'mjs': 'javascript',
+    'cjs': 'javascript',
+    'ts': 'typescript',
+    'tsx': 'typescript',
+    'mts': 'typescript',
+    'cts': 'typescript',
+    'html': 'html',
+    'htm': 'html',
+    'css': 'css',
+    'scss': 'scss',
+    'sass': 'scss',
+    'less': 'css',
+    'vue': 'vue',
+    'svelte': 'svelte',
+    
+    # Systems Programming
+    'c': 'c',
+    'h': 'c',
+    'cpp': 'cpp',
+    'hpp': 'cpp',
+    'cc': 'cpp',
+    'cxx': 'cpp',
+    'hxx': 'cpp',
+    'h++': 'cpp',
+    'cu': 'cuda',
+    'cuh': 'cuda',
+    'rs': 'rust',
+    'go': 'go',
+    'mod': 'gomod',
+    'sum': 'gosum',
+    
+    # JVM Languages
+    'java': 'java',
+    'kt': 'kotlin',
+    'kts': 'kotlin',
+    'scala': 'scala',
+    'sc': 'scala',
+    'groovy': 'groovy',
+    'gradle': 'groovy',
+    
+    # Scripting Languages
+    'py': 'python',
+    'pyi': 'python',
+    'pyc': 'python',
+    'pyd': 'python',
+    'pyw': 'python',
+    'rb': 'ruby',
+    'rbw': 'ruby',
+    'rake': 'ruby',
+    'gemspec': 'ruby',
+    'php': 'php',
+    'php4': 'php',
+    'php5': 'php',
+    'php7': 'php',
+    'php8': 'php',
+    'phps': 'php',
+    'lua': 'lua',
+    'pl': 'perl',
+    'pm': 'perl',
+    't': 'perl',
+    
+    # Shell Scripting
+    'sh': 'bash',
+    'bash': 'bash',
+    'zsh': 'bash',
+    'fish': 'fish',
+    'ksh': 'bash',
+    'csh': 'bash',
+    'tcsh': 'bash',
+    
+    # Functional Languages
+    'hs': 'haskell',
+    'lhs': 'haskell',
+    'ml': 'ocaml',
+    'mli': 'ocaml',
+    'ex': 'elixir',
+    'exs': 'elixir',
+    'heex': 'heex',
+    'clj': 'clojure',
+    'cljs': 'clojure',
+    'cljc': 'clojure',
+    'edn': 'clojure',
+    
+    # Configuration & Data
+    'yaml': 'yaml',
+    'yml': 'yaml',
+    'json': 'json',
+    'jsonc': 'json',
+    'toml': 'toml',
+    'xml': 'xml',
+    'xsl': 'xml',
+    'xslt': 'xml',
+    'svg': 'xml',
+    'xaml': 'xml',
+    'ini': 'ini',
+    'cfg': 'ini',
+    'conf': 'ini',
+    
+    # Build Systems
+    'cmake': 'cmake',
+    'make': 'make',
+    'mk': 'make',
+    'ninja': 'ninja',
+    'bazel': 'starlark',
+    'bzl': 'starlark',
+    'BUILD': 'starlark',
+    'WORKSPACE': 'starlark',
+    
+    # Documentation
+    'md': 'markdown',
+    'markdown': 'markdown',
+    'rst': 'rst',
+    'tex': 'latex',
+    'latex': 'latex',
+    'adoc': 'asciidoc',
+    'asciidoc': 'asciidoc',
+    
+    # Other Languages
+    'swift': 'swift',
+    'dart': 'dart',
+    'r': 'r',
+    'rmd': 'r',
+    'jl': 'julia',
+    'v': 'verilog',
+    'vh': 'verilog',
+    'vhd': 'vhdl',
+    'vhdl': 'vhdl',
+    'zig': 'zig',
+    
+    # Query Languages
+    'sql': 'sql',
+    'mysql': 'sql',
+    'pgsql': 'sql',
+    'graphql': 'graphql',
+    'gql': 'graphql',
+    
+    # Additional Languages
+    'proto': 'protobuf',
+    'thrift': 'thrift',
+    'wasm': 'wasm',
+    'wat': 'wat',
+    'glsl': 'glsl',
+    'hlsl': 'hlsl',
+    'wgsl': 'wgsl',
+    'dockerfile': 'dockerfile',
+    'Dockerfile': 'dockerfile',
+    'nginx.conf': 'nginx',
+    'rules': 'udev',
+    'hypr': 'hyprlang',
+    'kdl': 'kdl',
+    'ron': 'ron'
+}
+
+# Special filename mappings
+SPECIAL_FILENAMES = {
+    # Docker
+    'dockerfile': 'dockerfile',
+    'Dockerfile': 'dockerfile',
+    'Dockerfile.dev': 'dockerfile',
+    'Dockerfile.prod': 'dockerfile',
+    
+    # Build systems
+    'makefile': 'make',
+    'Makefile': 'make',
+    'CMakeLists.txt': 'cmake',
+    'meson.build': 'meson',
+    'BUILD': 'starlark',
+    'BUILD.bazel': 'starlark',
+    'WORKSPACE': 'starlark',
+    'WORKSPACE.bazel': 'starlark',
+    'BUCK': 'starlark',
+    
+    # Git
+    '.gitignore': 'gitignore',
+    '.gitattributes': 'gitattributes',
+    '.gitmodules': 'gitconfig',
+    '.gitconfig': 'gitconfig',
+    
+    # Shell
+    '.bashrc': 'bash',
+    '.zshrc': 'bash',
+    '.bash_profile': 'bash',
+    '.profile': 'bash',
+    '.zprofile': 'bash',
+    
+    # Python
+    'requirements.txt': 'requirements',
+    'constraints.txt': 'requirements',
+    'Pipfile': 'toml',
+    'pyproject.toml': 'toml',
+    'poetry.lock': 'toml',
+    'setup.py': 'python',
+    'setup.cfg': 'ini',
+    'tox.ini': 'ini',
+    
+    # JavaScript/Node
+    'package.json': 'json',
+    'package-lock.json': 'json',
+    'tsconfig.json': 'json',
+    '.eslintrc': 'json',
+    '.eslintrc.json': 'json',
+    '.eslintrc.js': 'javascript',
+    '.prettierrc': 'json',
+    '.prettierrc.json': 'json',
+    '.prettierrc.js': 'javascript',
+    
+    # Rust
+    'Cargo.toml': 'toml',
+    'Cargo.lock': 'toml',
+    
+    # Editor/IDE
+    '.editorconfig': 'properties',
+    '.vscode/settings.json': 'json',
+    '.idea/workspace.xml': 'xml',
+    
+    # Environment/Config
+    '.env': 'properties',
+    '.env.local': 'properties',
+    '.env.development': 'properties',
+    '.env.production': 'properties',
+    
+    # Other
+    'XCompose': 'xcompose',
+    '.luacheckrc': 'lua',
+    '.styluarc': 'lua',
+    'CHANGELOG.md': 'markdown',
+    'README.md': 'markdown',
+    'LICENSE': 'text',
+    'Procfile': 'properties',
+    'docker-compose.yml': 'yaml',
+    'docker-compose.yaml': 'yaml'
+}
+
 @dataclass
 class QueryOptimizationSettings:
     """Settings for optimizing query execution."""
@@ -821,7 +1059,7 @@ def is_js_variant(language: str) -> bool:
     """
     return language.lower() in JS_VARIANTS
 
-def get_base_language(language: str) -> str:
+def get_base_language(language: Optional[str]) -> str:
     """Get base language for variants.
     
     Args:
@@ -830,6 +1068,12 @@ def get_base_language(language: str) -> str:
     Returns:
         Base language (e.g., 'javascript' for 'jsx')
     """
-    if language.lower() in {'jsx', 'tsx'}:
-        return 'javascript' if language.lower() == 'jsx' else 'typescript'
-    return language.lower() 
+    if not language:
+        return "python"  # Default to Python as our primary language
+        
+    language = language.lower()
+    if language in {'jsx', 'tsx'}:
+        return 'javascript'
+    elif language in {'hpp', 'cc', 'hh'}:
+        return 'cpp'
+    return language 

@@ -1,351 +1,325 @@
 """Language service for managing tree-sitter language support."""
 import json
 from pathlib import Path
-from typing import Dict, Optional, Set, Any, Callable, List, Union
-from tree_sitter import Parser, Language
+from typing import Dict, Optional, Set, Any, List
+from tree_sitter import Language, Parser, Node
+
 from tree_sitter_language_pack import get_binding, get_language, get_parser
 
-class CustomParser:
-    """Base class for custom parsers for unsupported languages."""
-    def parse(self, content: bytes) -> Any:
-        """Parse content into an AST-like structure."""
-        raise NotImplementedError()
-        
-    def query(self, node: Any, pattern: str) -> List[Dict[str, Any]]:
-        """Query the AST-like structure."""
-        raise NotImplementedError()
+from GithubAnalyzer.models.analysis.types import (
+    LanguageId,
+    QueryPattern,
+    NodeDict,
+    NodeList,
+    QueryResult
+)
+from GithubAnalyzer.models.core.errors import LanguageError
+from GithubAnalyzer.utils.logging import get_logger
+from .utils import (
+    get_node_text,
+    node_to_dict,
+    is_valid_node,
+    get_node_type,
+    get_node_text_safe,
+    TreeSitterServiceBase
+)
+from .query_patterns import (
+    QUERY_PATTERNS,
+    EXTENSION_TO_LANGUAGE,
+    SPECIAL_FILENAMES
+)
 
-class LanguageService:
-    """Service for managing tree-sitter language support."""
+logger = get_logger(__name__)
+
+class LanguageService(TreeSitterServiceBase):
+    """Service for managing tree-sitter language operations."""
     
     def __init__(self):
-        """Initialize language service."""
-        self._language_definitions = self._load_language_definitions()
-        self._supported_languages = self._get_supported_languages()
-        self._extension_map = self._build_extension_map()
-        self._custom_parsers: Dict[str, CustomParser] = {}
-        
-    def _load_language_definitions(self) -> Dict:
-        """Load language definitions from JSON."""
-        definitions_path = Path(__file__).parent.parent.parent.parent.parent / "docs" / "language_definitions.json"
-        with open(definitions_path) as f:
-            return json.load(f)
-            
-    def _get_supported_languages(self) -> Set[str]:
-        """Get set of languages supported by tree-sitter-language-pack."""
-        supported = set()
-        for lang in self._language_definitions.keys():
-            try:
-                # Try to get language from pack
-                get_language(lang)
-                supported.add(lang)
-            except Exception:
-                continue
-        return supported
-        
-    def _build_extension_map(self) -> Dict[str, str]:
-        """Build mapping of file extensions to language identifiers."""
-        return {
-            # C family
-            '.c': 'c',
-            '.h': 'c',
-            '.cpp': 'cpp',
-            '.hpp': 'cpp',
-            '.cc': 'cpp',
-            '.cxx': 'cpp',
-            '.c++': 'cpp',
-            
-            # Web
-            '.js': 'javascript',
-            '.jsx': 'javascript',
-            '.ts': 'typescript',
-            '.tsx': 'typescript',
-            '.html': 'html',
-            '.css': 'css',
-            '.php': 'php',
-            
-            # System
-            '.sh': 'bash',
-            '.bash': 'bash',
-            '.rs': 'rust',
-            '.go': 'go',
-            '.java': 'java',
-            '.scala': 'scala',
-            '.rb': 'ruby',
-            '.py': 'python',
-            '.swift': 'swift',
-            '.kt': 'kotlin',
-            '.kts': 'kotlin',
-            
-            # Data/Config
-            '.json': 'json',
-            '.yaml': 'yaml',
-            '.yml': 'yaml',
-            '.toml': 'toml',
-            '.xml': 'xml',
-            
-            # Documentation
-            '.md': 'markdown',
-            '.rst': 'rst',
-            '.org': 'org',
-            
-            # Other languages
-            '.lua': 'lua',
-            '.r': 'r',
-            '.elm': 'elm',
-            '.ex': 'elixir',
-            '.exs': 'elixir',
-            '.erl': 'erlang',
-            '.hrl': 'erlang',
-            '.hs': 'haskell',
-            '.lhs': 'haskell',
-            '.pl': 'perl',
-            '.pm': 'perl',
-            '.sql': 'sql',
-            '.vue': 'vue',
-            '.zig': 'zig'
-        }
-        
-    def is_language_supported(self, language: str) -> bool:
-        """Check if a language is supported by tree-sitter-language-pack."""
-        return language in self._supported_languages
-        
-    def get_language_for_file(self, file_path: str) -> Optional[str]:
-        """Get language identifier for a file path."""
-        ext = Path(file_path).suffix.lower()
-        return self._extension_map.get(ext)
-        
-    def register_custom_parser(self, language: str, parser: CustomParser) -> None:
-        """Register a custom parser for an unsupported language.
-        
-        Args:
-            language: Language identifier
-            parser: Custom parser implementation
-        """
-        if language in self._supported_languages:
-            raise ValueError(f"Language {language} is already supported by tree-sitter-language-pack")
-        self._custom_parsers[language] = parser
-        
-    def get_parser(self, language: str) -> Union[Parser, CustomParser]:
-        """Get parser for a language, with fallback to custom parser.
-        
-        Args:
-            language: Language identifier
-            
-        Returns:
-            Tree-sitter parser or custom parser
-            
-        Raises:
-            ValueError: If language is not supported and no custom parser exists
-        """
-        try:
-            if self.is_language_supported(language):
-                return get_parser(language)
-            if language in self._custom_parsers:
-                return self._custom_parsers[language]
-            raise ValueError(f"Language {language} is not supported and no custom parser exists")
-        except Exception as e:
-            if language in self._custom_parsers:
-                return self._custom_parsers[language]
-            raise ValueError(f"Failed to get parser for {language}: {str(e)}")
-            
-    def get_query_methods(self, language: str) -> Dict[str, Callable]:
-        """Get language-specific query methods.
-        
-        Args:
-            language: Language identifier
-            
-        Returns:
-            Dictionary mapping query types to query methods
-        """
-        if language in self._custom_parsers:
-            # Custom parsers should implement their own query methods
-            parser = self._custom_parsers[language]
-            return {
-                'query': parser.query
-            }
-            
-        # Get tree-sitter query methods based on language
-        methods = {
-            'find_functions': self._get_function_query(language),
-            'find_classes': self._get_class_query(language),
-            'find_methods': self._get_method_query(language),
-            'find_imports': self._get_import_query(language),
-            'find_variables': self._get_variable_query(language)
-        }
-        
-        # Add language-specific query methods
-        if language == 'python':
-            methods.update({
-                'find_decorators': self._get_python_decorator_query(),
-                'find_async_functions': self._get_python_async_query()
-            })
-        elif language in {'javascript', 'typescript'}:
-            methods.update({
-                'find_jsx_elements': self._get_js_jsx_query(),
-                'find_exports': self._get_js_export_query()
-            })
-        elif language == 'rust':
-            methods.update({
-                'find_traits': self._get_rust_trait_query(),
-                'find_impls': self._get_rust_impl_query()
-            })
-            
-        return methods
-        
-    def _get_function_query(self, language: str) -> Callable:
-        """Get function query method for a language."""
-        query_pattern = self._get_query_pattern(language, 'function')
-        def query_func(node: Any) -> List[Dict[str, Any]]:
-            return self._execute_query(node, query_pattern)
-        return query_func
-        
-    def _get_class_query(self, language: str) -> Callable:
-        """Get class query method for a language."""
-        query_pattern = self._get_query_pattern(language, 'class')
-        def query_func(node: Any) -> List[Dict[str, Any]]:
-            return self._execute_query(node, query_pattern)
-        return query_func
-        
-    def _get_method_query(self, language: str) -> Callable:
-        """Get method query method for a language."""
-        query_pattern = self._get_query_pattern(language, 'method')
-        def query_func(node: Any) -> List[Dict[str, Any]]:
-            return self._execute_query(node, query_pattern)
-        return query_func
-        
-    def _get_import_query(self, language: str) -> Callable:
-        """Get import query method for a language."""
-        query_pattern = self._get_query_pattern(language, 'import')
-        def query_func(node: Any) -> List[Dict[str, Any]]:
-            return self._execute_query(node, query_pattern)
-        return query_func
-        
-    def _get_variable_query(self, language: str) -> Callable:
-        """Get variable query method for a language."""
-        query_pattern = self._get_query_pattern(language, 'variable')
-        def query_func(node: Any) -> List[Dict[str, Any]]:
-            return self._execute_query(node, query_pattern)
-        return query_func
-        
-    # Language-specific query methods
-    def _get_python_decorator_query(self) -> Callable:
-        """Get Python decorator query method."""
-        query_pattern = """
-            (decorator
-              name: (_) @decorator.name
-              arguments: (argument_list)? @decorator.args) @decorator
-        """
-        def query_func(node: Any) -> List[Dict[str, Any]]:
-            return self._execute_query(node, query_pattern)
-        return query_func
-        
-    def _get_python_async_query(self) -> Callable:
-        """Get Python async function query method."""
-        query_pattern = """
-            (async_function_definition
-              name: (identifier) @async.name
-              parameters: (parameters) @async.params
-              body: (block) @async.body) @async.def
-        """
-        def query_func(node: Any) -> List[Dict[str, Any]]:
-            return self._execute_query(node, query_pattern)
-        return query_func
-        
-    def _get_js_jsx_query(self) -> Callable:
-        """Get JSX element query method."""
-        query_pattern = """
-            (jsx_element
-              opening_element: (jsx_opening_element
-                name: (_) @jsx.tag.name
-                attributes: (jsx_attributes)? @jsx.attrs)
-              children: (_)* @jsx.children) @jsx
-        """
-        def query_func(node: Any) -> List[Dict[str, Any]]:
-            return self._execute_query(node, query_pattern)
-        return query_func
-        
-    def _get_js_export_query(self) -> Callable:
-        """Get JavaScript/TypeScript export query method."""
-        query_pattern = """
-            (export_statement
-              declaration: (_) @export.declaration) @export
-        """
-        def query_func(node: Any) -> List[Dict[str, Any]]:
-            return self._execute_query(node, query_pattern)
-        return query_func
-        
-    def _get_rust_trait_query(self) -> Callable:
-        """Get Rust trait query method."""
-        query_pattern = """
-            (trait_item
-              name: (type_identifier) @trait.name
-              body: (declaration_list) @trait.body) @trait
-        """
-        def query_func(node: Any) -> List[Dict[str, Any]]:
-            return self._execute_query(node, query_pattern)
-        return query_func
-        
-    def _get_rust_impl_query(self) -> Callable:
-        """Get Rust impl query method."""
-        query_pattern = """
-            (impl_item
-              type: (type_identifier) @impl.type
-              trait: (type_identifier)? @impl.trait
-              body: (declaration_list) @impl.body) @impl
-        """
-        def query_func(node: Any) -> List[Dict[str, Any]]:
-            return self._execute_query(node, query_pattern)
-        return query_func
-        
-    def _execute_query(self, node: Any, query_pattern: str) -> List[Dict[str, Any]]:
-        """Execute a query pattern on a node."""
-        if isinstance(node, (dict, CustomParser)):
-            # Handle custom parser nodes
-            parser = self._custom_parsers.get(node.get('language'))
-            if parser:
-                return parser.query(node, query_pattern)
-            return []
-            
-        try:
-            # Handle tree-sitter nodes
-            lang = node.tree.language
-            query = Query(lang, query_pattern)
-            matches = []
-            for _, match in query.matches(node):
-                matches.append(match)
-            return matches
-        except Exception:
-            return []
-            
-    def _get_query_pattern(self, language: str, pattern_type: str) -> str:
-        """Get query pattern for a language and type."""
-        from .query_patterns import get_query_pattern
-        return get_query_pattern(language, pattern_type)
-        
-    def get_language(self, language: str):
-        """Get language object, with error handling."""
-        if not self.is_language_supported(language):
-            raise ValueError(f"Language {language} is not supported by tree-sitter-language-pack")
-        return get_language(language)
-        
-    def get_binding(self, language: str) -> int:
-        """Get language binding, with error handling."""
-        if not self.is_language_supported(language):
-            raise ValueError(f"Language {language} is not supported by tree-sitter-language-pack")
-        return get_binding(language)
-        
-    def get_language_map(self) -> Dict[str, str]:
-        """Get mapping of language identifiers to tree-sitter language names."""
-        # For now, we use a 1:1 mapping since tree-sitter-language-pack uses the same names
-        return {lang: lang for lang in self._supported_languages}
+        """Initialize the language service."""
+        super().__init__()
+        self._supported_languages = set(EXTENSION_TO_LANGUAGE.values())
+        self._extension_to_language = EXTENSION_TO_LANGUAGE
         
     @property
     def supported_languages(self) -> Set[str]:
-        """Get set of supported languages."""
-        return self._supported_languages.copy()
+        """Get the set of supported languages."""
+        return self._supported_languages
         
     @property
-    def extension_map(self) -> Dict[str, str]:
-        """Get copy of extension map."""
-        return self._extension_map.copy() 
+    def extension_to_language(self) -> dict:
+        """Get the mapping of file extensions to language identifiers."""
+        return self._extension_to_language
+        
+    def get_language_for_file(self, file_path: str) -> str:
+        """Get the language identifier for a file path.
+        
+        Args:
+            file_path: Path to the file
+            
+        Returns:
+            Language identifier string. Returns 'plaintext' for unsupported or unknown file types.
+        """
+        # Handle special filenames without extensions
+        filename = Path(file_path).name.lower()
+        if filename in SPECIAL_FILENAMES:
+            mapped = SPECIAL_FILENAMES[filename]
+            if self.is_language_supported(mapped):
+                return mapped
+            return 'plaintext'
+        
+        # Get extension and try to map it
+        extension = Path(file_path).suffix.lstrip('.')
+        if not extension:
+            # Try to detect language from content for files without extension
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                detected = self.detect_language(content)
+                if detected != 'plaintext':
+                    return detected
+            except:
+                pass
+            return 'plaintext'
+            
+        # Check if extension maps to a language
+        if extension.lower() in self._extension_to_language:
+            language = self._extension_to_language[extension.lower()]
+            if self.is_language_supported(language):
+                return language
+                
+        # Try to detect language from content for unknown extensions
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            detected = self.detect_language(content)
+            if detected != 'plaintext':
+                return detected
+        except:
+            pass
+            
+        return 'plaintext'
+        
+    def is_language_supported(self, language: str) -> bool:
+        """Check if a language is supported.
+        
+        Args:
+            language: Language identifier to check
+            
+        Returns:
+            True if the language is supported
+        """
+        try:
+            # Try to get the language object - if it succeeds, the language is supported
+            return bool(get_language(language))
+        except:
+            return False
+        
+    def get_parser(self, language: str) -> Parser:
+        """Get a parser for a language.
+        
+        Args:
+            language: Language identifier
+            
+        Returns:
+            Configured Parser instance
+            
+        Raises:
+            LanguageError: If the language is not supported or parser creation fails
+        """
+        start_time = self._time_operation('get_parser')
+        try:
+            if not self.is_language_supported(language):
+                raise LanguageError(f"Language not supported: {language}")
+                
+            parser = get_parser(language)
+            if not parser:
+                raise LanguageError(f"Failed to create parser for language: {language}")
+            return parser
+        except Exception as e:
+            raise LanguageError(f"Error creating parser for {language}: {str(e)}")
+        finally:
+            self._end_operation('get_parser', start_time)
+            
+    def get_language_object(self, language: str) -> Language:
+        """Get the tree-sitter Language object for a language.
+        
+        Args:
+            language: Language identifier
+            
+        Returns:
+            Language object
+            
+        Raises:
+            LanguageError: If the language is not supported or object creation fails
+        """
+        start_time = self._time_operation('get_language_object')
+        try:
+            if not self.is_language_supported(language):
+                raise LanguageError(f"Language not supported: {language}")
+                
+            lang_obj = get_language(language)
+            if not lang_obj:
+                raise LanguageError(f"Failed to get language object for: {language}")
+            return lang_obj
+        except Exception as e:
+            raise LanguageError(f"Error getting language object for {language}: {str(e)}")
+        finally:
+            self._end_operation('get_language_object', start_time)
+
+    def detect_language(self, code: str) -> str:
+        """Detect the programming language of a code snippet.
+
+        Args:
+            code: The code snippet to analyze.
+
+        Returns:
+            The detected language identifier.
+        """
+        if not code or code.isspace():
+            return "plaintext"
+
+        # Special case handling for common file patterns
+        if code.strip().startswith("<?php"):
+            return "php"
+        if code.strip().startswith("<!DOCTYPE html") or code.strip().startswith("<html"):
+            return "html"
+        if code.strip().startswith("<?xml"):
+            return "xml"
+        if code.strip().startswith("---") or code.strip().startswith("apiVersion:"):
+            return "yaml"
+        if code.strip().startswith("#") and "markdown" in code.lower():
+            return "markdown"
+
+        # Define language features for better detection
+        language_features = {
+            "python": {
+                "keywords": ["def", "class", "import", "from", "async", "await", "with", "as", "pass"],
+                "patterns": [
+                    r"def\s+\w+\s*\([^)]*\)\s*:",
+                    r"class\s+\w+\s*(?:\([^)]*\))?\s*:",
+                    r"@\w+",
+                    r"__\w+__"
+                ]
+            },
+            "javascript": {
+                "keywords": ["const", "let", "var", "function", "class", "extends", "async", "await"],
+                "patterns": [
+                    r"const\s+\w+\s*=",
+                    r"let\s+\w+\s*=",
+                    r"function\s*\w*\s*\([^)]*\)\s*{",
+                    r"class\s+\w+\s*{",
+                    r"=>\s*{",
+                    r"export\s+(?:default\s+)?(?:class|function|const|let)"
+                ]
+            },
+            "typescript": {
+                "keywords": ["interface", "type", "enum", "namespace", "implements", "extends"],
+                "patterns": [
+                    r"interface\s+\w+\s*{",
+                    r"type\s+\w+\s*=",
+                    r":\s*(?:string|number|boolean|any|void)\s*[;,)]",
+                    r"<[^>]+>"
+                ]
+            },
+            "rust": {
+                "keywords": ["fn", "pub", "struct", "impl", "trait", "let", "mut", "match"],
+                "patterns": [
+                    r"fn\s+\w+\s*(?:<[^>]+>)?\s*\([^)]*\)\s*(?:->\s*\w+\s*)?{",
+                    r"pub\s+(?:fn|struct|trait)",
+                    r"let\s+mut\s+\w+",
+                    r"::\w+",
+                    r"Result<\w+,\s*\w+>"
+                ]
+            },
+            "go": {
+                "keywords": ["func", "package", "import", "type", "struct", "interface", "var", "const"],
+                "patterns": [
+                    r"package\s+\w+",
+                    r"func\s+\w+\s*\([^)]*\)\s*(?:\([^)]*\))?\s*{",
+                    r"type\s+\w+\s+struct\s*{",
+                    r"var\s+\w+\s+\w+"
+                ]
+            },
+            "java": {
+                "keywords": ["public", "private", "protected", "class", "interface", "extends", "implements"],
+                "patterns": [
+                    r"public\s+class\s+\w+",
+                    r"private\s+\w+\s+\w+\s*\([^)]*\)",
+                    r"System\.",
+                    r"@Override"
+                ]
+            }
+        }
+
+        # Calculate scores for each language
+        scores = {}
+        for lang, features in language_features.items():
+            score = 0
+            
+            # Check for keywords
+            for keyword in features["keywords"]:
+                if keyword in code:
+                    score += 1
+                    
+            # Check for patterns
+            import re
+            for pattern in features["patterns"]:
+                matches = re.findall(pattern, code)
+                score += len(matches) * 2  # Patterns are weighted more heavily
+                
+            # Try parsing with tree-sitter
+            try:
+                parser = self.get_parser(lang)
+                tree = parser.parse(bytes(code, "utf8"))
+                error_count = len(list(self._find_error_nodes(tree.root_node)))
+                total_nodes = len(list(tree.root_node.walk()))
+                
+                if total_nodes > 0:
+                    error_ratio = error_count / total_nodes
+                    if error_ratio < 0.3:  # Less than 30% error nodes
+                        score += 5  # Significant boost for successful parsing
+                        if error_ratio < 0.1:  # Less than 10% error nodes
+                            score += 5  # Additional boost for very clean parsing
+            except Exception:
+                continue
+            
+            if score > 0:
+                scores[lang] = score
+                
+        if scores:
+            best_lang = max(scores.items(), key=lambda x: x[1])[0]
+            return best_lang
+            
+        return "plaintext"  # Default to plaintext if no language is detected
+
+    def _find_error_nodes(self, node: Node) -> List[Node]:
+        """Find all error nodes in a tree."""
+        errors = []
+        if node.has_error:
+            errors.append(node)
+        for child in node.children:
+            errors.extend(self._find_error_nodes(child))
+        return errors
+
+    def get_binding(self, language: str) -> int:
+        """Get language binding using tree-sitter-language-pack.
+        
+        Args:
+            language: Language identifier
+            
+        Returns:
+            Language binding ID
+            
+        Raises:
+            LanguageError: If language is not supported or binding retrieval fails
+        """
+        start_time = self._time_operation('get_binding')
+        try:
+            try:
+                return get_binding(language)
+            except LookupError as e:
+                raise LanguageError(f"Language {language} is not supported: {str(e)}")
+            except Exception as e:
+                raise LanguageError(f"Failed to get binding for {language}: {str(e)}")
+        finally:
+            self._end_operation('get_binding', start_time) 

@@ -1,72 +1,99 @@
-from typing import Dict, List, Optional, Any, Tuple, Union
-import logging
-
-from GithubAnalyzer.models.core.errors import ParserError, QueryError
 """Tree-sitter models for code analysis."""
+from typing import Dict, List, Optional, Any, Tuple, Union, TypedDict
 from dataclasses import dataclass, field
 from tree_sitter import Node, Tree, Point, Language, Parser
-import json
 
 from GithubAnalyzer.utils.logging import get_logger
+from GithubAnalyzer.models.core.errors import ParserError, QueryError
+from GithubAnalyzer.services.analysis.parsers.utils import NodeDict, NodeList
 
 logger = get_logger(__name__)
 
-def get_node_text(node: Optional[Node], content: str) -> str:
-    """Get text from a node."""
-    if not node:
-        return ""
-    return content[node.start_byte:node.end_byte]
+# Define proper type for node dictionaries
+class NodeDict(TypedDict):
+    """Type definition for node dictionary."""
+    type: str
+    text: str
+    start_point: Tuple[int, int]
+    end_point: Tuple[int, int]
+    children: List['NodeDict']
 
-def node_to_dict(node: Node, include_metadata: bool = False) -> Dict[str, Any]:
-    """Convert node to dictionary representation."""
-    result = {
-        'type': node.type,
-        'children': [node_to_dict(child, include_metadata) for child in node.children]
-    }
+@dataclass
+class TreeSitterResult:
+    """Result of a tree-sitter parse operation."""
+    tree: Optional[Tree] = None
+    is_valid: bool = False
+    errors: List[str] = field(default_factory=list)
+    language: Optional[str] = None
     
-    if include_metadata:
-        result.update({
-            'start_point': node.start_point,
-            'end_point': node.end_point
-        })
+    # Node collections
+    functions: List[NodeDict] = field(default_factory=list)
+    classes: List[NodeDict] = field(default_factory=list)
+    imports: List[NodeDict] = field(default_factory=list)
     
-    return result
+    # Tree statistics
+    node_count: int = 0
+    error_count: int = 0
+    depth: int = 0
+    
+    # Performance metrics
+    parse_time_ms: float = 0
+    query_time_ms: float = 0
 
-def format_error_context(code: str, position: int, context_lines: int = 3) -> str:
-    """Format error context from a position in code."""
-    if position >= len(code):
-        return code
-        
-    lines = code.split('\n')
-    line_no = 0
-    pos = 0
+@dataclass
+class TreeSitterQueryMatch:
+    """A single query match result."""
+    pattern_index: int
+    captures: Dict[str, Node]
+    node: Node
+    start_position: Point
+    end_position: Point
+    text: str = field(init=False)
     
-    # Find the line number containing the position
-    for i, line in enumerate(lines):
-        if pos + len(line) + 1 > position:
-            line_no = i
-            break
-        pos += len(line) + 1
-    
-    # Calculate the column number
-    col_no = position - pos
-    
-    # Get context lines
-    start = max(0, line_no - context_lines)
-    end = min(len(lines), line_no + context_lines + 1)
-    
-    # Format output with line numbers and pointer
-    result = []
-    for i in range(start, end):
-        result.append(f"{i+1:>3} | {lines[i]}")
-        if i == line_no:
-            result.append("    " + " " * col_no + "^")
-            result.append("")  # Add blank line after pointer
-    
-    return '\n'.join(result[:-1] if not result else result)  # Remove trailing empty line if it exists
+    def __post_init__(self):
+        """Initialize derived fields."""
+        self.text = self.node.text.decode('utf8') if self.node else ""
 
-def count_nodes(node: Optional[Node]) -> int:
-    """Count total nodes in a tree starting from given node."""
-    if not node:
-        return 0
-    return 1 + sum(count_nodes(child) for child in node.children) 
+@dataclass
+class TreeSitterQueryResult:
+    """Result of a tree-sitter query operation."""
+    matches: List[TreeSitterQueryMatch] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
+    is_valid: bool = True
+    execution_time_ms: float = 0
+    pattern_count: int = 0
+    match_count: int = 0
+
+@dataclass
+class TreeSitterRange:
+    """Represents a range in the source code."""
+    start_point: Point
+    end_point: Point
+    start_byte: int
+    end_byte: int
+    text: str
+
+@dataclass
+class TreeSitterEdit:
+    """Represents a code edit operation."""
+    old_range: TreeSitterRange
+    new_range: TreeSitterRange
+    old_text: str
+    new_text: str
+    is_valid: bool = True
+    errors: List[str] = field(default_factory=list)
+    
+    @property
+    def is_deletion(self) -> bool:
+        """Check if this edit is a deletion."""
+        return bool(self.old_text and not self.new_text)
+    
+    @property
+    def is_insertion(self) -> bool:
+        """Check if this edit is an insertion."""
+        return bool(not self.old_text and self.new_text)
+    
+    @property
+    def is_modification(self) -> bool:
+        """Check if this edit is a modification."""
+        return bool(self.old_text and self.new_text) 

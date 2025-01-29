@@ -29,6 +29,28 @@ class ImportFixer:
             (r'from\s+GithubAnalyzer\.embedding_service\s+import',
              lambda m: 'from GithubAnalyzer.services.core.database.embedding_service import'),
             
+            # Parser services and tree-sitter
+            (r'from\s+GithubAnalyzer\.parsers\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.services.analysis.parsers.{m.group(1)} import'),
+            (r'from\s+GithubAnalyzer\.services\.parsers\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.services.analysis.parsers.{m.group(1)} import'),
+            (r'from\s+GithubAnalyzer\.parser_service\s+import',
+             lambda m: 'from GithubAnalyzer.services.core.parser_service import'),
+            (r'from\s+GithubAnalyzer\.tree_sitter_editor\s+import',
+             lambda m: 'from GithubAnalyzer.services.analysis.parsers.tree_sitter_editor import'),
+            
+            # Tree-sitter utilities and queries
+            (r'from\s+GithubAnalyzer\.utils\.tree_sitter_utils\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.services.analysis.parsers.utils import'),
+            (r'from\s+GithubAnalyzer\.tree_sitter\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.services.analysis.parsers.utils import'),
+            (r'from\s+GithubAnalyzer\.utils\.tree_sitter\s+import',
+             lambda m: 'from GithubAnalyzer.services.analysis.parsers.utils import'),
+            (r'from\s+GithubAnalyzer\.tree_sitter_query\s+import',
+             lambda m: 'from GithubAnalyzer.services.analysis.parsers.query_service import'),
+            (r'from\s+GithubAnalyzer\.tree_sitter_traversal\s+import',
+             lambda m: 'from GithubAnalyzer.services.analysis.parsers.traversal_service import'),
+            
             # Logging structure
             (r'from\s+GithubAnalyzer\.utils\.log_utils\.base\s+import',
              lambda m: 'from GithubAnalyzer.utils.logging import'),
@@ -36,18 +58,38 @@ class ImportFixer:
              lambda m: f'from GithubAnalyzer.utils.logging.{m.group(1)} import'),
             (r'from\s+GithubAnalyzer\.utils\.log_utils\s+import',
              lambda m: 'from GithubAnalyzer.utils.logging import'),
+            (r'from\s+GithubAnalyzer\.logging\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.utils.logging.{m.group(1)} import'),
             
-            # Core/Analysis structure
+            # Core/Analysis models - direct and nested
             (r'from\s+GithubAnalyzer\.core\.models\.([\w\.]+)\s+import', 
              lambda m: f'from GithubAnalyzer.models.core.{m.group(1)} import'),
             (r'from\s+GithubAnalyzer\.analysis\.models\.([\w\.]+)\s+import',
              lambda m: f'from GithubAnalyzer.models.analysis.{m.group(1)} import'),
+            (r'from\s+GithubAnalyzer\.models\.core\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.models.core.{m.group(1)} import'),
+            (r'from\s+GithubAnalyzer\.models\.analysis\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.models.analysis.{m.group(1)} import'),
+            (r'from\s+GithubAnalyzer\.models\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.models.{m.group(1)} import'),
+            
+            # Core/Analysis services - direct and nested
             (r'from\s+GithubAnalyzer\.core\.services\.([\w\.]+)\s+import',
              lambda m: f'from GithubAnalyzer.services.core.{m.group(1)} import'),
             (r'from\s+GithubAnalyzer\.analysis\.services\.([\w\.]+)\s+import',
              lambda m: f'from GithubAnalyzer.services.analysis.{m.group(1)} import'),
+            (r'from\s+GithubAnalyzer\.services\.core\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.services.core.{m.group(1)} import'),
+            (r'from\s+GithubAnalyzer\.services\.analysis\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.services.analysis.{m.group(1)} import'),
+            (r'from\s+GithubAnalyzer\.services\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.services.{m.group(1)} import'),
+            
+            # Direct core/analysis imports
             (r'from\s+GithubAnalyzer\.core\.([\w\.]+)\s+import',
-             lambda m: f'from GithubAnalyzer.{m.group(1)} import'),
+             lambda m: f'from GithubAnalyzer.services.core.{m.group(1)} import'),
+            (r'from\s+GithubAnalyzer\.analysis\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.services.analysis.{m.group(1)} import'),
             
             # Test imports
             (r'from\s+tests\.core\.([\w\.]+)\s+import',
@@ -57,17 +99,21 @@ class ImportFixer:
             (r'from\s+tests\.services\.([\w\.]+)\s+import',
              lambda m: f'from tests.services.{m.group(1)} import'),
             
-            # Handle old utils structure
+            # Utils structure
             (r'from\s+GithubAnalyzer\.core\.utils\.([\w\.]+)\s+import',
              lambda m: f'from GithubAnalyzer.utils.{m.group(1)} import'),
-            
-            # Remove settings imports since they're unused
-            (r'from\s+GithubAnalyzer\.config\.settings\s+import\s+[\w\s,]+\n', lambda m: ''),
-            (r'from\s+GithubAnalyzer\.config\s+import\s+settings\n', lambda m: ''),
+            (r'from\s+GithubAnalyzer\.utils\.([\w\.]+)\s+import',
+             lambda m: f'from GithubAnalyzer.utils.{m.group(1)} import'),
             
             # Error handling patterns
             (r'from\s+GithubAnalyzer\.core\.models\.errors\s+import',
              lambda m: 'from GithubAnalyzer.models.core.errors import'),
+            (r'from\s+GithubAnalyzer\.errors\s+import',
+             lambda m: 'from GithubAnalyzer.models.core.errors import'),
+            
+            # Remove settings imports since they're unused
+            (r'from\s+GithubAnalyzer\.config\.settings\s+import\s+[\w\s,]+\n', lambda m: ''),
+            (r'from\s+GithubAnalyzer\.config\s+import\s+settings\n', lambda m: ''),
         ]
     
     def fix_imports(self, content: str) -> str:
@@ -153,7 +199,10 @@ def fix_project_imports() -> None:
     """Fix imports across the entire project."""
     try:
         fixer = ImportFixer()
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+        # Get the absolute path to the project root (GithubAnalyzer directory)
+        current_file = Path(__file__)
+        project_root = str(current_file.parent.parent.parent.parent)
+        
         logger.info({
             "message": "Starting import fixes",
             "context": {"project_root": project_root}

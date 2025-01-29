@@ -5,167 +5,359 @@ import tempfile
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import datetime
 
 from GithubAnalyzer.services.core.database.postgres_service import PostgresService
 from GithubAnalyzer.services.core.parser_service import ParserService
 from GithubAnalyzer.services.core.database.neo4j_service import Neo4jService
 from GithubAnalyzer.services.core.file_service import FileService
 from GithubAnalyzer.utils.logging import get_logger
-from GithubAnalyzer.services.analysis.parsers.tree_sitter_query import TreeSitterQueryHandler
+from GithubAnalyzer.services.analysis.parsers.query_service import TreeSitterQueryHandler
+from GithubAnalyzer.models.core.file import FileInfo, FilePattern, FileFilterConfig
+from GithubAnalyzer.models.core.database import CodeSnippet, Function, File
+from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
+from GithubAnalyzer.services.analysis.parsers.custom_parsers import get_custom_parser
+from GithubAnalyzer.services.analysis.parsers.utils import (
+    get_node_text,
+    node_to_dict,
+    iter_children,
+    get_node_hierarchy,
+    find_common_ancestor
+)
 
 load_dotenv()
 logger = get_logger(__name__)
 
 class RepoProcessor:
+    """Service for processing GitHub repositories."""
+    
     def __init__(self):
-        self.parser_service = ParserService()
-        self.file_service = FileService()
+        """Initialize the repository processor."""
         self.pg_service = PostgresService()
         self.neo4j_service = Neo4jService()
-        self.github_token = os.getenv('GITHUB_TOKEN')
-        self.query_handler = TreeSitterQueryHandler()
+        self.file_service = FileService()
+        self.parser_service = ParserService()
+        self.language_service = LanguageService()
+        self._query_handler = TreeSitterQueryHandler()
         
-    def clone_repo(self, repo_url: str, target_dir: str) -> str:
-        """Clone a GitHub repository to a local directory."""
-        repo_name = repo_url.split('/')[-1].replace('.git', '')
-        repo_path = os.path.join(target_dir, repo_name)
-        
-        if not os.path.exists(repo_path):
-            if self.github_token and 'github.com' in repo_url:
-                auth_url = repo_url.replace('https://', f'https://{self.github_token}@')
-                git.Repo.clone_from(auth_url, repo_path)
-            else:
-                git.Repo.clone_from(repo_url, repo_path)
-            
-        return repo_path
-        
-    def process_repo(self, repo_url: str) -> None:
-        """Process a GitHub repository and store its data in databases."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Clone repository
-            repo_path = self.clone_repo(repo_url, temp_dir)
-            
-            # Initialize database connections
-            with self.pg_service as pg, self.neo4j_service as neo4j:
-                # Create repository entry and get ID
-                repo_id = pg.create_repository(repo_url)
-                
-                # Process all supported files
-                code_entries = []
-                file_functions = {}
-                
-                for file_path in Path(repo_path).rglob("*"):
-                    try:
-                        # Skip non-file items and hidden files
-                        if not file_path.is_file() or file_path.name.startswith('.'):
-                            continue
-                            
-                        relative_path = str(file_path.relative_to(repo_path))
-                        
-                        # Parse file
-                        parse_result = self.parser_service.parse_file(file_path)
-                        if not parse_result.tree:
-                            continue
-                            
-                        # Store code in PostgreSQL
-                        with open(file_path, 'r') as f:
-                            content = f.read()
-                        code_entries.append((repo_id, relative_path, content))
-                        
-                        # Create file node in Neo4j
-                        neo4j.create_file_node(repo_id, relative_path)
-                        
-                        # Store functions and their relationships
-                        file_functions[relative_path] = {
-                            'functions': parse_result.functions,
-                            'classes': parse_result.classes,
-                            'imports': parse_result.imports
-                        }
-                        
-                    except Exception as e:
-                        logger.error(f"Error processing file {file_path}: {str(e)}")
-                        continue
-                
-                # Create relationships in Neo4j
-                self._create_relationships(repo_id, file_functions, neo4j)
-                
-                # Batch store code with embeddings
-                pg.batch_store_code(code_entries)
-                
-    def _create_relationships(self, repo_id: int, file_functions: Dict[str, Dict], neo4j: Neo4jService):
-        """Create relationships between code elements in Neo4j.
+    def process_repo(self, repo_url: str) -> bool:
+        """Process a repository from its URL.
         
         Args:
-            repo_id: Repository identifier (integer)
-            file_functions: Dictionary mapping file paths to their function data
-            neo4j: Neo4j service instance
+            repo_url: URL of the repository to process
+            
+        Returns:
+            True if processing was successful, False otherwise
         """
-        # Process functions and their calls
-        for file_path, data in file_functions.items():
-            for func in data['functions']:
-                if 'function.name' not in func:
-                    continue
-                    
-                func_name = func['function.name'].text.decode('utf8')
-                
-                # Create function node
-                neo4j.create_function_node(
-                    repo_id=repo_id,
-                    file_path=file_path,
-                    name=func_name
-                )
-                
-                # Process function body for calls
-                if 'function.body' in func:
-                    body_node = func['function.body']
-                    calls = self.query_handler.find_nodes(body_node, "call")
-                    
-                    for call in calls:
-                        if 'call.name' in call:
-                            called_name = call['call.name'].text.decode('utf8')
-                            neo4j.create_function_relationship(
-                                file_path, file_path,  # We'll resolve actual file later
-                                func_name, called_name
-                            )
+        try:
+            # Clone repository
+            logger.info({
+                "message": "Cloning repository",
+                "context": {
+                    "url": repo_url
+                }
+            })
             
-            # Process classes and their methods
-            for cls in data['classes']:
-                if 'class.name' not in cls:
-                    continue
-                    
-                class_name = cls['class.name'].text.decode('utf8')
+            repo_path = self.file_service.clone_repository(repo_url)
+            if not repo_path:
+                logger.error({
+                    "message": "Failed to clone repository",
+                    "context": {
+                        "url": repo_url
+                    }
+                })
+                return False
                 
-                # Create class node
-                neo4j.create_class_node(
-                    repo_id=repo_id,
-                    file_path=file_path,
-                    name=class_name
-                )
+            # Get repository files
+            files = self.file_service.get_repository_files(repo_path)
+            if not files:
+                logger.warning({
+                    "message": "No files found in repository",
+                    "context": {
+                        "url": repo_url,
+                        "path": str(repo_path)
+                    }
+                })
+                return False
                 
-                # Process class body for methods
-                if 'class.body' in cls:
-                    body_node = cls['class.body']
-                    methods = self.query_handler.find_nodes(body_node, "method")
-                    
-                    for method in methods:
-                        if 'method.name' in method:
-                            method_name = method['method.name'].text.decode('utf8')
-                            neo4j.create_method_relationship(
-                                class_name=class_name,
-                                method_name=method_name,
-                                file_path=file_path
-                            )
+            # Process each file
+            processed_count = 0
+            skipped_count = 0
+            error_count = 0
             
-            # Process imports
-            for imp in data['imports']:
-                if 'import.module' in imp:
-                    module_name = imp['import.module'].text.decode('utf8')
-                    neo4j.create_import_relationship(
-                        repo_id=repo_id,
-                        file_path=file_path,
-                        module_name=module_name
+            for file_info in files:
+                try:
+                    snippet = self._process_file(file_info)
+                    if snippet:
+                        # Store in databases
+                        self._store_in_postgres(snippet)
+                        if snippet.ast_data:
+                            self._store_ast_in_neo4j(snippet)
+                        processed_count += 1
+                    else:
+                        skipped_count += 1
+                        
+                except Exception as e:
+                    error_count += 1
+                    logger.error({
+                        "message": "Error processing file",
+                        "context": {
+                            "file": str(file_info.path),
+                            "error": str(e)
+                        }
+                    })
+                    
+            # Log summary
+            logger.info({
+                "message": "Repository processing completed",
+                "context": {
+                    "url": repo_url,
+                    "total_files": len(files),
+                    "processed": processed_count,
+                    "skipped": skipped_count,
+                    "errors": error_count
+                }
+            })
+            
+            return True
+            
+        except Exception as e:
+            logger.error({
+                "message": "Repository processing failed",
+                "context": {
+                    "url": repo_url,
+                    "error": str(e)
+                }
+            })
+            return False
+            
+    def _process_file(self, file_info: FileInfo) -> Optional[CodeSnippet]:
+        """Process a single file from the repository.
+        
+        Args:
+            file_info: Information about the file to process
+            
+        Returns:
+            CodeSnippet if processing was successful, None otherwise
+        """
+        try:
+            # Skip if no language detected
+            if not file_info.language:
+                logger.debug({
+                    "message": "Skipping file - no language detected",
+                    "context": {
+                        "file": str(file_info.path)
+                    }
+                })
+                return None
+
+            # Read file content
+            with open(file_info.path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Skip empty files
+            if not content.strip():
+                logger.debug({
+                    "message": "Skipping empty file",
+                    "context": {
+                        "file": str(file_info.path)
+                    }
+                })
+                return None
+
+            # Always try custom parser first for supported file types
+            custom_parser = get_custom_parser(str(file_info.path))
+            if custom_parser:
+                ast_data = self._parse_with_custom_parser(content, file_info.path)
+                if ast_data:
+                    logger.debug({
+                        "message": "Successfully parsed with custom parser",
+                        "context": {
+                            "file": str(file_info.path),
+                            "parser_type": "custom"
+                        }
+                    })
+                    return CodeSnippet(
+                        file_path=str(file_info.path),
+                        content=content,
+                        language=file_info.language,
+                        ast_data=ast_data,
+                        syntax_valid=True
                     )
-                    
+                else:
+                    logger.warning({
+                        "message": "Custom parser failed",
+                        "context": {
+                            "file": str(file_info.path)
+                        }
+                    })
+                    # Don't return None here - try tree-sitter as fallback
+
+            # Process with tree-sitter if language is supported
+            if self.language_service.is_language_supported(file_info.language):
+                ast_data = self._parse_with_tree_sitter(content, file_info.language)
+                if ast_data:
+                    return CodeSnippet(
+                        file_path=str(file_info.path),
+                        content=content,
+                        language=file_info.language,
+                        ast_data=ast_data,
+                        syntax_valid=True
+                    )
+                else:
+                    logger.warning({
+                        "message": "Tree-sitter parsing failed",
+                        "context": {
+                            "file": str(file_info.path),
+                            "language": file_info.language
+                        }
+                    })
+                    return None
+
+            # Store file without AST data if no parser was successful
+            logger.debug({
+                "message": "No parser available",
+                "context": {
+                    "file": str(file_info.path),
+                    "language": file_info.language
+                }
+            })
+            return CodeSnippet(
+                file_path=str(file_info.path),
+                content=content,
+                language=file_info.language,
+                ast_data={},
+                syntax_valid=False
+            )
+
+        except UnicodeDecodeError:
+            logger.debug({
+                "message": "Skipping file - encoding error",
+                "context": {
+                    "file": str(file_info.path)
+                }
+            })
+            return None
+        except Exception as e:
+            logger.error({
+                "message": "Error processing file",
+                "context": {
+                    "file": str(file_info.path),
+                    "error": str(e)
+                }
+            })
+            return None
+
+    def _parse_with_tree_sitter(self, content: str, language: str) -> Optional[Dict]:
+        """Parse file content using tree-sitter.
+        
+        Args:
+            content: File content to parse
+            language: Programming language to use for parsing
+            
+        Returns:
+            Dictionary containing AST data if successful, None otherwise
+        """
+        try:
+            tree = self.language_service.parse_content(content, language)
+            if not tree:
+                return None
+                
+            ast_data = self._extract_ast_data(tree)
+            if not ast_data:
+                return None
+                
+            return ast_data
+            
+        except Exception as e:
+            logger.error({
+                "message": "Tree-sitter parsing error",
+                "context": {
+                    "language": language,
+                    "error": str(e)
+                }
+            })
+            return None
+            
+    def _parse_with_custom_parser(self, content: str, file_path: Path) -> Optional[Dict[str, Any]]:
+        """Parse file content using a custom parser.
+        
+        Args:
+            content: File content to parse
+            file_path: Path to the file
+            
+        Returns:
+            Parsed AST data if successful, None otherwise
+        """
+        try:
+            parser = get_custom_parser(str(file_path))
+            if parser:
+                return parser.parse(content)
+            return None
+        except Exception as e:
+            logger.error({
+                "message": "Custom parser error",
+                "context": {
+                    "file": str(file_path),
+                    "error": str(e)
+                }
+            })
+            return None
+
+    def _extract_ast_data(self, parse_result) -> Dict[str, Any]:
+        """Extract AST data from parse result."""
+        if not parse_result.tree or not parse_result.tree.root_node:
+            return {}
+            
+        return node_to_dict(parse_result.tree.root_node)
+        
+    def _store_ast_in_neo4j(self, snippet: CodeSnippet) -> None:
+        """Store AST structure in Neo4j.
+        
+        Args:
+            snippet: CodeSnippet containing AST data
+        """
+        if not snippet.ast_data:
+            return
+            
+        # Store in Neo4j
+        file = File(
+            path=snippet.file_path,
+            repo_id=snippet.repo_id,
+            language=snippet.language,
+            functions=[]
+        )
+        self.neo4j_service.create_file_node(file)
+        
+        # Store functions
+        for function, ast_data in snippet.ast_data.items():
+            self.neo4j_service.create_function_node(function, ast_data)
+            
+        # Create function relationships
+        for caller, _ in snippet.ast_data.items():
+            for callee, _ in snippet.ast_data.items():
+                if caller != callee:
+                    # Check if caller calls callee
+                    caller_node = None
+                    for node in parse_result.tree.root_node.children:
+                        if node.type == 'function_definition':
+                            for child in node.children:
+                                if child.type == 'identifier' and get_node_text(child) == caller:
+                                    caller_node = node
+                                    break
+                            if caller_node:
+                                break
+                                
+                    if caller_node:
+                        # Look for calls to callee
+                        for node in caller_node.children:
+                            if node.type == 'call' and any(
+                                child.type == 'identifier' and get_node_text(child) == callee
+                                for child in node.children
+                            ):
+                                self.neo4j_service.create_function_relationship(caller, callee)
+                                break
+
     def query_codebase(self, query: str, limit: int = 5) -> Dict[str, Any]:
         """Query the codebase using natural language."""
         results = {}

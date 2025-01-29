@@ -9,16 +9,19 @@ class ParseResult:
     """Result of parsing a file with tree-sitter."""
     tree: Optional[Tree]  # The tree-sitter parse tree
     language: str  # Language identifier
+    metadata: Dict[str, Any] = None  # Metadata about the parsed file and its structure
     functions: List[Dict[str, Node]] = None  # Function definitions with components
     classes: List[Dict[str, Node]] = None  # Class definitions with components
     imports: List[Dict[str, Node]] = None  # Import statements with components
-    is_valid: bool = True  # Whether the parse tree is valid
+    is_supported: bool = True  # Whether the language is supported and parse tree is valid
     errors: List[str] = None  # List of error messages if any
     missing_nodes: List[Node] = None  # List of missing nodes
     error_nodes: List[Node] = None  # List of error nodes
     
     def __post_init__(self):
         """Initialize default values for optional fields."""
+        if self.metadata is None:
+            self.metadata = {}
         if self.functions is None:
             self.functions = []
         if self.classes is None:
@@ -31,6 +34,18 @@ class ParseResult:
             self.missing_nodes = []
         if self.error_nodes is None:
             self.error_nodes = []
+            
+        # Update metadata with parse results
+        self.metadata.update({
+            'functions': self.get_function_names(),
+            'classes': self.get_class_names(),
+            'imports': self.get_import_paths(),
+            'has_errors': self.has_syntax_errors(),
+            'has_missing': self.has_missing_nodes(),
+            'is_supported': self.is_supported,
+            'error_locations': self.get_error_locations(),
+            'missing_locations': self.get_missing_locations()
+        })
             
     def get_function_names(self) -> List[str]:
         """Get list of function names."""
@@ -65,7 +80,7 @@ class ParseResult:
         
     def has_syntax_errors(self) -> bool:
         """Check if there are any syntax errors."""
-        return not self.is_valid or bool(self.error_nodes)
+        return not self.is_supported or bool(self.error_nodes)
         
     def has_missing_nodes(self) -> bool:
         """Check if there are any missing required nodes."""

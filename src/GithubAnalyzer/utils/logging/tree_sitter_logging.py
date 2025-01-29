@@ -1,4 +1,8 @@
-from tree_sitter import LogType, Parser, Tree, QueryError
+try:
+    from tree_sitter import LogType, Parser, Tree, QueryError
+    TREE_SITTER_AVAILABLE = True
+except ImportError:
+    TREE_SITTER_AVAILABLE = False
 import json
 import logging
 import time
@@ -6,7 +10,7 @@ from typing import Optional, Union, Dict, Any
 import sys
 from datetime import datetime
 
-from .formatters import StructuredFormatter
+from . import StructuredFormatter
 """Tree-sitter logging handler for GithubAnalyzer."""
 
 class TreeSitterLogHandler(logging.Handler):
@@ -21,12 +25,39 @@ class TreeSitterLogHandler(logging.Handler):
         Args:
             logger_name: The name of the logger to use. Defaults to 'tree_sitter'.
         """
+        if not TREE_SITTER_AVAILABLE:
+            raise ImportError("tree-sitter package is required for tree-sitter logging")
+            
         super().__init__()
         self.formatter = StructuredFormatter()
         self.start_time = time.time()
         self.logger_name = logger_name
         self.stream = sys.stdout
+        self.dot_graph_file = None
         
+    def __call__(self, log_type: LogType, message: str) -> None:
+        """Handle tree-sitter log messages.
+        
+        Args:
+            log_type: Type of log message (PARSE or LEX)
+            message: The log message
+        """
+        if not self.logger_name:
+            return
+            
+        logger = logging.getLogger(self.logger_name)
+        
+        # Add log type context
+        context = {
+            'log_type': 'parse' if log_type == LogType.PARSE else 'lex',
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        if log_type == LogType.PARSE:
+            logger.debug(message, extra={'context': context})
+        else:  # LEX
+            logger.debug(message, extra={'context': context})
+
     def emit(self, record: logging.LogRecord) -> None:
         """Emit a log record with structured context and timing.
         
@@ -78,9 +109,20 @@ class TreeSitterLogHandler(logging.Handler):
         Args:
             parser: The parser to enable logging for
         """
-        if hasattr(parser, 'log'):
-            parser.logger = self
-            parser.log = self.__call__
+        # Create a callback function for tree-sitter v24 logging
+        def log_callback(msg: str) -> None:
+            logger = logging.getLogger(self.logger_name)
+            logger.debug(msg, extra={'context': {'source': 'tree-sitter', 'type': 'parser'}})
+            
+        # Set the callback on the parser
+        parser.logger = log_callback
+            
+        # Enable dot graph debugging if in debug mode
+        logger = logging.getLogger(self.logger_name)
+        if logger.isEnabledFor(logging.DEBUG):
+            import tempfile
+            self.dot_graph_file = tempfile.NamedTemporaryFile(mode='w', suffix='.dot', delete=False)
+            parser.print_dot_graphs(self.dot_graph_file)
         
     def disable_parser_logging(self, parser: Parser) -> None:
         """Disable logging for a parser.
@@ -94,6 +136,13 @@ class TreeSitterLogHandler(logging.Handler):
                 if hasattr(parser, 'log'):
                     parser.log = None
                 delattr(parser, "logger")
+                
+            # Disable dot graph debugging
+            if self.dot_graph_file:
+                parser.print_dot_graphs(None)
+                self.dot_graph_file.close()
+                self.dot_graph_file = None
+                
         except AttributeError:
             # Ignore if we can't remove the logger
             pass

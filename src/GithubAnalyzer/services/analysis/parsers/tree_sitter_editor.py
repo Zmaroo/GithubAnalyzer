@@ -1,20 +1,24 @@
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union, Sequence
+"""Tree-sitter editor for modifying code."""
+import sys
+import time
+import threading
 import logging
 from logging import Logger
-import threading
-import time
+from pathlib import Path
+from dataclasses import dataclass, field
+from typing import Dict, List, Any, Optional, Tuple, Union, Sequence
+from tree_sitter import Tree, Node, Point, Parser, Range, Query, Language
+
+from tree_sitter_language_pack import get_binding, get_language, get_parser
 
 from GithubAnalyzer.models.core.errors import ParserError
-from GithubAnalyzer.utils.logging import get_logger
-from .tree_sitter_traversal import TreeSitterTraversal
-"""Tree-sitter editor for modifying code."""
-from dataclasses import dataclass, field
-from tree_sitter import Tree, Node, Point, Parser, Range, Query, Language
-import sys
+from GithubAnalyzer.utils.logging import get_logger, LoggerFactory, StructuredFormatter
+from GithubAnalyzer.utils.logging.tree_sitter_logging import TreeSitterLogHandler
 
-from .tree_sitter_query import TreeSitterQueryHandler
-from tree_sitter_language_pack import get_binding, get_language, get_parser
+from .utils import TreeSitterServiceBase
+from .language_service import LanguageService
+from .traversal_service import TreeSitterTraversal
+from .query_service import TreeSitterQueryHandler
 
 logger = get_logger(__name__)
 
@@ -34,35 +38,68 @@ class EditOperation:
     text: str
 
 @dataclass
-class TreeSitterEditor:
+class TreeSitterEditor(TreeSitterServiceBase):
     """Editor for tree-sitter trees."""
 
-    _logger: Logger = field(default_factory=lambda: logging.getLogger('tree_sitter.editor'))
     _text: str = field(default='')
-    _operation_times: Dict[str, List[float]] = field(default_factory=dict)
-    _parser: Parser = field(default_factory=lambda: get_parser("python"))
+    _language_service: LanguageService = field(default_factory=LanguageService)
+    _parser: Optional[Parser] = field(default=None)
+    _current_language: Optional[str] = field(default=None)
     _traversal: TreeSitterTraversal = field(default_factory=TreeSitterTraversal)
     _query_handler: TreeSitterQueryHandler = field(default_factory=TreeSitterQueryHandler)
 
     def __post_init__(self):
         """Initialize the editor."""
+        super().__post_init__()
+        
+        # Set up logging
+        self._logger = get_logger(__name__)
+        self._log_handler = TreeSitterLogHandler()
+        self._log_handler.setFormatter(StructuredFormatter())
+        self._logger.addHandler(self._log_handler)
         self._logger.debug("TreeSitterEditor initialized")
 
-    def parse_code(self, code: str) -> Tree:
+    def parse_code(self, code: str, language: Optional[str] = None, file_path: Optional[str] = None) -> Tree:
         """Parse code into a tree.
 
         Args:
             code: Code to parse
+            language: Language to use for parsing. If None, will try to detect from content or file_path.
+            file_path: Optional file path to help with language detection
 
         Returns:
             Parsed tree
+            
+        Raises:
+            ParserError: If language detection fails or parsing fails
         """
         start_time = self._time_operation('parse_code')
 
         try:
             # Store the text for later use
             self._text = code
+            
+            # Detect language using multiple methods
+            if not language:
+                if file_path:
+                    # Try to detect from file path first
+                    language = self._language_service.get_language_for_file(file_path)
+                if language == 'plaintext' or not language:
+                    # If file path detection failed or no file path, try content detection
+                    language = self._language_service.detect_language(code)
+            
+            # Validate language support
+            if not self._language_service.is_language_supported(language):
+                raise ParserError(f"Language not supported: {language}")
+            
+            # Get parser from language service
+            if self._current_language != language or not self._parser:
+                self._parser = self._language_service.get_parser(language)
+                self._current_language = language
+            
             return self._parser.parse(code.encode('utf-8'))
+        except Exception as e:
+            raise ParserError(f"Failed to parse code: {str(e)}")
         finally:
             self._end_operation('parse_code', start_time)
 
@@ -76,7 +113,11 @@ class TreeSitterEditor:
         Returns:
             List of changed ranges
         """
-        return old_tree.changed_ranges(new_tree)
+        start_time = self._time_operation('get_changed_ranges')
+        try:
+            return old_tree.changed_ranges(new_tree)
+        finally:
+            self._end_operation('get_changed_ranges', start_time)
 
     def visualize_tree(self, tree: Tree, output_path: Optional[Union[str, Path]] = None) -> str:
         """Get a string visualization of the tree.
@@ -88,37 +129,41 @@ class TreeSitterEditor:
         Returns:
             String representation of tree
         """
-        def _node_to_str(node: Node, level: int = 0) -> str:
-            # Get node type and any text content
-            result = "  " * level + f"({node.type}"
-            
-            # Add text content if it's a leaf node
-            if len(node.children) == 0:
-                text = node.text.decode('utf8').strip()
-                if text:
-                    result += f' "{text}"'
-            
-            # Add children recursively
-            if node.children:
-                result += "\n"
-                for child in node.children:
-                    result += _node_to_str(child, level + 1) + "\n"
-                result += "  " * level
-            
-            result += ")"
-            return result
-            
-        visualization = _node_to_str(tree.root_node)
-        
-        if output_path:
-            try:
-                output_path = Path(output_path)
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.write_text(visualization)
-            except Exception as e:
-                self._log_handler.error(f"Failed to write visualization to {output_path}: {e}")
+        start_time = self._time_operation('visualize_tree')
+        try:
+            def _node_to_str(node: Node, level: int = 0) -> str:
+                # Get node type and any text content
+                result = "  " * level + f"({node.type}"
                 
-        return visualization
+                # Add text content if it's a leaf node
+                if len(node.children) == 0:
+                    text = node.text.decode('utf8').strip()
+                    if text:
+                        result += f' "{text}"'
+                
+                # Add children recursively
+                if node.children:
+                    result += "\n"
+                    for child in node.children:
+                        result += _node_to_str(child, level + 1) + "\n"
+                    result += "  " * level
+                
+                result += ")"
+                return result
+                
+            visualization = _node_to_str(tree.root_node)
+            
+            if output_path:
+                try:
+                    output_path = Path(output_path)
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(visualization)
+                except Exception as e:
+                    self._logger.error(f"Failed to write visualization to {output_path}: {e}")
+                    
+            return visualization
+        finally:
+            self._end_operation('visualize_tree', start_time)
 
     def is_valid_position(self, tree: Node, position: Point, end_position: Optional[Point] = None) -> bool:
         """Check if position(s) are valid in the tree."""

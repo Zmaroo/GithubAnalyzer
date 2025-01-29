@@ -3,43 +3,89 @@ from typing import List, Optional, Any, Dict
 """File-related data models."""
 
 from pathlib import Path
-from tree_sitter_language_pack import installed_bindings_map
+
+from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
 
 @dataclass
 class FileInfo:
-    """Information about a file."""
+    """Information about a file in the repository."""
     path: Path
     language: str
     metadata: Optional[Dict[str, Any]] = None
+    is_supported: bool = True
+
+    def __post_init__(self):
+        """Validate file information after initialization."""
+        # Use LanguageService to validate the language
+        language_service = LanguageService()
+        
+        # Handle special cases first
+        filename = self.path.name.lower()
+        if filename == "license" or filename == "license.txt":
+            self.language = "plaintext"
+            self.is_supported = False
+            return
+            
+        # Get language from service
+        try:
+            detected_language = language_service.get_language_for_file(str(self.path))
+            if detected_language == 'plaintext':
+                self.is_supported = False
+            self.language = detected_language
+        except Exception as e:
+            self.language = 'plaintext'
+            self.is_supported = False
+
+    def update(self, *args, **kwargs) -> None:
+        """Update FileInfo attributes.
+        
+        Args:
+            *args: Positional arguments to update attributes in order: path, language, metadata, is_supported
+            **kwargs: Keyword arguments to update specific attributes
+            
+        Raises:
+            AttributeError: If trying to update a non-existent attribute
+            ValueError: If too many positional arguments are provided
+        """
+        # Handle positional arguments
+        if args:
+            attrs = ['path', 'language', 'metadata', 'is_supported']
+            if len(args) > len(attrs):
+                raise ValueError(f"Too many positional arguments. Expected at most {len(attrs)}, got {len(args)}")
+            for attr, value in zip(attrs, args):
+                setattr(self, attr, value)
+        
+        # Handle keyword arguments
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+            else:
+                raise AttributeError(f"FileInfo has no attribute '{key}'")
+
+    def __str__(self) -> str:
+        """Return string representation."""
+        return f"FileInfo(path={self.path}, language={self.language})"
+
+    def __eq__(self, other: object) -> bool:
+        """Compare two FileInfo objects."""
+        if not isinstance(other, FileInfo):
+            return NotImplemented
+        return self.path == other.path and self.language == other.language
 
     @property
     def file_type(self) -> str:
-        """Get language identifier from tree-sitter-language-pack."""
-        return self.language
-
-    def __str__(self) -> str:
-        """Get string representation."""
-        return str(self.path)
+        """Get the file type based on extension."""
+        return self.path.suffix.lstrip('.') if self.path.suffix else ''
 
     @property
     def extension(self) -> str:
-        """Get file extension."""
-        return self.path.suffix.lower()
+        """Get the file extension."""
+        return self.path.suffix
 
     @property
     def name(self) -> str:
         """Get file name."""
         return self.path.name
-
-    def __eq__(self, other: Any) -> bool:
-        """Compare file info objects."""
-        if isinstance(other, str):
-            return self.language == other
-        if isinstance(other, FileInfo):
-            return (self.path == other.path and 
-                   self.language == other.language and
-                   self.metadata == other.metadata)
-        return False
 
 
 @dataclass

@@ -1,43 +1,40 @@
-from dataclasses import dataclass
-from typing import List, Optional, Generator, Dict, Any, Tuple, Union, TypeVar
-import threading
+"""Tree-sitter traversal service for AST navigation."""
 import time
+import threading
+from typing import List, Dict, Any, Optional, Union, TypeVar, Iterator, Generator, Tuple
+from dataclasses import dataclass
+from tree_sitter import Node, Tree, TreeCursor, Parser, Range, Point, Query
 
-from GithubAnalyzer.utils.logging import get_logger
-from GithubAnalyzer.utils.logging.formatters import StructuredFormatter
-from GithubAnalyzer.utils.logging.logger_factory import LoggerFactory
-"""Tree-sitter node traversal utilities."""
-
-import logging
-import sys
-from tree_sitter import (
-    Node,
-    TreeCursor,
-    Point,
-    Range,
-    Query,
-    Tree,
-    Language,
-    Parser
-)
-from tree_sitter_language_pack import get_language, get_parser
+from tree_sitter_language_pack import get_binding, get_language, get_parser
 
 from GithubAnalyzer.models.core.errors import ParserError
-from ....utils.logging.tree_sitter_logging import TreeSitterLogHandler
+from GithubAnalyzer.utils.logging import get_logger, LoggerFactory, StructuredFormatter
+from GithubAnalyzer.utils.logging.tree_sitter_logging import TreeSitterLogHandler
+from .utils import (
+    get_node_text,
+    node_to_dict,
+    iter_children,
+    get_node_hierarchy,
+    find_common_ancestor,
+    TreeSitterServiceBase
+)
+from .language_service import LanguageService
 
 # Type variables for better type hints
 T = TypeVar('T', bound=Node)
 
-class TreeSitterTraversal:
+logger = get_logger(__name__)
+
+@dataclass
+class TreeSitterTraversal(TreeSitterServiceBase):
     """Utility class for traversing tree-sitter ASTs."""
 
-    def __init__(self):
+    def __post_init__(self):
         """Initialize traversal with logging."""
-        # Get logger from factory
-        self._logger = LoggerFactory().get_tree_sitter_logger('tree_sitter.traversal')
+        super().__post_init__()
         
-        # Initialize performance metrics
-        self._operation_times = {}
+        # Initialize language service
+        self._language_service = LanguageService()
         
         # Log initialization
         self._logger.debug({
@@ -45,46 +42,6 @@ class TreeSitterTraversal:
             "context": {
                 'module': 'tree_sitter.traversal',
                 'thread': threading.get_ident()
-            }
-        })
-
-    def _time_operation(self, operation_name: str) -> float:
-        """Record timing for an operation.
-        
-        Args:
-            operation_name: Name of the operation to time
-            
-        Returns:
-            Start time for the operation
-        """
-        start_time = time.time()
-        if operation_name not in self._operation_times:
-            self._operation_times[operation_name] = []
-        return start_time
-
-    def _end_operation(self, operation_name: str, start_time: float) -> None:
-        """End timing for an operation and log metrics.
-        
-        Args:
-            operation_name: Name of the operation
-            start_time: Start time from _time_operation
-        """
-        duration = (time.time() - start_time) * 1000  # Convert to milliseconds
-        self._operation_times[operation_name].append(duration)
-        
-        # Calculate statistics
-        times = self._operation_times[operation_name]
-        avg_time = sum(times) / len(times)
-        max_time = max(times)
-        
-        self._logger.debug({
-            "message": f"Operation timing: {operation_name}",
-            "context": {
-                "operation": operation_name,
-                "duration_ms": duration,
-                "avg_duration_ms": avg_time,
-                "max_duration_ms": max_time,
-                "call_count": len(times)
             }
         })
 
@@ -105,6 +62,84 @@ class TreeSitterTraversal:
         """
         # This method is kept for backward compatibility but delegates to the editor
         pass
+
+    def find_nodes_in_range(self, root: Node, range_obj: Range) -> List[Node]:
+        """Find nodes in range using tree-sitter queries.
+        
+        Args:
+            root: Root node to search in
+            range_obj: Range to find nodes in
+            
+        Returns:
+            List of nodes in the range
+        """
+        start_time = self._time_operation('find_nodes_in_range')
+        try:
+            if not root:
+                self._logger.error({
+                    "message": "No root node provided",
+                    "context": {
+                        'range': {
+                            'start': range_obj.start_point,
+                            'end': range_obj.end_point
+                        },
+                        'operation': 'find_nodes_in_range'
+                    }
+                })
+                return []
+                
+            self._logger.debug({
+                "message": "Finding nodes in range",
+                "context": {
+                    'range': {
+                        'start': range_obj.start_point,
+                        'end': range_obj.end_point
+                    },
+                    'root_type': root.type
+                }
+            })
+            
+            # Create query to find nodes in range
+            query_str = f"""
+                ({root.type}) @node
+            """
+            # Get language from root node's grammar name
+            language = root.grammar_name
+            if not language:
+                self._logger.error("Could not determine language from root node")
+                return []
+                
+            query = Query(self._language_service.get_language_object(language), query_str)
+            captures = query.captures(root)
+            nodes = [capture[0] for capture in captures]
+                    
+            self._logger.debug({
+                "message": f"Found {len(nodes)} nodes in range",
+                "context": {
+                    'node_count': len(nodes),
+                    'range': {
+                        'start': range_obj.start_point,
+                        'end': range_obj.end_point
+                    }
+                }
+            })
+            
+            return nodes
+            
+        except Exception as e:
+            self._logger.error({
+                "message": "Error finding nodes in range",
+                "context": {
+                    'range': {
+                        'start': range_obj.start_point,
+                        'end': range_obj.end_point
+                    },
+                    'error': str(e)
+                }
+            })
+            return []
+        finally:
+            self._end_operation('find_nodes_in_range', start_time)
 
     @staticmethod
     def walk_tree(node: Node) -> Generator[Node, None, None]:
@@ -147,7 +182,7 @@ class TreeSitterTraversal:
                     "message": "No root node provided",
                     "context": {
                         'point': point,
-                        'operation': 'find_node_at_point'
+                        "operation": 'find_node_at_point'
                     }
                 })
                 return None
@@ -183,81 +218,6 @@ class TreeSitterTraversal:
                 }
             })
             return None
-
-    def find_nodes_in_range(self, root: Node, range_obj: Range) -> List[Node]:
-        """Find nodes in range using tree-sitter queries.
-        
-        Args:
-            root: Root node to search in
-            range_obj: Range to find nodes in
-            
-        Returns:
-            List of nodes in the range
-        """
-        try:
-            if not root:
-                self._logger.error({
-                    "message": "No root node provided",
-                    "context": {
-                        'range': {
-                            'start': range_obj.start_point,
-                            'end': range_obj.end_point
-                        },
-                        'operation': 'find_nodes_in_range'
-                    }
-                })
-                return []
-                
-            self._logger.debug({
-                "message": "Finding nodes in range",
-                "context": {
-                    'range': {
-                        'start': range_obj.start_point,
-                        'end': range_obj.end_point
-                    },
-                    'root_type': root.type
-                }
-            })
-            
-            # Create query to find nodes in range
-            query_str = f"""
-                ({root.type}) @node
-            """
-            # Get language from root node's grammar name
-            language = root.grammar_name
-            if not language:
-                self._logger.error("Could not determine language from root node")
-                return []
-                
-            query = Query(get_language(language), query_str)
-            captures = query.captures(root)
-            nodes = [capture[0] for capture in captures]
-                    
-            self._logger.debug({
-                "message": f"Found {len(nodes)} nodes in range",
-                "context": {
-                    'node_count': len(nodes),
-                    'range': {
-                        'start': range_obj.start_point,
-                        'end': range_obj.end_point
-                    }
-                }
-            })
-            
-            return nodes
-            
-        except Exception as e:
-            self._logger.error({
-                "message": "Error finding nodes in range",
-                "context": {
-                    'range': {
-                        'start': range_obj.start_point,
-                        'end': range_obj.end_point
-                    },
-                    'error': str(e)
-                }
-            })
-            return []
 
     def node_in_range(self, node: Node, range_obj: Range) -> bool:
         """Check if node is within range.

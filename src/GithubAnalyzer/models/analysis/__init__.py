@@ -5,10 +5,27 @@ from GithubAnalyzer.models.analysis.code_analysis import (
 )
 
 from GithubAnalyzer.models.analysis.tree_sitter import (
+    TreeSitterResult,
+    TreeSitterEdit,
+    TreeSitterRange,
+    TreeSitterQueryResult,
+    TreeSitterQueryMatch
+)
+
+from GithubAnalyzer.models.analysis.types import (
+    QueryResult,
+    NodeDict,
+    NodeList,
+    LanguageId,
+    QueryPattern
+)
+
+from GithubAnalyzer.services.analysis.parsers.utils import (
     get_node_text,
     node_to_dict,
-    format_error_context,
-    count_nodes
+    iter_children,
+    get_node_hierarchy,
+    find_common_ancestor
 )
 
 from GithubAnalyzer.models.analysis.results import (
@@ -17,9 +34,20 @@ from GithubAnalyzer.models.analysis.results import (
 
 __all__ = [
     'CodeAnalysisResult',
+    'TreeSitterResult',
+    'TreeSitterEdit',
+    'TreeSitterRange',
+    'TreeSitterQueryResult',
+    'TreeSitterQueryMatch',
+    'QueryResult',
+    'NodeDict',
+    'NodeList',
+    'LanguageId',
+    'QueryPattern',
     'get_node_text',
     'node_to_dict',
-    'format_error_context',
-    'count_nodes',
+    'iter_children',
+    'get_node_hierarchy',
+    'find_common_ancestor',
     'AnalysisResult'
 ] 

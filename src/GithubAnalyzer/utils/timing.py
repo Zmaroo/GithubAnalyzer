@@ -1,13 +1,15 @@
 """Timing utilities for performance monitoring."""
 import time
 import functools
+import sys
 from typing import Callable, TypeVar, ParamSpec
-from GithubAnalyzer.utils.logging import get_logger
 
-logger = get_logger(__name__)
+from .logging import get_logger
 
 P = ParamSpec('P')
 T = TypeVar('T')
+
+logger = get_logger(__name__)
 
 def timer(func: Callable[P, T]) -> Callable[P, T]:
     """Decorator to time function execution."""
@@ -17,15 +19,7 @@ def timer(func: Callable[P, T]) -> Callable[P, T]:
         result = func(*args, **kwargs)
         duration = time.time() - start_time
         
-        logger.debug({
-            "message": f"{func.__name__} execution time",
-            "context": {
-                "function": func.__name__,
-                "duration_ms": duration * 1000,
-                "args_count": len(args),
-                "kwargs_count": len(kwargs)
-            }
-        })
+        logger.debug(f"{func.__name__} execution time: {duration * 1000:.2f}ms")
         return result
     return wrapper
 
@@ -45,13 +39,6 @@ class Timer:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Stop timing and log duration."""
         duration = time.time() - self.start_time
-        logger.debug({
-            "message": f"{self.name} execution time",
-            "context": {
-                "block_name": self.name,
-                "duration_ms": duration * 1000,
-                "error": str(exc_val) if exc_val else None
-            }
-        })
+        logger.debug(f"{self.name} execution time: {duration * 1000:.2f}ms")
 
 __all__ = ['Timer', 'timer'] 

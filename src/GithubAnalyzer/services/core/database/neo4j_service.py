@@ -1,317 +1,695 @@
+"""Neo4j service for storing code relationships with advanced graph analytics."""
+from typing import Dict, List, Any, Optional, Set
 from neo4j import GraphDatabase
+import json
+import os
+from dotenv import load_dotenv
 
-from GithubAnalyzer.services.core.database.db_config import get_neo4j_config
-from typing import Optional, List, Dict, Any
+from GithubAnalyzer.models.core.database import File, Function
+from GithubAnalyzer.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 class Neo4jService:
+    """Service for Neo4j graph database operations."""
+    
     def __init__(self):
-        self._driver = None
-        self._config = get_neo4j_config()
-
-    def connect(self) -> None:
-        """Establish connection to Neo4j database."""
-        if not self._driver:
-            self._driver = GraphDatabase.driver(
-                self._config["uri"],
-                auth=(self._config["username"], self._config["password"])
+        """Initialize Neo4j service with GDS and APOC support."""
+        load_dotenv()
+        self._driver = GraphDatabase.driver(
+            os.getenv("NEO4J_URI", "bolt://localhost:7687"),
+            auth=(
+                os.getenv("NEO4J_USERNAME", "neo4j"),
+                os.getenv("NEO4J_PASSWORD", "adminadmin")
             )
-
-    def disconnect(self) -> None:
-        """Close the database connection."""
-        if self._driver:
-            self._driver.close()
-            self._driver = None
-
-    def setup_constraints(self) -> None:
-        """Setup necessary constraints for the graph database."""
+        )
+        self._setup_gds_procedures()
+        
+    def _setup_gds_procedures(self) -> None:
+        """Setup Graph Data Science procedures and verify plugin availability."""
         with self._driver.session() as session:
-            # Create constraints for unique identifiers
-            session.run("""
-                CREATE CONSTRAINT file_path IF NOT EXISTS
-                FOR (f:File) REQUIRE f.path IS UNIQUE
-            """)
-            session.run("""
-                CREATE CONSTRAINT function_id IF NOT EXISTS
-                FOR (fn:Function) REQUIRE fn.id IS UNIQUE
-            """)
-
-    def create_file_node(self, repo_id: int, file_path: str) -> None:
-        """Create a file node in the graph.
+            # Verify GDS plugin
+            session.run("CALL gds.list()")
+            # Verify APOC plugin
+            session.run("CALL apoc.help('apoc')")
+            
+    def analyze_code_dependencies(self, repo_id: str) -> Dict[str, Any]:
+        """Analyze code dependencies using GDS algorithms.
+        
+        Uses PageRank and betweenness centrality to identify:
+        - Most important functions/classes (high PageRank)
+        - Critical path components (high betweenness)
         
         Args:
-            repo_id: Repository identifier (integer)
-            file_path: Path to the file
-        """
-        with self._driver.session() as session:
-            session.run("""
-                MERGE (f:File {path: $path})
-                SET f.repo_id = $repo_id
-            """, path=file_path, repo_id=repo_id)
-
-    def create_function_node(self, repo_id: int, file_path: str, name: str) -> None:
-        """Create a function node in the graph.
-        
-        Args:
-            repo_id: Repository identifier (integer)
-            file_path: Path to the file containing the function
-            name: Function name
-        """
-        with self._driver.session() as session:
-            session.run("""
-                MATCH (f:File {path: $path})
-                MERGE (fn:Function {id: $path + '/' + $name})
-                ON CREATE SET fn.name = $name, fn.repo_id = $repo_id
-                MERGE (fn)-[:DEFINED_IN]->(f)
-            """, path=file_path, name=name, repo_id=repo_id)
-
-    def create_class_node(self, repo_id: int, file_path: str, name: str) -> None:
-        """Create a class node in the graph.
-        
-        Args:
-            repo_id: Repository identifier (integer)
-            file_path: Path to the file containing the class
-            name: Class name
-        """
-        with self._driver.session() as session:
-            session.run("""
-                MATCH (f:File {path: $path})
-                MERGE (c:Class {id: $path + '/' + $name})
-                ON CREATE SET c.name = $name, c.repo_id = $repo_id
-                MERGE (c)-[:DEFINED_IN]->(f)
-            """, path=file_path, name=name, repo_id=repo_id)
-
-    def create_import_relationship(self, repo_id: int, file_path: str, module_name: str) -> None:
-        """Create an import relationship in the graph.
-        
-        Args:
-            repo_id: Repository identifier (integer)
-            file_path: Path to the file containing the import
-            module_name: Name of the imported module
-        """
-        with self._driver.session() as session:
-            session.run("""
-                MATCH (f:File {path: $path})
-                MERGE (m:Module {name: $module_name})
-                ON CREATE SET m.repo_id = $repo_id
-                MERGE (f)-[:IMPORTS]->(m)
-            """, path=file_path, module_name=module_name, repo_id=repo_id)
-
-    def create_function_relationship(self, caller_path: str, callee_path: str,
-                                   caller_name: str, callee_name: str) -> None:
-        """Create a relationship between functions in different files."""
-        with self._driver.session() as session:
-            # First, create the function nodes and their relationships to files
-            session.run("""
-                MATCH (f1:File {path: $caller_path})
-                MERGE (fn1:Function {id: $caller_path + '/' + $caller_name})
-                ON CREATE SET fn1.name = $caller_name
-                MERGE (fn1)-[:DEFINED_IN]->(f1)
-            """, caller_path=caller_path, caller_name=caller_name)
-
-            session.run("""
-                MATCH (f2:File {path: $callee_path})
-                MERGE (fn2:Function {id: $callee_path + '/' + $callee_name})
-                ON CREATE SET fn2.name = $callee_name
-                MERGE (fn2)-[:DEFINED_IN]->(f2)
-            """, callee_path=callee_path, callee_name=callee_name)
-
-            # Then create the CALLS relationship between functions
-            session.run("""
-                MATCH (fn1:Function {id: $caller_path + '/' + $caller_name})
-                MATCH (fn2:Function {id: $callee_path + '/' + $callee_name})
-                MERGE (fn1)-[:CALLS]->(fn2)
-            """, caller_path=caller_path, callee_path=callee_path,
-                 caller_name=caller_name, callee_name=callee_name)
-
-    def get_file_relationships(self, file_path: str) -> List[Dict[str, Any]]:
-        """Get function relationships for a file.
-        
-        Args:
-            file_path: Path to the file
+            repo_id: Repository identifier
             
         Returns:
-            List of function relationships
+            Dictionary containing analysis results
         """
         with self._driver.session() as session:
-            result = session.run('''
-                MATCH (f:File {path: $path})<-[:DEFINED_IN]-(fn:Function)
-                OPTIONAL MATCH (fn)-[r:CALLS]->(called:Function)-[:DEFINED_IN]->(cf:File)
-                RETURN fn.name as function_name,
-                       collect({
-                           function: called.name,
-                           file: cf.path
-                       }) as calls
-            ''', path=file_path)
-            
-            return [
-                {
-                    'function': record['function_name'],
-                    'calls': record['calls']
-                }
-                for record in result
-            ]
-
-    def get_function_callers(self, function_name: str) -> List[Dict[str, Any]]:
-        """Get all functions that call a specific function.
-        
-        Args:
-            function_name: Name of the function
-            
-        Returns:
-            List of dictionaries containing caller information
-        """
-        with self._driver.session() as session:
-            result = session.run("""
-                MATCH (caller:Function)-[r:CALLS]->(called:Function {name: $name})
-                MATCH (caller)<-[:CONTAINS]-(cf:File)
-                RETURN cf.path as file,
-                       caller.name as function
-            """, name=function_name)
-            
-            return [dict(record) for record in result]
-
-    def find_similar_repos(self, repo_id: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """Find repositories with similar code patterns and structures.
-        
-        Uses GDS node similarity algorithms to find repos with similar:
-        - Function patterns
-        - Import relationships
-        - Code organization
-        
-        Args:
-            repo_id: Repository ID to find similar repos for
-            limit: Maximum number of results
-        """
-        with self._driver.session() as session:
-            # First, create a graph projection for the repository structures
+            # Create graph projection for analysis
             session.run("""
                 CALL gds.graph.project(
-                    'repo_structure',
-                    ['Repository', 'File', 'Function', 'Class'],
+                    'code_deps',
+                    ['Function', 'Class'],
                     {
-                        CONTAINS: {orientation: 'UNDIRECTED'},
-                        CALLS: {orientation: 'UNDIRECTED'},
-                        IMPORTS: {orientation: 'UNDIRECTED'}
+                        CALLS: {
+                            type: 'CALLS',
+                            orientation: 'NATURAL'
+                        },
+                        CONTAINS: {
+                            type: 'CONTAINS',
+                            orientation: 'NATURAL'
+                        }
                     }
                 )
             """)
             
-            # Run node similarity to find similar repo structures
+            # Run PageRank
+            pagerank_result = session.run("""
+                CALL gds.pageRank.stream('code_deps')
+                YIELD nodeId, score
+                WITH gds.util.asNode(nodeId) as node, score
+                WHERE node.repo_id = $repo_id
+                RETURN node.name as name, node.type as type, score
+                ORDER BY score DESC
+                LIMIT 10
+            """, repo_id=repo_id)
+            
+            # Run betweenness centrality
+            betweenness_result = session.run("""
+                CALL gds.betweenness.stream('code_deps')
+                YIELD nodeId, score
+                WITH gds.util.asNode(nodeId) as node, score
+                WHERE node.repo_id = $repo_id
+                RETURN node.name as name, node.type as type, score
+                ORDER BY score DESC
+                LIMIT 10
+            """, repo_id=repo_id)
+            
+            # Cleanup projection
+            session.run("CALL gds.graph.drop('code_deps')")
+            
+            return {
+                'central_components': [dict(record) for record in pagerank_result],
+                'critical_paths': [dict(record) for record in betweenness_result]
+            }
+            
+    def find_similar_code_patterns(self, file_path: str) -> List[Dict[str, Any]]:
+        """Find similar code patterns using node similarity algorithms.
+        
+        Uses GDS node similarity to identify similar:
+        - Function implementations
+        - Class structures
+        - Code patterns
+        
+        Args:
+            file_path: Path to the file to analyze
+            
+        Returns:
+            List of similar code patterns
+        """
+        with self._driver.session() as session:
+            # Create graph projection for similarity analysis
+            session.run("""
+                CALL gds.graph.project(
+                    'code_similarity',
+                    ['Function', 'Class'],
+                    {
+                        CALLS: {
+                            type: 'CALLS',
+                            orientation: 'NATURAL',
+                            properties: ['weight']
+                        }
+                    },
+                    {
+                        nodeProperties: ['ast_data']
+                    }
+                )
+            """)
+            
+            # Run node similarity
             result = session.run("""
-                MATCH (source:Repository {id: $repo_id})
-                CALL gds.nodeSimilarity.stream('repo_structure')
+                CALL gds.nodeSimilarity.stream('code_similarity')
                 YIELD node1, node2, similarity
-                WHERE id(node1) = id(source)
-                RETURN gds.util.asNode(node2) as similar_repo,
-                       similarity
+                WITH 
+                    gds.util.asNode(node1) as first,
+                    gds.util.asNode(node2) as second,
+                    similarity
+                WHERE first.file_path = $file_path
+                RETURN 
+                    first.name as source_name,
+                    second.name as similar_name,
+                    second.file_path as similar_file,
+                    similarity
                 ORDER BY similarity DESC
-                LIMIT $limit
-            """, repo_id=repo_id, limit=limit)
+                LIMIT 5
+            """, file_path=file_path)
+            
+            # Cleanup projection
+            session.run("CALL gds.graph.drop('code_similarity')")
             
             return [dict(record) for record in result]
-
-    def find_common_patterns(self, repo_ids: List[str]) -> List[Dict[str, Any]]:
-        """Find common code patterns between repositories.
-        
-        Uses APOC path finding to identify:
-        - Shared function patterns
-        - Similar module structures
-        - Common dependencies
-        
-        Args:
-            repo_ids: List of repository IDs to analyze
-        """
-        with self._driver.session() as session:
-            result = session.run("""
-                MATCH (r:Repository)
-                WHERE r.id IN $repo_ids
-                WITH collect(r) as repos
-                CALL apoc.path.subgraphAll(repos, {
-                    relationshipFilter: 'CONTAINS|CALLS|IMPORTS',
-                    maxLevel: 3
-                })
-                YIELD nodes, relationships
-                WITH nodes, relationships
-                CALL apoc.stats.degrees(relationships)
-                YIELD total, max, min, mean
-                RETURN {
-                    common_patterns: [n in nodes WHERE n:Function AND apoc.node.degree(n) > mean],
-                    stats: {total: total, max: max, min: min, mean: mean}
-                } as result
-            """, repo_ids=repo_ids)
             
-            return [dict(record) for record in result]
-
-    def analyze_dependency_paths(self, source_repo: str, target_repo: str) -> List[Dict[str, Any]]:
-        """Analyze how two repositories might be related through dependencies.
+    def detect_code_communities(self, repo_id: str) -> Dict[str, List[str]]:
+        """Detect code communities using GDS community detection.
         
-        Uses APOC path finding to discover:
-        - Direct dependencies
-        - Shared dependencies
-        - Potential integration points
+        Uses Louvain algorithm to identify:
+        - Related code components
+        - Modular structures
+        - Potential microservices
         
         Args:
-            source_repo: Source repository ID
-            target_repo: Target repository ID
+            repo_id: Repository identifier
+            
+        Returns:
+            Dictionary mapping community IDs to component lists
         """
         with self._driver.session() as session:
+            # Create graph projection
+            session.run("""
+                CALL gds.graph.project(
+                    'code_communities',
+                    ['Function', 'Class'],
+                    ['CALLS', 'CONTAINS']
+                )
+            """)
+            
+            # Run Louvain community detection
             result = session.run("""
-                MATCH (source:Repository {id: $source}), (target:Repository {id: $target})
-                CALL apoc.path.expandConfig(source, {
-                    relationshipFilter: 'IMPORTS|IMPLEMENTS|EXTENDS',
-                    uniqueness: 'NODE_GLOBAL',
-                    maxLevel: 4,
-                    targetNodes: [target]
+                CALL gds.louvain.stream('code_communities')
+                YIELD nodeId, communityId
+                WITH 
+                    gds.util.asNode(nodeId) as node,
+                    communityId
+                WHERE node.repo_id = $repo_id
+                WITH communityId, collect(node.name) as components
+                RETURN communityId, components
+                ORDER BY size(components) DESC
+            """, repo_id=repo_id)
+            
+            # Cleanup projection
+            session.run("CALL gds.graph.drop('code_communities')")
+            
+            return {
+                f"community_{record['communityId']}": record['components']
+                for record in result
+            }
+            
+    def find_code_paths(self, start_func: str, end_func: str, repo_id: str) -> List[List[str]]:
+        """Find paths between code components using GDS path finding.
+        
+        Uses shortest path algorithms to identify:
+        - Dependency chains
+        - Call hierarchies
+        - Component relationships
+        
+        Args:
+            start_func: Starting function name
+            end_func: Ending function name
+            repo_id: Repository identifier
+            
+        Returns:
+            List of paths (each path is a list of function names)
+        """
+        with self._driver.session() as session:
+            # Create graph projection
+            session.run("""
+                CALL gds.graph.project(
+                    'code_paths',
+                    'Function',
+                    'CALLS'
+                )
+            """)
+            
+            # Find all paths
+            result = session.run("""
+                MATCH (start:Function {name: $start, repo_id: $repo_id})
+                MATCH (end:Function {name: $end, repo_id: $repo_id})
+                CALL gds.allShortestPaths.stream('code_paths', {
+                    sourceNode: id(start),
+                    targetNode: id(end)
                 })
                 YIELD path
-                WITH path, relationships(path) as rels
-                RETURN {
-                    path_length: length(path),
-                    nodes: [n in nodes(path) | n.name],
-                    relationship_types: [type(r) in rels],
-                    common_deps: [n in nodes(path) WHERE n:Function AND 
-                                apoc.node.degree.in(n, 'IMPORTS') > 1]
-                } as connection
-                ORDER BY length(path)
-            """, source=source_repo, target=target_repo)
+                RETURN [node in nodes(path) | node.name] as path_names
+            """, start=start_func, end=end_func, repo_id=repo_id)
             
-            return [dict(record) for record in result]
-
-    def get_function_dependencies(self, file_path: str, function_name: str) -> Dict[str, Any]:
-        """Get comprehensive function dependency information.
+            # Cleanup projection
+            session.run("CALL gds.graph.drop('code_paths')")
+            
+            return [record['path_names'] for record in result]
+            
+    def export_graph_data(self, repo_id: str, format: str = 'json') -> str:
+        """Export graph data using APOC export procedures.
         
-        Uses APOC path finding to analyze:
-        - Direct function calls
-        - Transitive dependencies
-        - Module relationships
+        Args:
+            repo_id: Repository identifier
+            format: Export format ('json' or 'cypher')
+            
+        Returns:
+            Exported data as string
+        """
+        with self._driver.session() as session:
+            if format == 'json':
+                result = session.run("""
+                    MATCH (n)
+                    WHERE n.repo_id = $repo_id
+                    CALL apoc.export.json.query(
+                        "MATCH (n)-[r]->(m) WHERE n.repo_id = $repo_id RETURN n, r, m",
+                        null,
+                        {params: {repo_id: $repo_id}}
+                    )
+                    YIELD data
+                    RETURN data
+                """, repo_id=repo_id)
+            else:
+                result = session.run("""
+                    CALL apoc.export.cypher.query(
+                        "MATCH (n)-[r]->(m) WHERE n.repo_id = $repo_id RETURN n, r, m",
+                        null,
+                        {params: {repo_id: $repo_id}}
+                    )
+                    YIELD cypherStatements
+                    RETURN cypherStatements
+                """, repo_id=repo_id)
+                
+            return result.single()[0]
+            
+    def import_graph_data(self, data: str, format: str = 'json') -> None:
+        """Import graph data using APOC import procedures.
+        
+        Args:
+            data: Data to import
+            format: Import format ('json' or 'cypher')
+        """
+        with self._driver.session() as session:
+            if format == 'json':
+                session.run("""
+                    CALL apoc.import.json($data)
+                """, data=data)
+            else:
+                session.run("""
+                    CALL apoc.cypher.runMany($data)
+                """, data=data)
+        
+    def setup_constraints(self) -> None:
+        """Set up Neo4j constraints and indexes."""
+        with self._driver.session() as session:
+            # File node constraints
+            session.run("""
+                CREATE CONSTRAINT file_unique IF NOT EXISTS
+                FOR (f:File) REQUIRE (f.repo_id, f.path) IS UNIQUE
+            """)
+            
+            # Function node constraints
+            session.run("""
+                CREATE CONSTRAINT function_unique IF NOT EXISTS
+                FOR (f:Function) REQUIRE (f.repo_id, f.file_path, f.name) IS UNIQUE
+            """)
+            
+            # Class node constraints
+            session.run("""
+                CREATE CONSTRAINT class_unique IF NOT EXISTS
+                FOR (c:Class) REQUIRE (c.repo_id, c.file_path, c.name) IS UNIQUE
+            """)
+            
+            # Language constraints
+            session.run("""
+                CREATE CONSTRAINT language_unique IF NOT EXISTS
+                FOR (l:Language) REQUIRE l.name IS UNIQUE
+            """)
+            
+            # Create indexes for common queries
+            session.run("""
+                CREATE INDEX file_language_idx IF NOT EXISTS
+                FOR (f:File) ON (f.language)
+            """)
+            
+            session.run("""
+                CREATE INDEX function_language_idx IF NOT EXISTS
+                FOR (f:Function) ON (f.language)
+            """)
+            
+            session.run("""
+                CREATE INDEX class_language_idx IF NOT EXISTS
+                FOR (c:Class) ON (c.language)
+            """)
+            
+    def create_file_node(self, file: File) -> None:
+        """Create a file node with language information."""
+        with self._driver.session() as session:
+            # Create Language node if it doesn't exist
+            session.run("""
+                MERGE (l:Language {name: $language})
+                WITH l
+                MERGE (f:File {repo_id: $repo_id, path: $path})
+                SET f.language = $language,
+                    f.created_at = datetime()
+                MERGE (f)-[:HAS_LANGUAGE]->(l)
+            """, {
+                'repo_id': file.repo_id,
+                'path': file.path,
+                'language': file.language
+            })
+            
+    def create_function_node(self, function: Function, ast_data: Dict[str, Any]) -> None:
+        """Create a function node with AST information."""
+        with self._driver.session() as session:
+            session.run("""
+                MATCH (f:File {repo_id: $repo_id, path: $file_path})
+                MERGE (fn:Function {
+                    repo_id: $repo_id,
+                    file_path: $file_path,
+                    name: $name
+                })
+                SET fn.language = f.language,
+                    fn.ast_data = $ast_data,
+                    fn.start_point = $start_point,
+                    fn.end_point = $end_point,
+                    fn.created_at = datetime()
+                MERGE (f)-[:CONTAINS]->(fn)
+            """, {
+                'repo_id': function.repo_id,
+                'file_path': function.file_path,
+                'name': function.name,
+                'ast_data': json.dumps(ast_data),
+                'start_point': json.dumps(ast_data.get('start_point')),
+                'end_point': json.dumps(ast_data.get('end_point'))
+            })
+            
+    def create_class_node(self, repo_id: str, file_path: str, class_name: str,
+                         ast_data: Dict[str, Any]) -> None:
+        """Create a class node with AST information."""
+        with self._driver.session() as session:
+            session.run("""
+                MATCH (f:File {repo_id: $repo_id, path: $file_path})
+                MERGE (c:Class {
+                    repo_id: $repo_id,
+                    file_path: $file_path,
+                    name: $name
+                })
+                SET c.language = f.language,
+                    c.ast_data = $ast_data,
+                    c.start_point = $start_point,
+                    c.end_point = $end_point,
+                    c.created_at = datetime()
+                MERGE (f)-[:CONTAINS]->(c)
+            """, {
+                'repo_id': repo_id,
+                'file_path': file_path,
+                'name': class_name,
+                'ast_data': json.dumps(ast_data),
+                'start_point': json.dumps(ast_data.get('start_point')),
+                'end_point': json.dumps(ast_data.get('end_point'))
+            })
+            
+    def create_function_relationship(self, caller: Function, callee: Function) -> None:
+        """Create a relationship between functions."""
+        with self._driver.session() as session:
+            session.run("""
+                MATCH (caller:Function {
+                    repo_id: $caller_repo_id,
+                    file_path: $caller_file_path,
+                    name: $caller_name
+                })
+                MATCH (callee:Function {
+                    repo_id: $callee_repo_id,
+                    file_path: $callee_file_path,
+                    name: $callee_name
+                })
+                MERGE (caller)-[r:CALLS]->(callee)
+                SET r.created_at = datetime()
+            """, {
+                'caller_repo_id': caller.repo_id,
+                'caller_file_path': caller.file_path,
+                'caller_name': caller.name,
+                'callee_repo_id': callee.repo_id,
+                'callee_file_path': callee.file_path,
+                'callee_name': callee.name
+            })
+            
+    def get_file_relationships(self, file_path: str) -> Dict[str, Any]:
+        """Get all relationships for a file."""
+        with self._driver.session() as session:
+            result = session.run("""
+                MATCH (f:File {path: $file_path})
+                OPTIONAL MATCH (f)-[:CONTAINS]->(fn:Function)
+                OPTIONAL MATCH (f)-[:CONTAINS]->(c:Class)
+                OPTIONAL MATCH (fn)-[r:CALLS]->(called:Function)
+                RETURN f.language as language,
+                       collect(DISTINCT {
+                           type: 'function',
+                           name: fn.name,
+                           ast_data: fn.ast_data,
+                           calls: collect(DISTINCT {
+                               name: called.name,
+                               file_path: called.file_path
+                           })
+                       }) as functions,
+                       collect(DISTINCT {
+                           type: 'class',
+                           name: c.name,
+                           ast_data: c.ast_data
+                       }) as classes
+            """, file_path=file_path)
+            
+            data = result.single()
+            if not data:
+                return {}
+                
+            return {
+                'language': data['language'],
+                'functions': [
+                    {
+                        'name': f['name'],
+                        'ast_data': json.loads(f['ast_data']) if f['ast_data'] else None,
+                        'calls': f['calls']
+                    }
+                    for f in data['functions'] if f['name']
+                ],
+                'classes': [
+                    {
+                        'name': c['name'],
+                        'ast_data': json.loads(c['ast_data']) if c['ast_data'] else None
+                    }
+                    for c in data['classes'] if c['name']
+                ]
+            }
+            
+    def get_all_relationships(self) -> List[Dict[str, Any]]:
+        """Get all relationships from the graph database."""
+        with self._driver.session() as session:
+            result = session.run("""
+                MATCH (f:File)
+                OPTIONAL MATCH (f)-[:CONTAINS]->(fn:Function)
+                OPTIONAL MATCH (fn)-[r:CALLS]->(called:Function)
+                WITH f, fn, collect({
+                    name: called.name,
+                    file_path: called.file_path,
+                    type: 'CALLS'
+                }) as calls
+                RETURN f.path as file_path,
+                       collect({
+                           name: fn.name,
+                           relationships: calls
+                       }) as relationships
+            """)
+            
+            return [
+                {
+                    'file_path': record['file_path'],
+                    'relationships': {
+                        rel['name']: rel['relationships']
+                        for rel in record['relationships']
+                        if rel['name']  # Filter out None names
+                    }
+                }
+                for record in result
+            ]
+            
+    def delete_file_nodes(self, repo_id: str, file_path: str) -> None:
+        """Delete all nodes related to a file.
+        
+        This includes:
+        - The file node itself
+        - All function nodes contained in the file
+        - All class nodes contained in the file
+        - All relationships involving these nodes
+        
+        Args:
+            repo_id: Repository identifier
+            file_path: Path to the file
+        """
+        with self._driver.session() as session:
+            # Delete all nodes and their relationships
+            session.run("""
+                MATCH (f:File {repo_id: $repo_id, path: $path})
+                OPTIONAL MATCH (f)-[:CONTAINS]->(n)
+                DETACH DELETE f, n
+            """, {
+                'repo_id': repo_id,
+                'path': file_path
+            })
+            
+    def get_language_nodes(self) -> List[Dict[str, Any]]:
+        """Get all language nodes and their relationships."""
+        with self._driver.session() as session:
+            result = session.run("""
+                MATCH (l:Language)
+                OPTIONAL MATCH (f:File)-[:HAS_LANGUAGE]->(l)
+                WITH l, collect({
+                    path: f.path,
+                    repo_id: f.repo_id
+                }) as files
+                RETURN l.name as language,
+                       files
+            """)
+            
+            return [
+                {
+                    'language': record['language'],
+                    'files': [
+                        f for f in record['files']
+                        if f['path']  # Filter out None paths
+                    ]
+                }
+                for record in result
+            ]
+            
+    def sync_language_nodes(self, languages: Set[str]) -> None:
+        """Synchronize language nodes with a set of languages.
+        
+        Args:
+            languages: Set of language identifiers to sync
+        """
+        with self._driver.session() as session:
+            # Create missing language nodes
+            for lang in languages:
+                session.run("""
+                    MERGE (l:Language {name: $name})
+                """, {'name': lang})
+                
+            # Delete obsolete language nodes
+            session.run("""
+                MATCH (l:Language)
+                WHERE NOT l.name IN $languages
+                DETACH DELETE l
+            """, {'languages': list(languages)})
+            
+    def update_file_language(self, file_path: str, language: str) -> None:
+        """Update the language of a file node.
         
         Args:
             file_path: Path to the file
-            function_name: Name of the function
+            language: New language identifier
         """
         with self._driver.session() as session:
-            result = session.run("""
-                MATCH (f:Function {name: $name})<-[:CONTAINS]-(file:File {path: $path})
-                CALL apoc.path.spanningTree(f, {
-                    relationshipFilter: 'CALLS|IMPLEMENTS|USES',
-                    maxLevel: 3
-                })
-                YIELD path
-                WITH collect(path) as paths
-                RETURN {
-                    direct_deps: [n in apoc.coll.toSet([p in paths | nodes(p)[1]]) 
-                                WHERE n:Function | n.name],
-                    modules: apoc.coll.toSet([p in paths | 
-                            head([(n:File) in nodes(p) | n.path])]),
-                    call_chains: [p in paths | [n in nodes(p) | n.name]]
-                } as dependencies
-            """, path=file_path, name=function_name)
+            session.run("""
+                MATCH (f:File {path: $path})
+                OPTIONAL MATCH (f)-[r:HAS_LANGUAGE]->(:Language)
+                DELETE r
+                WITH f
+                MERGE (l:Language {name: $language})
+                MERGE (f)-[:HAS_LANGUAGE]->(l)
+                SET f.language = $language
+            """, {
+                'path': file_path,
+                'language': language
+            })
             
-            return result.single() or {}
-
+    def close(self) -> None:
+        """Close the Neo4j connection."""
+        self._driver.close()
+        
     def __enter__(self):
-        self.connect()
         return self
-
+        
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disconnect() 
+        self.close()
+        
+    def get_graph_statistics(self, repo_id: Optional[int] = None) -> Dict[str, int]:
+        """Get statistics about the graph structure.
+        
+        Args:
+            repo_id: Optional repository ID to filter by
+            
+        Returns:
+            Dictionary containing counts of different node and relationship types
+        """
+        stats = {}
+        
+        # Node count queries
+        if repo_id:
+            stats.update({
+                'file_count': self._execute_query(
+                    "MATCH (f:File) WHERE f.repo_id = $repo_id RETURN COUNT(f) as count",
+                    {'repo_id': repo_id}
+                )[0]['count'],
+                'function_count': self._execute_query(
+                    "MATCH (fn:Function) WHERE fn.repo_id = $repo_id RETURN COUNT(fn) as count",
+                    {'repo_id': repo_id}
+                )[0]['count'],
+                'class_count': self._execute_query(
+                    "MATCH (c:Class) WHERE c.repo_id = $repo_id RETURN COUNT(c) as count",
+                    {'repo_id': repo_id}
+                )[0]['count']
+            })
+        else:
+            stats.update({
+                'file_count': self._execute_query("MATCH (f:File) RETURN COUNT(f) as count")[0]['count'],
+                'function_count': self._execute_query("MATCH (fn:Function) RETURN COUNT(fn) as count")[0]['count'],
+                'class_count': self._execute_query("MATCH (c:Class) RETURN COUNT(c) as count")[0]['count']
+            })
+            
+        # Relationship count queries
+        if repo_id:
+            stats.update({
+                'calls_count': self._execute_query(
+                    """MATCH (fn:Function)-[r:CALLS]->() 
+                       WHERE fn.repo_id = $repo_id 
+                       RETURN COUNT(r) as count""",
+                    {'repo_id': repo_id}
+                )[0]['count'],
+                'contains_count': self._execute_query(
+                    """MATCH (f:File)-[r:CONTAINS]->() 
+                       WHERE f.repo_id = $repo_id 
+                       RETURN COUNT(r) as count""",
+                    {'repo_id': repo_id}
+                )[0]['count'],
+                'imports_count': self._execute_query(
+                    """MATCH (f:File)-[r:IMPORTS]->() 
+                       WHERE f.repo_id = $repo_id 
+                       RETURN COUNT(r) as count""",
+                    {'repo_id': repo_id}
+                )[0]['count']
+            })
+        else:
+            stats.update({
+                'calls_count': self._execute_query("MATCH ()-[r:CALLS]->() RETURN COUNT(r) as count")[0]['count'],
+                'contains_count': self._execute_query("MATCH ()-[r:CONTAINS]->() RETURN COUNT(r) as count")[0]['count'],
+                'imports_count': self._execute_query("MATCH ()-[r:IMPORTS]->() RETURN COUNT(r) as count")[0]['count']
+            })
+            
+        return stats
+
+    def _execute_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """Execute a Neo4j query.
+        
+        Args:
+            query: Cypher query to execute
+            params: Optional query parameters
+            
+        Returns:
+            List of result records as dictionaries
+            
+        Raises:
+            DatabaseError: If query execution fails
+        """
+        try:
+            with self._driver.session() as session:
+                result = session.run(query, params or {})
+                return [dict(record) for record in result]
+                
+        except Exception as e:
+            logger.error(f"Error executing query: {str(e)}")
+            raise 

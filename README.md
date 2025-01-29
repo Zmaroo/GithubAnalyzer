@@ -1,6 +1,65 @@
 # GithubAnalyzer
 
-A tool for analyzing GitHub repositories using tree-sitter parsing.
+A tool for analyzing GitHub repositories using tree-sitter and custom parsers.
+
+## Overview
+
+GithubAnalyzer is designed to be used as a library by AI agents for analyzing code repositories. It provides comprehensive code analysis capabilities including:
+
+- Semantic code search
+- AST-based code analysis
+- Custom parsing for configuration files
+- Code structure analysis
+- Language detection and support
+
+## Entry Point
+
+The main entry point for AI agents is through the `DatabaseService` class in `src/GithubAnalyzer/services/core/database/database_service.py`. This service provides all necessary functionality for:
+
+- Repository analysis
+- Code querying
+- Database management
+- Language support information
+
+Example usage:
+```python
+from GithubAnalyzer.services.core.database.database_service import DatabaseService
+
+# Initialize the service
+db_service = DatabaseService()
+
+# Initialize databases (first time only)
+db_service.initialize_databases()
+
+# Analyze a repository
+repo_id = db_service.analyze_repository("https://github.com/user/repo")
+
+# Query the codebase
+results = db_service.semantic_code_search("Find all database connections", limit=5)
+```
+
+## Development Tools
+
+For development purposes, utility scripts are available in `src/GithubAnalyzer/utils/dev_tools.py`:
+
+```bash
+# Fix import statements across the project
+python -m GithubAnalyzer.utils.dev_tools fix-imports
+```
+
+## Dependencies
+
+- Python 3.8+
+- tree-sitter
+- PostgreSQL with pgvector extension
+- Neo4j with APOC and GDS plugins
+
+## Installation
+
+1. Clone the repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Set up environment variables (see `.env.example`)
+4. Initialize databases: Use `DatabaseService.initialize_databases()`
 
 ## Features
 
@@ -31,16 +90,6 @@ src/GithubAnalyzer/
     ├── logging.py          # Logging utilities
     └── decorators.py       # Code organization
 ```
-
-## Installation
-
-1. Install Python 3.9 or higher
-2. Clone this repository
-3. Install dependencies:
-
-   ```bash
-   pip install -e .
-   ```
 
 ## Testing
 

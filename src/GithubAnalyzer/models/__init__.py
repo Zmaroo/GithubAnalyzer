@@ -4,7 +4,9 @@ from GithubAnalyzer.models.core.database import (
     CodeSnippet,
     Function,
     File,
-    CodebaseQuery
+    CodebaseQuery,
+    Class,
+    GraphAnalytics
 )
 
 from GithubAnalyzer.models.core.errors import (
@@ -26,19 +28,40 @@ from GithubAnalyzer.models.core.ast import (
     ParseResult
 )
 
+from GithubAnalyzer.models.analysis.results import (
+    BaseAnalysisResult,
+    AnalysisMetrics,
+    AnalysisResult
+)
+
 from GithubAnalyzer.models.analysis.code_analysis import (
-    CodeAnalysisResult
+    CodeMetrics,
+    CodeAnalysisResult,
+    BatchAnalysisResult
 )
 
 from GithubAnalyzer.models.analysis.tree_sitter import (
-    get_node_text,
-    node_to_dict,
-    format_error_context,
-    count_nodes
+    TreeSitterResult,
+    TreeSitterEdit,
+    TreeSitterRange,
+    TreeSitterQueryResult,
+    TreeSitterQueryMatch
 )
 
-from GithubAnalyzer.models.analysis.results import (
-    AnalysisResult
+from GithubAnalyzer.models.analysis.types import (
+    QueryResult,
+    NodeDict,
+    NodeList,
+    LanguageId,
+    QueryPattern
+)
+
+from GithubAnalyzer.services.analysis.parsers.utils import (
+    get_node_text,
+    node_to_dict,
+    iter_children,
+    get_node_hierarchy,
+    find_common_ancestor
 )
 
 __all__ = [
@@ -47,6 +70,8 @@ __all__ = [
     'Function',
     'File',
     'CodebaseQuery',
+    'Class',
+    'GraphAnalytics',
     'ParserError',
     'LanguageError',
     'QueryError',
@@ -58,11 +83,32 @@ __all__ = [
     'FileFilterConfig',
     'ParseResult',
     
-    # Analysis models
+    # Analysis base models
+    'BaseAnalysisResult',
+    'AnalysisMetrics',
+    'AnalysisResult',
+    
+    # Code analysis models
+    'CodeMetrics',
     'CodeAnalysisResult',
+    'BatchAnalysisResult',
+    
+    # Tree-sitter models
+    'TreeSitterResult',
+    'TreeSitterEdit',
+    'TreeSitterRange',
+    'TreeSitterQueryResult',
+    'TreeSitterQueryMatch',
+    'QueryResult',
+    'NodeDict',
+    'NodeList',
+    'LanguageId',
+    'QueryPattern',
+    
+    # Tree-sitter utilities
     'get_node_text',
     'node_to_dict',
-    'format_error_context',
-    'count_nodes',
-    'AnalysisResult'
+    'iter_children',
+    'get_node_hierarchy',
+    'find_common_ancestor'
 ] 

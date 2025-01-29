@@ -1,100 +1,55 @@
-from typing import Optional, Tuple, List
-from neo4j.exceptions import ServiceUnavailable
-
-from GithubAnalyzer.services.core.database.neo4j_service import Neo4jService
-import psycopg2
+"""Database cleanup utilities."""
+from typing import Optional
 from GithubAnalyzer.services.core.database.postgres_service import PostgresService
+from GithubAnalyzer.services.core.database.neo4j_service import Neo4jService
 from GithubAnalyzer.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 class DatabaseCleaner:
-    """Utility class for cleaning up databases."""
+    """Utility class for cleaning up database resources."""
     
     def __init__(self):
+        """Initialize the database cleaner."""
         self.pg_service = PostgresService()
         self.neo4j_service = Neo4jService()
-    
-    def test_connections(self) -> Tuple[bool, List[str]]:
-        """Test connections to both databases.
         
-        Returns:
-            Tuple of (success, list of error messages)
-        """
-        errors = []
-        success = True
-        
-        # Test PostgreSQL
-        try:
-            with self.pg_service as pg:
-                with pg._conn.cursor() as cur:
-                    cur.execute("SELECT 1")
-        except psycopg2.Error as e:
-            success = False
-            errors.append(f"PostgreSQL connection failed: {str(e)}")
-        
-        # Test Neo4j
-        try:
-            with self.neo4j_service as neo4j:
-                with neo4j._driver.session() as session:
-                    session.run("RETURN 1")
-        except ServiceUnavailable as e:
-            success = False
-            errors.append(f"Neo4j connection failed: {str(e)}")
-        except Exception as e:
-            success = False
-            errors.append(f"Neo4j error: {str(e)}")
-        
-        return success, errors
-    
-    def cleanup_postgres(self) -> None:
-        """Clean up all data in PostgreSQL."""
-        try:
-            with self.pg_service as pg:
-                with pg._conn.cursor() as cur:
-                    cur.execute("""
-                        TRUNCATE TABLE code_snippets;
-                    """)
-                    pg._conn.commit()
-            logger.info("Successfully cleaned PostgreSQL database")
-        except psycopg2.Error as e:
-            logger.error(f"Failed to clean PostgreSQL database: {str(e)}")
-            raise
-    
-    def cleanup_neo4j(self) -> None:
-        """Clean up all data in Neo4j."""
-        try:
-            with self.neo4j_service as neo4j:
-                with neo4j._driver.session() as session:
-                    session.run("""
-                        MATCH (n)
-                        DETACH DELETE n
-                    """)
-            logger.info("Successfully cleaned Neo4j database")
-        except Exception as e:
-            logger.error(f"Failed to clean Neo4j database: {str(e)}")
-            raise
-    
     def cleanup_all(self) -> None:
-        """Clean up all databases."""
-        # First test connections
-        success, errors = self.test_connections()
-        if not success:
-            error_msg = "\n".join(errors)
-            logger.error(f"Database connection test failed:\n{error_msg}")
-            raise ConnectionError(f"Failed to connect to databases:\n{error_msg}")
-        
-        # If connections are good, proceed with cleanup
+        """Clean up all database resources."""
         self.cleanup_postgres()
         self.cleanup_neo4j()
-        logger.info("Successfully cleaned all databases")
-
-def cleanup_databases() -> None:
-    """Convenience function to clean all databases."""
-    try:
-        cleaner = DatabaseCleaner()
-        cleaner.cleanup_all()
-        print("Successfully cleaned all databases.")
-    except Exception as e:
-        print(f"Error cleaning databases: {str(e)}")
-        logger.exception("Database cleanup failed") 
+        
+    def cleanup_postgres(self) -> None:
+        """Clean up PostgreSQL resources."""
+        with self.pg_service as pg:
+            pg.drop_tables()
+            pg.create_tables()
+            
+    def cleanup_neo4j(self) -> None:
+        """Clean up Neo4j resources."""
+        with self.neo4j_service as neo4j:
+            # Delete all nodes and relationships
+            neo4j._execute_query("MATCH (n) DETACH DELETE n")
+            
+            # Recreate constraints
+            neo4j.setup_constraints()
+            
+    def cleanup_repository(self, repo_id: str) -> None:
+        """Clean up all data for a specific repository.
+        
+        Args:
+            repo_id: Repository identifier to clean up
+        """
+        with self.pg_service as pg:
+            # Delete repository data from PostgreSQL
+            pg._execute_query(
+                "DELETE FROM code_snippets WHERE repo_id = %s",
+                (repo_id,)
+            )
+            
+        with self.neo4j_service as neo4j:
+            # Delete repository data from Neo4j
+            neo4j._execute_query(
+                "MATCH (n) WHERE n.repo_id = $repo_id DETACH DELETE n",
+                {'repo_id': repo_id}
+            ) 
