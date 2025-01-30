@@ -3,6 +3,7 @@ import pytest
 """Test configuration and fixtures."""
 from pathlib import Path
 from tree_sitter import Language, Parser
+from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
 
 @pytest.fixture
 def repo_url():
@@ -40,11 +41,9 @@ def python_language():
     return get_language("python")
 
 @pytest.fixture
-def python_parser(python_language):
-    """Create a Python parser with proper language initialization."""
-    parser = Parser()
-    parser.language = python_language  # v24 API change
-    return parser
+def python_parser():
+    """Create a Python parser."""
+    return get_parser("python")
 
 @pytest.fixture
 def simple_tree(python_parser):
@@ -72,12 +71,31 @@ class Greeter:
 @pytest.fixture
 def test_logging_setup():
     """Set up logging for tests."""
-    from GithubAnalyzer.utils.logging.config import configure_test_logging
-    return configure_test_logging()
+    from GithubAnalyzer.utils.logging import get_logger, LoggerFactory, StructuredFormatter
+    import logging
+    
+    # Create logger factory instance
+    factory = LoggerFactory()
+    
+    # Configure main logger with structured formatting
+    main_logger = factory.get_logger('test', level=logging.DEBUG)
+    
+    # Set up tree-sitter specific logging with structured formatting
+    ts_logger = factory.get_logger('tree_sitter', level=logging.DEBUG)
+    
+    # Add console handler with structured formatting
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(StructuredFormatter())
+    ts_logger.addHandler(console_handler)
+    
+    return {
+        'main_logger': main_logger,
+        'ts_logger': ts_logger,
+        'parser_logger': ts_logger.getChild('parser')
+    }
 
 @pytest.fixture
-def python_parser_with_logging(python_parser, test_logging_setup):
-    """Create a Python parser with tree-sitter v24 logging enabled."""
-    from GithubAnalyzer.utils.logging.config import configure_parser_logging
-    configure_parser_logging(python_parser, "tree_sitter")
-    return python_parser 
+def python_parser_with_logging(test_logging_setup):
+    """Create a Python parser with logging enabled."""
+    # Just return the parser since tree-sitter-language-pack parsers don't support direct logger setting
+    return get_parser("python")

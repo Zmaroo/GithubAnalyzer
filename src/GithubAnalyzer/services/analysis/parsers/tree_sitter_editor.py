@@ -20,6 +20,21 @@ from .language_service import LanguageService
 from .traversal_service import TreeSitterTraversal
 from .query_service import TreeSitterQueryHandler
 
+from GithubAnalyzer.models.analysis.types import (
+    NodeDict,
+    NodeList,
+    QueryResult
+)
+from GithubAnalyzer.utils.logging import get_logger
+from .utils import (
+    get_node_text,
+    node_to_dict,
+    is_valid_node,
+    get_node_type,
+    get_node_text_safe,
+    TreeSitterServiceBase
+)
+
 # Use tree-sitter logger instead of standard logger
 logger = get_tree_sitter_logger("tree_sitter.editor")
 

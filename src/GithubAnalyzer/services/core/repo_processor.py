@@ -92,11 +92,19 @@ class RepoProcessor:
         context = self._get_context(**kwargs)
         getattr(self._logger, level)(message, extra={'context': context})
         
-    def process_repo(self, repo_url: str) -> bool:
-        """Process a repository from its URL."""
+    def process_repo(self, repo_url: str, repo_id: int) -> bool:
+        """Process a repository from its URL.
+        
+        Args:
+            repo_url: URL of the repository to process
+            repo_id: ID of the repository in the database
+            
+        Returns:
+            bool: True if processing was successful, False otherwise
+        """
         start_time = time.time()
         self._log("info", "Starting repository processing",
-                 repo_url=repo_url)
+                 repo_url=repo_url, repo_id=repo_id)
         
         try:
             # Clone repository
@@ -107,7 +115,7 @@ class RepoProcessor:
                 return False
                 
             # Get repository files
-            files = self.file_service.get_repository_files(repo_path)
+            files = self.file_service.get_repository_files(repo_path, repo_id=repo_id)
             if not files:
                 self._log("warning", "No files found in repository",
                          repo_url=repo_url,
@@ -155,22 +163,28 @@ class RepoProcessor:
             return False
             
     def _process_file(self, file_info: FileInfo) -> Optional[CodeSnippet]:
-        """Process a single file from the repository."""
+        """Process a single file from the repository.
+        
+        Returns:
+            - None if the file cannot be processed (encoding errors, read errors, etc.)
+            - CodeSnippet with syntax_valid=False if the file can be read but not parsed
+            - CodeSnippet with syntax_valid=True if the file is successfully parsed
+        """
         start_time = time.time()
         try:
-            # Skip if no language detected
-            if not file_info.language:
-                self._log("debug", "Skipping file - no language detected",
-                         file=str(file_info.path))
+            # Try to read file content first
+            try:
+                with open(file_info.path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            except (UnicodeDecodeError, IOError) as e:
+                self._log("debug", "File read error",
+                         file=str(file_info.path),
+                         error=str(e))
                 return None
 
-            # Read file content
-            with open(file_info.path, 'r', encoding='utf-8') as f:
-                content = f.read()
-
-            # Skip empty files
+            # Handle empty files
             if not content.strip():
-                self._log("debug", "Skipping empty file",
+                self._log("debug", "Empty file",
                          file=str(file_info.path))
                 return None
 
@@ -183,16 +197,16 @@ class RepoProcessor:
                              file=str(file_info.path),
                              parser_type="custom")
                     return CodeSnippet(
+                        id=None,
+                        repo_id=0,  # Default repo ID
                         file_path=str(file_info.path),
-                        content=content,
+                        code_text=content,
                         language=file_info.language,
                         ast_data=ast_data,
-                        syntax_valid=True
+                        syntax_valid=True,
+                        embedding=[0.0] * 768,  # Default zero embedding
+                        created_at=datetime.now()
                     )
-                else:
-                    self._log("warning", "Custom parser failed",
-                             file=str(file_info.path))
-                    # Don't return None here - try tree-sitter as fallback
 
             # Process with tree-sitter if language is supported
             if self.language_service.is_language_supported(file_info.language):
@@ -205,34 +219,34 @@ class RepoProcessor:
                              parser_type="tree-sitter",
                              duration_ms=duration)
                     return CodeSnippet(
+                        id=None,
+                        repo_id=0,  # Default repo ID
                         file_path=str(file_info.path),
-                        content=content,
+                        code_text=content,
                         language=file_info.language,
                         ast_data=ast_data,
-                        syntax_valid=True
+                        syntax_valid=ast_data.get('syntax_valid', True),  # Default to True if not specified
+                        embedding=[0.0] * 768,  # Default zero embedding
+                        created_at=datetime.now()
                     )
-                else:
-                    self._log("warning", "Tree-sitter parsing failed",
-                             file=str(file_info.path),
-                             language=file_info.language)
-                    return None
 
-            # Store file without AST data if no parser was successful
-            self._log("debug", "No parser available",
+            # If we get here, we have valid content but no successful parse
+            # Return a CodeSnippet with syntax_valid=False
+            self._log("debug", "No successful parse",
                      file=str(file_info.path),
-                     language=file_info.language)
+                     language=file_info.language or "unknown")
             return CodeSnippet(
+                id=None,
+                repo_id=0,  # Default repo ID
                 file_path=str(file_info.path),
-                content=content,
-                language=file_info.language,
+                code_text=content,
+                language=file_info.language or "unknown",
                 ast_data={},
-                syntax_valid=False
+                syntax_valid=False,
+                embedding=[0.0] * 768,  # Default zero embedding
+                created_at=datetime.now()
             )
 
-        except UnicodeDecodeError:
-            self._log("debug", "Skipping file - encoding error",
-                     file=str(file_info.path))
-            return None
         except Exception as e:
             self._log("error", "Error processing file",
                      file=str(file_info.path),
@@ -250,21 +264,43 @@ class RepoProcessor:
             Dictionary containing AST data if successful, None otherwise
         """
         try:
-            tree = self.language_service.parse_content(content, language)
-            if not tree:
-                return None
+            parse_result = self.parser_service.parse_content(content, language)
+            if not parse_result or not parse_result.tree:
+                self._log("error", "Failed to parse content",
+                         language=language)
+                return {
+                    'syntax_valid': False,
+                    'errors': ['Failed to parse content'],
+                    'error_nodes': [],
+                    'missing_nodes': []
+                }
                 
-            ast_data = self._extract_ast_data(tree)
-            if not ast_data:
-                return None
-                
-            return ast_data
+            # Extract AST data even if there are syntax errors
+            # Tree-sitter will provide a partial AST
+            ast_data = self._extract_ast_data(parse_result)
+            
+            # Check if the root node has any syntax errors
+            syntax_valid = not parse_result.tree.root_node.has_error
+            
+            # Include AST data and error information
+            result = ast_data or {}
+            result['syntax_valid'] = syntax_valid
+            result['errors'] = parse_result.errors if hasattr(parse_result, 'errors') else []
+            result['error_nodes'] = [node_to_dict(node) for node in parse_result.error_nodes] if hasattr(parse_result, 'error_nodes') else []
+            result['missing_nodes'] = [node_to_dict(node) for node in parse_result.missing_nodes] if hasattr(parse_result, 'missing_nodes') else []
+            
+            return result
             
         except Exception as e:
             self._log("error", "Tree-sitter parsing error",
                      language=language,
                      error=str(e))
-            return None
+            return {
+                'syntax_valid': False,
+                'errors': [str(e)],
+                'error_nodes': [],
+                'missing_nodes': []
+            }
             
     def _parse_with_custom_parser(self, content: str, file_path: Path) -> Optional[Dict[str, Any]]:
         """Parse file content using a custom parser.

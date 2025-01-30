@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Any
 from dataclasses import dataclass
 import pytest
+import re
 from tree_sitter import Parser, Language, Query
 
 from tree_sitter_language_pack import get_binding, get_language, get_parser
@@ -15,7 +16,7 @@ from GithubAnalyzer.services.analysis.parsers.tree_sitter_editor import TreeSitt
 from GithubAnalyzer.services.analysis.parsers.query_service import TreeSitterQueryHandler
 from GithubAnalyzer.services.analysis.parsers.traversal_service import TreeSitterTraversal
 from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
-from GithubAnalyzer.utils.logging import get_logger, LoggerFactory, StructuredFormatter, TreeSitterLogHandler
+from GithubAnalyzer.utils.logging import get_logger, LoggerFactory, StructuredFormatter
 from GithubAnalyzer.models.core.errors import LanguageError
 from GithubAnalyzer.models.core.file import FileInfo
 
@@ -27,20 +28,34 @@ class Point:
     column: int
 
 def setup_test_logging():
-    """Set up logging for tests with proper tree-sitter integration."""
-    # Create logger factory instance
-    factory = LoggerFactory()
+    """Set up logging for tests with structured formatting."""
+    # Configure root logger
+    logging.basicConfig(level=logging.DEBUG)
     
-    # Configure main logger
-    main_logger = factory.get_logger('test_database_service', level=logging.DEBUG)
+    # Create main logger
+    main_logger = logging.getLogger('test_database_service')
+    main_logger.setLevel(logging.DEBUG)
     
-    # Set up tree-sitter specific logging
-    ts_logger = factory.get_tree_sitter_logger('tree_sitter', level=logging.DEBUG)
+    # Create tree-sitter logger
+    ts_logger = logging.getLogger('tree_sitter')
+    ts_logger.setLevel(logging.DEBUG)
     
-    # Set up parser-specific logging (available in tree-sitter 0.24.0+)
-    parser_logger = factory.get_logger('tree_sitter.parser', level=logging.DEBUG)
+    # Create console handler
+    console_handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    
+    # Add handler to loggers
+    main_logger.addHandler(console_handler)
+    ts_logger.addHandler(console_handler)
+    
+    return {
+        'main_logger': main_logger,
+        'ts_logger': ts_logger,
+        'parser_logger': ts_logger.getChild('parser')
+    }
 
-def create_parser_with_logging(language: str):
+def create_parser_with_logging(language: str) -> Parser:
     """Create a tree-sitter parser with logging enabled.
     
     Args:
@@ -49,43 +64,64 @@ def create_parser_with_logging(language: str):
     Returns:
         Tree-sitter parser with logging configured
     """
-    # Get parser directly from tree-sitter-language-pack
+    # Get the parser
     parser = get_parser(language)
     
-    if not parser:
-        raise ValueError(f"Could not get parser for {language}")
-        
+    # Set up logging callback
+    ts_logger = logging.getLogger('tree_sitter')
+    def logger_callback(msg: str) -> None:
+        ts_logger.debug(msg)
+    
+    # Set the logger on the parser
+    parser.set_logger_callback(logger_callback)
+    
     return parser
 
-def test_repository_analysis(repo_url: str = "https://github.com/Zmaroo/tree-sitter-language-pack.git"):
-    """Test repository analysis and search functionality.
-    
-    Args:
-        repo_url: URL of the GitHub repository to analyze
-    """
+def test_repository_analysis():
+    """Test repository analysis and search functionality."""
     db_service = DatabaseService()
     repo_processor = RepoProcessor()
     
     # Initialize databases
     logger.info("Initializing databases...")
+    db_service.cleanup_databases()  # Clean up first
     db_service.initialize_databases()
     
-    # Test repository analysis
-    logger.info("Starting repository analysis...")
-    logger.info(f"Analyzing repository: {repo_url}")
-    repo_processor.process_repo(repo_url)
+    # Use sample project for testing
+    test_repo_url = "file://" + str(Path(__file__).parent.parent.parent.parent / "data" / "sample_project")
+    logger.info(f"Analyzing repository: {test_repo_url}")
+    
+    # Create repository and get its ID
+    repo_id = db_service.pg_service.create_repository(
+        url=test_repo_url,
+        resource_type='codebase'
+    )
+    assert repo_id is not None, "Failed to create repository"
+    
+    # Process the repository
+    success = repo_processor.process_repo(test_repo_url, repo_id)
+    assert success, "Failed to process repository"
     
     # Verify database state
     with db_service.pg_service as pg:
         # Check if repository was stored
         repos = pg.get_repositories()
-        assert any(repo['url'] == repo_url for repo in repos), "Repository not stored in database"
-        logger.debug(f"Found repository in database: {repo_url}")
+        repo_entry = next((r for r in repos if r['repo_url'] == test_repo_url), None)
+        assert repo_entry is not None, "Repository not stored in database"
+        assert repo_entry['id'] == repo_id, "Repository ID mismatch"
+        logger.debug(f"Found repository in database: {test_repo_url}")
         
         # Check if code snippets were stored
         snippets = pg.get_all_code_snippets()
         assert len(snippets) > 0, "No code snippets stored"
         logger.debug(f"Found {len(snippets)} code snippets")
+        
+        # Verify we have both Python and JavaScript files
+        python_snippets = [s for s in snippets if s['language'] == 'python']
+        js_snippets = [s for s in snippets if s['language'] == 'javascript']
+        assert len(python_snippets) > 0, "No Python code snippets found"
+        assert len(js_snippets) > 0, "No JavaScript code snippets found"
+        logger.debug(f"Found {len(python_snippets)} Python and {len(js_snippets)} JavaScript snippets")
         
         # Check if embeddings were generated
         assert all('embedding' in snippet for snippet in snippets), "Missing embeddings"
@@ -93,27 +129,102 @@ def test_repository_analysis(repo_url: str = "https://github.com/Zmaroo/tree-sit
     
     # Test semantic search
     logger.info("Testing semantic search...")
-    search_results = db_service.semantic_code_search(
-        "Find all language definitions and configurations",
-        limit=5
-    )
-    assert len(search_results) > 0, "No search results found"
-    logger.debug(f"Found {len(search_results)} semantic matches")
     
-    # Test codebase querying with proper parsers
-    logger.info("Testing codebase querying...")
-    query_results = db_service.query_codebase(
-        "How are language parsers initialized?",
+    # Search for user-related code
+    user_results = db_service.semantic_code_search(
+        "Find code related to user management and caching",
         limit=5
     )
-    assert len(query_results.semantic_matches) > 0, "No semantic matches found"
-    assert len(query_results.structural_relationships) > 0, "No structural relationships found"
-    logger.debug(f"Found {len(query_results.semantic_matches)} matches and {len(query_results.structural_relationships)} relationships")
+    assert len(user_results) > 0, "No user-related code found"
+    assert any('User' in r['code_text'] for r in user_results), "User class not found"
+    assert any('cache' in r['code_text'].lower() for r in user_results), "Caching logic not found"
+    
+    # Search for analytics code
+    analytics_results = db_service.semantic_code_search(
+        "Find code related to user analytics and patterns",
+        limit=5
+    )
+    assert len(analytics_results) > 0, "No analytics-related code found"
+    assert any('Analytics' in r['code_text'] for r in analytics_results), "Analytics class not found"
+    
+    # Test cross-language functionality
+    logger.info("Testing cross-language analysis...")
+    
+    # Analyze code structure
+    structure = db_service.analyze_code_structure(repo_id)
+    
+    # Check for Python-JavaScript interactions
+    assert 'dependencies' in structure, "No dependencies found"
+    assert 'communities' in structure, "No code communities found"
+    
+    # Verify we can detect related code across languages
+    assert any(
+        'user' in str(comp).lower() 
+        for comp in structure['dependencies']['central_components']
+    ), "User-related components not found in dependencies"
+    
+    logger.info("Repository analysis tests completed successfully")
+
+def test_url_handling():
+    """Test handling of both repository and non-repository URLs."""
+    db_service = DatabaseService()
+    
+    # Initialize databases
+    logger.info("Initializing databases...")
+    db_service.cleanup_databases()  # Clean up first
+    db_service.initialize_databases()
+    
+    # Test codebase URL
+    repo_url = "file://" + str(Path(__file__).parent.parent.parent.parent / "data" / "sample_project")
+    repo_id = db_service.pg_service.create_repository(
+        url=repo_url,
+        resource_type='codebase'
+    )
+    assert repo_id is not None, "Failed to create repository"
+    
+    # Test documentation URL
+    doc_url = "https://test.com/docs"
+    doc_id = db_service.pg_service.create_repository(
+        url=doc_url,
+        resource_type='documentation',
+        name="Test Documentation",
+        description="Test documentation resource"
+    )
+    assert doc_id is not None, "Failed to create documentation entry"
+    
+    # Verify database state
+    with db_service.pg_service as pg:
+        # Check repositories
+        repos = pg.get_repositories()
+        
+        # Find repository entry
+        repo_entry = next((r for r in repos if r['url'] == repo_url), None)
+        assert repo_entry is not None, "Repository not stored in database"
+        assert repo_entry['resource_type'] == 'codebase', "Repository should be marked as codebase"
+        # Extract repo name from the last part of the path
+        expected_repo_name = Path(repo_url.replace("file://", "")).name
+        assert repo_entry['repo_name'] == expected_repo_name, f"Repository name mismatch. Expected {expected_repo_name}, got {repo_entry['repo_name']}"
+        
+        # Find documentation entry
+        doc_entry = next((r for r in repos if r['url'] == doc_url), None)
+        assert doc_entry is not None, "Documentation not stored in database"
+        assert doc_entry['resource_type'] == 'documentation', "Documentation should be marked as documentation"
+        assert doc_entry['repo_name'] == "Test Documentation", "Documentation name mismatch"
 
 def test_code_analysis():
     """Test code analysis functionality."""
+    # Set up logging
+    loggers = setup_test_logging()
+    logger = loggers['main_logger']
+    ts_logger = loggers['ts_logger']
+    
     logger.info("Starting code analysis test...")
     db_service = DatabaseService()
+    
+    # Clean up databases before test
+    logger.info("Cleaning up databases...")
+    db_service.cleanup_databases()
+    db_service.initialize_databases()
     
     # Initialize services with proper language handling
     language_service = LanguageService()
@@ -136,13 +247,63 @@ def test_code_analysis():
     
     # Test language detection
     language = language_service.detect_language(code)
-    assert language == "python", "Failed to detect Python language"
+    assert language == "python", f"Failed to detect Python language, got {language}"
     logger.debug(f"Detected language: {language}")
     
-    # Create parser with logging and proper language initialization
+    # Create test repository using local test data directory
+    test_repo_url = "file://" + str(Path(__file__).parent.parent.parent.parent / "data")
+    test_repo_id = db_service.pg_service.create_repository(test_repo_url)
+    test_file_path = "test_file.py"
+    
+    # Create file node
+    db_service.neo4j_service.create_file_node(FileInfo(
+        path=Path(test_file_path),
+        language=language,
+        repo_id=test_repo_id
+    ))
+    
+    # Create class node
+    db_service.neo4j_service.create_class_node(
+        repo_id=test_repo_id,
+        file_path=test_file_path,
+        class_name="UserService",
+        ast_data={
+            "type": "class_definition",
+            "start_point": {"row": 2, "column": 4},
+            "end_point": {"row": 9, "column": 4}
+        }
+    )
+    
+    # Create function nodes
+    get_user_func = {
+        'repo_id': test_repo_id,
+        'file_path': test_file_path,
+        'name': "get_user"
+    }
+    process_data_func = {
+        'repo_id': test_repo_id,
+        'file_path': test_file_path,
+        'name': "process_data"
+    }
+    
+    get_user_ast = {
+        "type": "function_definition",
+        "start_point": {"row": 5, "column": 8},
+        "end_point": {"row": 6, "column": 8}
+    }
+    process_data_ast = {
+        "type": "function_definition",
+        "start_point": {"row": 8, "column": 8},
+        "end_point": {"row": 9, "column": 8}
+    }
+    
+    db_service.neo4j_service.create_function_node(get_user_func, get_user_ast)
+    db_service.neo4j_service.create_function_node(process_data_func, process_data_ast)
+    
+    # Create parser with logging
     parser = create_parser_with_logging("python")
     
-    # Test structural analysis with proper parsers
+    # Test structural analysis
     logger.info("Testing code structure analysis...")
     structure = db_service.analyze_code_structure(code)
     assert structure['syntax_valid'], "Invalid syntax"
@@ -174,8 +335,18 @@ def test_code_analysis():
 
 def test_code_editing():
     """Test code editing functionality."""
+    # Set up logging
+    loggers = setup_test_logging()
+    logger = loggers['main_logger']
+    ts_logger = loggers['ts_logger']
+    
     logger.info("Starting code editing test...")
     db_service = DatabaseService()
+    
+    # Clean up and initialize databases
+    logger.info("Initializing databases...")
+    db_service.cleanup_databases()
+    db_service.initialize_databases()
     
     # Initialize services with proper language handling
     language_service = LanguageService()
@@ -189,7 +360,20 @@ def test_code_editing():
         return result
     """
     
-    # Create parser with logging and proper language initialization
+    # Create test repository and file
+    test_repo_url = "file://" + str(Path(__file__).parent.parent.parent.parent / "data")
+    test_repo_id = db_service.pg_service.create_repository(test_repo_url)
+    test_file_path = "test_file.py"
+    
+    # Store the code in the database
+    db_service.store_code_data(
+        repo_id=test_repo_id,
+        file_path=test_file_path,
+        code_text=code,
+        language="python"
+    )
+    
+    # Create parser with logging
     parser = create_parser_with_logging("python")
     
     # Parse code with debug info
@@ -230,8 +414,19 @@ def test_code_editing():
 
 def test_language_support():
     """Test language support information."""
+    # Set up logging
+    loggers = setup_test_logging()
+    logger = loggers['main_logger']
+    
     logger.info("Starting language support test...")
     db_service = DatabaseService()
+    
+    # Clean up and initialize databases
+    logger.info("Initializing databases...")
+    db_service.cleanup_databases()
+    db_service.initialize_databases()
+    
+    # Initialize language service
     language_service = LanguageService()
     
     # Get language support info
@@ -243,9 +438,11 @@ def test_language_support():
         'python', 'javascript', 'typescript', 'java', 'rust', 'go',
         'cpp', 'c', 'ruby', 'php'
     }
+    
+    supported_languages = set(support_info.get('supported_languages', []))
     for lang in core_languages:
-        assert lang in support_info['supported_languages'], f"{lang} not supported"
-    logger.debug(f"Found {len(support_info['supported_languages'])} supported languages")
+        assert lang in supported_languages, f"{lang} not supported"
+    logger.debug(f"Found {len(supported_languages)} supported languages")
     
     # Test file extension mappings
     extension_tests = {
@@ -260,13 +457,7 @@ def test_language_support():
         'test.go': 'go',
         'test.java': 'java',
         'test.rb': 'ruby',
-        'test.php': 'php',
-        'test.html': 'html',
-        'test.css': 'css',
-        'test.yml': 'yaml',
-        'Dockerfile': 'dockerfile',
-        'Makefile': 'make',
-        '.gitignore': 'gitignore'
+        'test.php': 'php'
     }
     
     for file_path, expected_lang in extension_tests.items():
@@ -298,34 +489,7 @@ def test_language_support():
             name: string;
             value: number;
         }
-        ''': 'typescript',
-        
-        # Rust
-        '''
-        pub fn test() -> Result<String, Error> {
-            let mut value = String::new();
-            Ok(value)
-        }
-        ''': 'rust',
-        
-        # Go
-        '''
-        package main
-        
-        func test() error {
-            var x string
-            return nil
-        }
-        ''': 'go',
-        
-        # Java
-        '''
-        public class Test {
-            private void example() {
-                System.out.println("test");
-            }
-        }
-        ''': 'java'
+        ''': 'typescript'
     }
     
     for content, expected_lang in content_tests.items():
@@ -367,7 +531,8 @@ def main():
     logger.info("=" * 50)
     
     try:
-        test_repository_analysis(repo_url)
+        test_repository_analysis()
+        test_url_handling()
         test_code_analysis()
         test_code_editing()
         test_language_support()

@@ -1,5 +1,6 @@
 """Language service for managing tree-sitter language support."""
 import json
+import re
 from pathlib import Path
 from typing import Dict, Optional, Set, Any, List
 from tree_sitter import Language, Parser, Node
@@ -223,118 +224,133 @@ class LanguageService(TreeSitterServiceBase):
             return "plaintext"
 
         # Special case handling for common file patterns
-        if code.strip().startswith("<?php"):
+        code_lines = code.strip().split('\n')
+        first_line = code_lines[0].strip() if code_lines else ""
+
+        if first_line.startswith("<?php"):
             return "php"
-        if code.strip().startswith("<!DOCTYPE html") or code.strip().startswith("<html"):
+        if first_line.startswith("<!DOCTYPE html") or first_line.startswith("<html"):
             return "html"
-        if code.strip().startswith("<?xml"):
+        if first_line.startswith("<?xml"):
             return "xml"
-        if code.strip().startswith("---") or code.strip().startswith("apiVersion:"):
+        if first_line.startswith("---") or first_line.startswith("apiVersion:"):
             return "yaml"
-        if code.strip().startswith("#") and "markdown" in code.lower():
+        if first_line.startswith("#") and "markdown" in code.lower():
             return "markdown"
 
-        # Define language features for better detection
-        language_features = {
-            "python": {
-                "keywords": ["def", "class", "import", "from", "async", "await", "with", "as", "pass"],
-                "patterns": [
-                    r"def\s+\w+\s*\([^)]*\)\s*:",
-                    r"class\s+\w+\s*(?:\([^)]*\))?\s*:",
-                    r"@\w+",
-                    r"__\w+__"
-                ]
-            },
-            "javascript": {
-                "keywords": ["const", "let", "var", "function", "class", "extends", "async", "await"],
-                "patterns": [
-                    r"const\s+\w+\s*=",
-                    r"let\s+\w+\s*=",
-                    r"function\s*\w*\s*\([^)]*\)\s*{",
-                    r"class\s+\w+\s*{",
-                    r"=>\s*{",
-                    r"export\s+(?:default\s+)?(?:class|function|const|let)"
-                ]
-            },
-            "typescript": {
-                "keywords": ["interface", "type", "enum", "namespace", "implements", "extends"],
-                "patterns": [
-                    r"interface\s+\w+\s*{",
-                    r"type\s+\w+\s*=",
-                    r":\s*(?:string|number|boolean|any|void)\s*[;,)]",
-                    r"<[^>]+>"
-                ]
-            },
-            "rust": {
-                "keywords": ["fn", "pub", "struct", "impl", "trait", "let", "mut", "match"],
-                "patterns": [
-                    r"fn\s+\w+\s*(?:<[^>]+>)?\s*\([^)]*\)\s*(?:->\s*\w+\s*)?{",
-                    r"pub\s+(?:fn|struct|trait)",
-                    r"let\s+mut\s+\w+",
-                    r"::\w+",
-                    r"Result<\w+,\s*\w+>"
-                ]
-            },
-            "go": {
-                "keywords": ["func", "package", "import", "type", "struct", "interface", "var", "const"],
-                "patterns": [
-                    r"package\s+\w+",
-                    r"func\s+\w+\s*\([^)]*\)\s*(?:\([^)]*\))?\s*{",
-                    r"type\s+\w+\s+struct\s*{",
-                    r"var\s+\w+\s+\w+"
-                ]
-            },
-            "java": {
-                "keywords": ["public", "private", "protected", "class", "interface", "extends", "implements"],
-                "patterns": [
-                    r"public\s+class\s+\w+",
-                    r"private\s+\w+\s+\w+\s*\([^)]*\)",
-                    r"System\.",
-                    r"@Override"
-                ]
-            }
+        # JavaScript detection
+        js_indicators = 0
+        js_patterns = [
+            r"const\s+\w+\s*=",  # Const declaration
+            r"let\s+\w+\s*=",    # Let declaration
+            r"var\s+\w+\s*=",    # Var declaration
+            r"function\s+\w+\s*\(",  # Function declaration
+            r"=>\s*{",           # Arrow function
+            r"class\s+\w+\s*{",  # Class declaration
+            r"constructor\s*\(",  # Constructor
+            r"import\s+.*from",   # Import statement
+            r"export\s+",        # Export statement
+            r"async\s+function", # Async function
+            r"await\s+\w+",     # Await keyword
+            r"this\.",          # This reference
+            r"new\s+\w+\(",     # New operator
+            r"typeof\s+\w+",    # Typeof operator
+            r"undefined",       # Undefined value
+            r"null",           # Null value
+            r"console\.",      # Console methods
+            r"document\.",     # DOM manipulation
+            r"window\.",       # Window object
+            r"prototype\.",    # Prototype
+            r"addEventListener", # Event listener
+            r"\[\s*\.\.\.",    # Spread operator
+            r"Promise\.",      # Promise
+            r"async\s*\(",     # Async IIFE
+            r"require\(",      # CommonJS require
+            r"module\.exports" # CommonJS exports
+        ]
+
+        js_keywords = {
+            "function", "const", "let", "var", "if", "else", "for", "while",
+            "do", "switch", "case", "break", "continue", "return", "try",
+            "catch", "finally", "throw", "class", "extends", "new", "this",
+            "super", "import", "export", "default", "null", "undefined",
+            "typeof", "instanceof", "in", "of", "async", "await", "yield"
         }
 
-        # Calculate scores for each language
-        scores = {}
-        for lang, features in language_features.items():
-            score = 0
-            
-            # Check for keywords
-            for keyword in features["keywords"]:
-                if keyword in code:
-                    score += 1
-                    
-            # Check for patterns
-            import re
-            for pattern in features["patterns"]:
-                matches = re.findall(pattern, code)
-                score += len(matches) * 2  # Patterns are weighted more heavily
-                
-            # Try parsing with tree-sitter
-            try:
-                parser = self.get_parser(lang)
-                tree = parser.parse(bytes(code, "utf8"))
-                error_count = len(list(self._find_error_nodes(tree.root_node)))
-                total_nodes = len(list(tree.root_node.walk()))
-                
-                if total_nodes > 0:
-                    error_ratio = error_count / total_nodes
-                    if error_ratio < 0.3:  # Less than 30% error nodes
-                        score += 5  # Significant boost for successful parsing
-                        if error_ratio < 0.1:  # Less than 10% error nodes
-                            score += 5  # Additional boost for very clean parsing
-            except Exception:
-                continue
-            
-            if score > 0:
-                scores[lang] = score
-                
-        if scores:
-            best_lang = max(scores.items(), key=lambda x: x[1])[0]
-            return best_lang
-            
-        return "plaintext"  # Default to plaintext if no language is detected
+        # Check for JavaScript patterns
+        for pattern in js_patterns:
+            if any(re.search(pattern, line) for line in code_lines):
+                js_indicators += 1
+
+        # Check for JavaScript keywords
+        code_words = set(re.findall(r'\b\w+\b', code))
+        keyword_matches = code_words.intersection(js_keywords)
+        js_indicators += len(keyword_matches)
+
+        # Strong indicators of JavaScript
+        if js_indicators >= 3:
+            return "javascript"
+
+        # Python detection
+        python_indicators = 0
+        python_patterns = [
+            r"def\s+\w+\s*\([^)]*\)\s*:",  # Function definition
+            r"class\s+\w+\s*(?:\([^)]*\))?\s*:",  # Class definition
+            r"@\w+",  # Decorators
+            r"__\w+__",  # Dunder methods/attributes
+            r"import\s+\w+",  # Import statements
+            r"from\s+[\w.]+\s+import",  # From imports
+            r"if\s+__name__\s*==\s*['\"]__main__['\"]",  # Main block
+            r":\s*$",  # Line ending with colon
+            r"->\s*[\w\[\]]+\s*:",  # Type hints
+            r"@dataclass",  # Dataclass decorator
+            r"async\s+def",  # Async function
+            r"await\s+\w+",  # Await keyword
+            r"self\.",  # Self reference
+            r"raise\s+\w+",  # Raise statement
+            r"except\s+\w+\s+as\s+\w+:",  # Exception handling
+            r"with\s+\w+\s+as\s+\w+:",  # Context manager
+            r"yield\s+\w+",  # Generator
+            r"lambda\s+\w+:",  # Lambda function
+            r"def\s+__\w+__\s*\(",  # Special method definition
+            r"@property",  # Property decorator
+            r"@\w+\.setter",  # Setter decorator
+            r"@staticmethod",  # Staticmethod decorator
+            r"@classmethod",  # Classmethod decorator
+            r"@abstractmethod",  # Abstractmethod decorator
+            r"super\(\)\.",  # Super call
+            r"pass\s*$",  # Pass statement
+            r"None\s*$",  # None value
+            r"True\s*$",  # True value
+            r"False\s*$",  # False value
+            r"print\s*\(",  # Print function
+            r"return\s+\w+",  # Return statement
+        ]
+
+        python_keywords = {
+            "def", "class", "import", "from", "async", "await", 
+            "with", "as", "pass", "self", "None", "True", "False",
+            "try", "except", "finally", "raise", "yield", "return",
+            "and", "or", "not", "is", "in", "lambda", "assert",
+            "break", "continue", "del", "elif", "else", "for",
+            "global", "if", "while", "nonlocal"
+        }
+
+        # Check for Python patterns
+        for pattern in python_patterns:
+            if any(re.search(pattern, line) for line in code_lines):
+                python_indicators += 1
+
+        # Check for Python keywords
+        keyword_matches = code_words.intersection(python_keywords)
+        python_indicators += len(keyword_matches)
+
+        # Strong indicators of Python
+        if python_indicators >= 3:
+            return "python"
+
+        # If no strong match found, return plaintext
+        return "plaintext"
 
     def _find_error_nodes(self, node: Node) -> List[Node]:
         """Find all error nodes in a tree."""
@@ -366,4 +382,49 @@ class LanguageService(TreeSitterServiceBase):
             except Exception as e:
                 raise LanguageError(f"Failed to get binding for {language}: {str(e)}")
         finally:
-            self._end_operation('get_binding', start_time) 
+            self._end_operation('get_binding', start_time)
+
+    def parse_content(self, content: str, language: str) -> Optional[Any]:
+        """Parse content using tree-sitter.
+        
+        Args:
+            content: Content to parse
+            language: Language identifier
+            
+        Returns:
+            Parse tree if successful, None otherwise
+            
+        Raises:
+            LanguageError: If the language is not supported
+            ParserError: If parsing fails
+        """
+        start_time = self._time_operation('parse_content')
+        try:
+            if not self.is_language_supported(language):
+                raise LanguageError(f"Language not supported: {language}")
+                
+            parser = self.get_parser(language)
+            if not parser:
+                raise ParserError(f"Failed to get parser for language: {language}")
+            
+            # Set up logging callback for this parse operation
+            def logger_callback(msg: str) -> None:
+                self._log("debug", msg, operation="parse", language=language)
+            
+            # Set the logger for this parse operation
+            parser.logger = logger_callback
+                
+            # Parse the content
+            tree = parser.parse(bytes(content, "utf8"))
+            if not tree:
+                raise ParserError(f"Failed to parse content for language: {language}")
+                
+            return tree
+        except Exception as e:
+            self._log("error", f"Error parsing content: {str(e)}")
+            return None
+        finally:
+            # Clean up logger after parsing
+            if 'parser' in locals():
+                parser.logger = None
+            self._end_operation('parse_content', start_time) 

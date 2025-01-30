@@ -11,6 +11,7 @@ class FileInfo:
     """Information about a file in the repository."""
     path: Path
     language: str
+    repo_id: int
     metadata: Optional[Dict[str, Any]] = None
     is_supported: bool = True
 

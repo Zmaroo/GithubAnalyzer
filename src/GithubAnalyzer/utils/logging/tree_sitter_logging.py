@@ -39,6 +39,43 @@ class TreeSitterLogHandler(logging.Handler):
         self._thread_id = threading.get_ident()
         self.formatter = StructuredFormatter()
         self.stream = sys.stdout
+        self._enabled_parsers = set()
+        self._enabled = False
+        
+    def enable(self) -> None:
+        """Enable the handler."""
+        self._enabled = True
+        
+    def disable(self) -> None:
+        """Disable the handler."""
+        self._enabled = False
+        
+    def clear(self) -> None:
+        """Clear all stored records."""
+        self.parse_records.clear()
+        self.query_records.clear()
+        self.error_records.clear()
+        
+    def _log(self, level: str, message: str, **kwargs) -> None:
+        """Internal logging method.
+        
+        Args:
+            level: Log level (debug, info, warning, error)
+            message: Message to log
+            **kwargs: Additional context
+        """
+        if self._enabled:
+            record = logging.LogRecord(
+                name=self.name,
+                level=getattr(logging, level.upper()),
+                pathname=__file__,
+                lineno=0,
+                msg=message,
+                args=(),
+                exc_info=None
+            )
+            record.context = kwargs
+            self.handle(record)
         
     def handle(self, record: logging.LogRecord) -> bool:
         """Handle a log record.
@@ -130,13 +167,6 @@ class TreeSitterLogHandler(logging.Handler):
             except Exception:
                 self.handleError(record)
     
-    def clear(self) -> None:
-        """Clear all stored records."""
-        self.parse_records.clear()
-        self.query_records.clear()
-        self.error_records.clear()
-        self._start_time = time.time()
-
     def __call__(self, log_type: int, message: Union[str, Dict[str, Any]]) -> None:
         """Handle tree-sitter parser callback logs (used by Parser.parse()).
         
@@ -209,41 +239,6 @@ class TreeSitterLogHandler(logging.Handler):
         if self.formatter:
             return self.formatter.format(record)
         return str(record.msg)
-
-    def enable_parser_logging(self, parser: 'Parser') -> None:
-        """Enable logging for a tree-sitter parser.
-        
-        Args:
-            parser: The tree-sitter parser to enable logging for
-        """
-        if not TREE_SITTER_AVAILABLE:
-            raise ImportError("tree-sitter package is required for tree-sitter logging")
-        
-        # Set the logger callback on the parser
-        parser.logger = self
-
-    def disable_parser_logging(self, parser: Parser) -> None:
-        """Disable logging for a parser.
-        
-        Args:
-            parser: The parser to disable logging for
-        """
-        try:
-            if hasattr(parser, "logger"):
-                parser.logger = None
-                if hasattr(parser, 'log'):
-                    parser.log = None
-                delattr(parser, "logger")
-                
-            # Disable dot graph debugging
-            if self.dot_graph_file:
-                parser.print_dot_graphs(None)
-                self.dot_graph_file.close()
-                self.dot_graph_file = None
-                
-        except AttributeError:
-            # Ignore if we can't remove the logger
-            pass
 
     def log_tree_errors(self, tree: Tree, context: str = "") -> bool:
         """Log any errors in the tree using native tree-sitter error detection.
@@ -350,12 +345,4 @@ class TreeSitterLogHandler(logging.Handler):
         """Log a critical message."""
         if self.name:
             logger = logging.getLogger(self.name)
-            logger.critical(msg)
-
-    def enable(self) -> None:
-        """Enable the handler and set its level to DEBUG."""
-        self.setLevel(logging.DEBUG)
-
-    def disable(self) -> None:
-        """Disable logging."""
-        self.setLevel(logging.INFO) 
+            logger.critical(msg) 

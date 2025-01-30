@@ -4,14 +4,13 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Any, Optional, Tuple, Set, Union
-from tree_sitter import Query, Node, Tree, QueryError, Language, Point
+from tree_sitter import Query, Node, Tree, QueryError, Language, Point, Parser
 import logging
 
 from tree_sitter_language_pack import get_binding, get_language, get_parser
 
 from GithubAnalyzer.models.core.errors import ParserError
-from GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger, LoggerFactory
-from GithubAnalyzer.utils.logging.tree_sitter_logging import TreeSitterLogHandler
+from GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger
 
 from .utils import (
     get_node_text,
@@ -39,7 +38,7 @@ from .language_service import LanguageService
 from .traversal_service import TreeSitterTraversal
 
 # Initialize logger
-logger = get_logger("tree_sitter.query")
+logger = get_tree_sitter_logger("query")
 
 @dataclass
 class TreeSitterQueryHandler(TreeSitterServiceBase):
@@ -83,6 +82,22 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
         
         # Initialize performance metrics
         self._operation_times = {}
+        
+        # Set up logger callback
+        def logger_callback(log_type: int, msg: str) -> None:
+            level = logging.ERROR if log_type == 1 else logging.DEBUG
+            self._logger.log(level, msg, extra={
+                'context': {
+                    'source': 'tree-sitter',
+                    'type': 'query',
+                    'log_type': 'error' if log_type == 1 else 'parse'
+                }
+            })
+            
+        # Set logger on language service parser
+        parser = self._language_service.get_parser(self._language_name)
+        if parser:
+            parser.logger = logger_callback
 
     def _get_context(self, **kwargs) -> Dict[str, Any]:
         """Get standard context for logging.
@@ -346,7 +361,7 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
             self._log("error", f"Error finding nodes: {str(e)}")
             return []
 
-    def validate_node(self, node: Node) -> Tuple[bool, List[str]]:
+    def validate_node(self, node: Node, language: Optional[str] = None) -> Tuple[bool, List[str]]:
         """Validate node using native tree-sitter methods.
         
         Args:
@@ -544,67 +559,131 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
                 
         return len(errors) == 0, errors
 
-    def find_functions(self, node: Union[Node, Tree]) -> List[Dict[str, Node]]:
-        """Find function definitions in the tree using tree-sitter captures.
+    def find_functions(self, target_node):
+        """Find function definitions in the tree using pure tree-sitter query.
         
         Args:
-            node: Node or Tree to search
+            target_node: The node to search for functions in.
             
         Returns:
-            List of dictionaries containing function nodes and their components
+            A list of dictionaries containing function information.
+            Each dictionary includes:
+            - function.def: The function definition node
+            - function.name: The name node (if named function)
+            - name: Alias for function.name (for compatibility)
+            - is_named: Boolean indicating if function has a name
+            - other captured nodes from the query
         """
+        logger = get_logger("tree_sitter.query")
+        
+        pattern = get_query_pattern(self._language_name, "function")
+        if not pattern:
+            logger.warning("No function pattern found for language", extra={
+                'language': self._language_name
+            })
+            return []
+        
         try:
-            # Get pattern for language
-            pattern = get_query_pattern(self._language_name, "function")
-            if not pattern:
-                return []
-                
-            # Create optimized query
-            query = self.create_query(pattern, self._language_name)
-            if not query:
-                return []
-                
-            # Set query optimizations
-            query.set_match_limit(1000)  # Reasonable limit for functions
-            query.set_max_start_depth(5)  # Functions usually not deeply nested
-                
-            # Get target node
-            target_node = node.root_node if isinstance(node, Tree) else node
-                
-            # Get matches and check assertions
+            query = self._language.query(pattern)
+            
+            # Get all captures in one go - this includes both named and anonymous functions
+            captures = query.captures(target_node)
+            
+            logger.debug("Found function captures", extra={
+                'capture_count': query.capture_count,
+                'pattern_count': query.pattern_count,
+                'capture_names': list(captures.keys()),
+                'total_captures': len(captures)
+            })
+            
+            # Group captures by function definition node
             functions = []
-            for pattern_idx, match in query.matches(target_node):
-                # Check pattern assertions
-                assertions = query.pattern_assertions(pattern_idx)
-                if assertions:
-                    # Skip if assertions don't validate
-                    valid = True
-                    for prop, (value, is_positive) in assertions.items():
-                        if prop == "function":
-                            if is_positive and value != "function":
-                                valid = False
-                            elif not is_positive and value == "function":
-                                valid = False
-                    if not valid:
-                        continue
-                
-                # Convert capture names from bytes to str and build function dict
-                function_dict = {}
-                for name, node in match.items():
-                    name_str = name.decode('utf-8') if isinstance(name, bytes) else str(name)
-                    # Map @definition.function to function for backwards compatibility
-                    if name_str == "definition.function":
-                        function_dict["function"] = node
-                    else:
-                        function_dict[name_str] = node
-                        
-                if "function" in function_dict:  # Only add if we have the main function node
-                    functions.append(function_dict)
+            seen_funcs = set()
+            
+            # Process each function definition capture
+            for def_key in ["function.def", "function", "arrow_function", "function_expression"]:
+                if def_key not in captures:
+                    logger.debug(f"No captures found for {def_key}")
+                    continue
                     
+                logger.debug(f"Processing captures for {def_key}", extra={
+                    'capture_count': len(captures[def_key]),
+                    'capture_type': def_key
+                })
+                    
+                for func_def in captures[def_key]:
+                    # Skip if we've already processed this function
+                    if func_def.id in seen_funcs:
+                        logger.debug("Skipping duplicate function", extra={
+                            'function_id': func_def.id,
+                            'function_type': func_def.type,
+                            'start_point': func_def.start_point
+                        })
+                        continue
+                    seen_funcs.add(func_def.id)
+                    
+                    current_function = {
+                        "function.def": func_def,
+                        "function.name": None,
+                        "name": None,
+                        "is_named": False
+                    }
+                    
+                    logger.debug("Processing function", extra={
+                        'function_id': func_def.id,
+                        'function_type': func_def.type,
+                        'start_point': func_def.start_point,
+                        'end_point': func_def.end_point,
+                        'parent_type': func_def.parent.type if func_def.parent else None
+                    })
+                    
+                    # Check for name in captures first
+                    if "function.name" in captures:
+                        for name_node in captures["function.name"]:
+                            # Use native field access to verify relationship
+                            if name_node == func_def.child_by_field_name("name"):
+                                current_function["function.name"] = name_node
+                                current_function["name"] = name_node
+                                current_function["is_named"] = True
+                                logger.debug("Found function name", extra={
+                                    'function_id': func_def.id,
+                                    'name': name_node.text.decode('utf-8'),
+                                    'name_start': name_node.start_point
+                                })
+                                break
+                    
+                    # Add any other captures that belong to this function
+                    for capture_name, nodes in captures.items():
+                        if capture_name not in ["function.def", "function", "function.name", "name", "arrow_function", "function_expression"]:
+                            for node in nodes:
+                                # Use native field access to check if node belongs to this function
+                                if node.parent == func_def or func_def.child_by_field_name(capture_name) == node:
+                                    current_function[capture_name] = node
+                                    logger.debug(f"Added capture {capture_name}", extra={
+                                        'function_id': func_def.id,
+                                        'capture_type': capture_name,
+                                        'node_type': node.type,
+                                        'node_start': node.start_point
+                                    })
+                                    break
+                    
+                    functions.append(current_function)
+            
+            logger.info("Function search complete", extra={
+                'total_functions': len(functions),
+                'named_functions': sum(1 for f in functions if f['is_named']),
+                'anonymous_functions': sum(1 for f in functions if not f['is_named']),
+                'function_types': [f['function.def'].type for f in functions]
+            })
+            
             return functions
             
         except Exception as e:
-            self._log("error", f"Error finding functions: {str(e)}")
+            logger.error("Error finding functions", extra={
+                'error': str(e),
+                'language': self._language_name,
+                'error_type': type(e).__name__
+            })
             return []
 
     def find_classes(self, node: Node, language: Optional[str] = None) -> List[Dict[str, Node]]:
@@ -716,5 +795,29 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
             KeyError: If language or pattern type not found
         """
         lang = language or self._language.name
-        pattern_lang = self._language_service.get_language_map().get(lang, lang)
+        pattern_lang = self._language_service.extension_to_language.get(lang, lang)
         return get_query_pattern(pattern_lang, pattern_type)
+
+    def get_pattern_for_language(self, pattern_type: str, language: Optional[str] = None) -> Optional[str]:
+        """Get a query pattern for a specific language.
+        
+        Args:
+            pattern_type: The type of pattern to retrieve
+            language: Optional language override. If not provided, uses the current language.
+            
+        Returns:
+            Query pattern string or None if not found
+        """
+        try:
+            if not language:
+                language = self._language_name
+            
+            pattern = self.get_query_pattern(pattern_type, language)
+            if not pattern:
+                self._logger.warning(f"No pattern found for {pattern_type} in {language}")
+                return None
+                
+            return pattern
+        except Exception as e:
+            self._logger.error(f"Error getting pattern for {pattern_type} in {language}: {str(e)}")
+            return None

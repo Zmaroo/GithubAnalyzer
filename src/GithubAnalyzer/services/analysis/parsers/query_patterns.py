@@ -4,6 +4,10 @@ from typing import Dict, Optional, Any, Tuple, Union
 Contains predefined patterns for common code elements and their optimization settings.
 """
 from dataclasses import dataclass
+from GithubAnalyzer.services.analysis.parsers.custom_parsers import get_custom_parser
+
+# JavaScript/TypeScript variants
+JS_VARIANTS = {"javascript", "jsx", "typescript", "tsx"}
 
 # Mapping of file extensions to tree-sitter language names
 EXTENSION_TO_LANGUAGE = {
@@ -12,6 +16,10 @@ EXTENSION_TO_LANGUAGE = {
     'jsx': 'javascript',
     'mjs': 'javascript',
     'cjs': 'javascript',
+    'es': 'javascript',
+    'es6': 'javascript',
+    'iife.js': 'javascript',
+    'bundle.js': 'javascript',
     'ts': 'typescript',
     'tsx': 'typescript',
     'mts': 'typescript',
@@ -208,13 +216,14 @@ SPECIAL_FILENAMES = {
     # JavaScript/Node
     'package.json': 'json',
     'package-lock.json': 'json',
+    'yarn.lock': 'yaml',
+    'pnpm-lock.yaml': 'yaml',
+    'webpack.config.js': 'javascript',
+    'rollup.config.js': 'javascript',
+    'babel.config.js': 'javascript',
+    '.babelrc': 'json',
+    '.babelrc.json': 'json',
     'tsconfig.json': 'json',
-    '.eslintrc': 'json',
-    '.eslintrc.json': 'json',
-    '.eslintrc.js': 'javascript',
-    '.prettierrc': 'json',
-    '.prettierrc.json': 'json',
-    '.prettierrc.js': 'javascript',
     
     # Rust
     'Cargo.toml': 'toml',
@@ -287,6 +296,134 @@ JS_TS_SHARED_PATTERNS = {
             name: (property_identifier) @function.name
             parameters: (formal_parameters) @function.params
             body: (statement_block) @function.body) @function.def
+
+          ; Arrow function in variable declaration
+          (variable_declarator
+            name: (identifier) @function.name
+            value: [
+              (arrow_function
+                parameters: (formal_parameters) @function.params
+                body: [
+                  (statement_block) @function.body
+                  (expression) @function.body
+                ]) @function.def
+              (function_expression
+                parameters: (formal_parameters) @function.params
+                body: (statement_block) @function.body) @function.def
+            ])
+
+          ; Arrow function in object property
+          (pair
+            key: (property_identifier) @function.name
+            value: [
+              (arrow_function
+                parameters: (formal_parameters) @function.params
+                body: [
+                  (statement_block) @function.body
+                  (expression) @function.body
+                ]) @function.def
+              (function_expression
+                parameters: (formal_parameters) @function.params
+                body: (statement_block) @function.body) @function.def
+            ])
+
+          ; Arrow function in array
+          (array
+            [
+              (arrow_function
+                parameters: (formal_parameters) @function.params
+                body: [
+                  (statement_block) @function.body
+                  (expression) @function.body
+                ]) @function.def
+              (function_expression
+                parameters: (formal_parameters) @function.params
+                body: (statement_block) @function.body) @function.def
+            ])
+
+          ; Arrow function in assignment
+          (assignment_expression
+            left: (_) @function.name
+            right: [
+              (arrow_function
+                parameters: (formal_parameters) @function.params
+                body: [
+                  (statement_block) @function.body
+                  (expression) @function.body
+                ]) @function.def
+              (function_expression
+                parameters: (formal_parameters) @function.params
+                body: (statement_block) @function.body) @function.def
+            ])
+
+          ; Arrow function in call expression arguments
+          (call_expression
+            arguments: (arguments
+              [
+                (arrow_function
+                  parameters: (formal_parameters) @function.params
+                  body: [
+                    (statement_block) @function.body
+                    (expression) @function.body
+                  ]) @function.def
+                (function_expression
+                  parameters: (formal_parameters) @function.params
+                  body: (statement_block) @function.body) @function.def
+              ]))
+
+          ; Arrow function in method chain
+          (member_expression
+            object: (call_expression
+              function: (member_expression
+                property: (property_identifier) @method.name)
+              arguments: (arguments
+                [
+                  (arrow_function
+                    parameters: (formal_parameters) @function.params
+                    body: [
+                      (statement_block) @function.body
+                      (expression) @function.body
+                    ]) @function.def
+                  (function_expression
+                    parameters: (formal_parameters) @function.params
+                    body: (statement_block) @function.body) @function.def
+                ])))
+
+          ; Nested arrow function in method chain (e.g., map(x => x * 2))
+          (call_expression
+            function: (member_expression
+              property: (property_identifier) @method.name)
+            arguments: (arguments
+              (arrow_function
+                parameters: (formal_parameters) @function.params
+                body: [
+                  (statement_block) @function.body
+                  (expression) @function.body
+                ]) @function.def))
+
+          ; Nested arrow function in method chain with multiple arguments
+          (call_expression
+            function: (member_expression
+              property: (property_identifier) @method.name)
+            arguments: (arguments
+              [
+                (arrow_function
+                  parameters: (formal_parameters) @function.params
+                  body: [
+                    (statement_block) @function.body
+                    (expression) @function.body
+                  ]) @function.def
+                (_)*
+              ]))
+
+          ; Arrow function in return statement
+          (return_statement
+            (arrow_function
+              parameters: (formal_parameters) @function.params
+              body: [
+                (statement_block) @function.body
+                (expression) @function.body
+              ]) @function.def)
         ]
     """,
     "class": """
@@ -424,169 +561,266 @@ TS_PATTERNS = {
     """
 }
 
+# JavaScript/TypeScript/JSX/TSX variants
+JS_VARIANT_PATTERNS = {
+    lang: {
+        **JS_TS_SHARED_PATTERNS,
+        "jsx_element": JS_TS_SHARED_PATTERNS["jsx_element"],
+        **(TS_PATTERNS if lang in {"typescript", "tsx"} else {})
+    }
+    for lang in JS_VARIANTS
+}
+
+# Pattern templates for common structures
+PATTERN_TEMPLATES = {
+    "basic_function": """
+        ({function_type}
+          name: ({name_type}) @function.name
+          parameters: ({params_type}) @function.params
+          body: ({body_type}) @function.body) @function.def
+    """,
+    "basic_class": """
+        ({class_type}
+          name: ({name_type}) @class.name
+          {inheritance}
+          body: ({body_type}) @class.body) @class.def
+    """,
+    "basic_method": """
+        ({method_type}
+          name: ({name_type}) @method.name
+          parameters: ({params_type}) @method.params
+          body: ({body_type}) @method.body) @method.def
+    """
+}
+
+def create_function_pattern(
+    function_type: str,
+    name_type: str = "identifier",
+    params_type: str = "formal_parameters",
+    body_type: str = "statement_block"
+) -> str:
+    """Create a function pattern from the template.
+    
+    Args:
+        function_type: Type of function node
+        name_type: Type of name node
+        params_type: Type of parameters node
+        body_type: Type of body node
+        
+    Returns:
+        Function pattern string
+    """
+    return PATTERN_TEMPLATES["basic_function"].format(
+        function_type=function_type,
+        name_type=name_type,
+        params_type=params_type,
+        body_type=body_type
+    )
+
+def create_class_pattern(
+    class_type: str,
+    name_type: str = "identifier",
+    body_type: str = "class_body",
+    inheritance: str = ""
+) -> str:
+    """Create a class pattern from the template.
+    
+    Args:
+        class_type: Type of class node
+        name_type: Type of name node
+        body_type: Type of body node
+        inheritance: Inheritance clause pattern
+        
+    Returns:
+        Class pattern string
+    """
+    return PATTERN_TEMPLATES["basic_class"].format(
+        class_type=class_type,
+        name_type=name_type,
+        body_type=body_type,
+        inheritance=inheritance
+    )
+
+# Python-specific patterns
+PYTHON_PATTERNS = {
+    "function": """
+        [
+          ; Regular function definition
+          (function_definition
+            name: (identifier) @function.name
+            parameters: (parameters) @function.params
+            body: (block) @function.body) @function.def
+
+          ; Method definition in class
+          (function_definition
+            name: (identifier) @function.name
+            parameters: (parameters) @function.params
+            body: (block) @function.body) @function.def
+
+          ; Lambda function
+          (lambda
+            parameters: (lambda_parameters)? @function.params
+            body: (_) @function.body) @function.def
+        ]
+    """,
+    "class": """
+        (class_definition
+          name: (identifier) @class.name
+          superclasses: (argument_list)? @class.superclasses
+          body: (block [
+            (function_definition
+              name: (identifier) @class.method.name
+              parameters: (parameters) @class.method.params
+              body: (block) @class.method.body)
+          ]*) @class.body) @class.def
+    """,
+    "import": """
+        [
+          (import_statement
+            name: (dotted_name) @import.module
+            alias: (identifier)? @import.alias) @import
+            
+          (import_from_statement
+            module_name: (dotted_name) @import.from
+            name: (dotted_name) @import.name) @import.from_stmt
+        ]
+    """,
+    "error": """
+        [
+          (ERROR) @error.syntax
+          (MISSING) @error.missing
+        ] @error
+    """
+}
+
+# Add C-specific patterns
+C_PATTERNS = {
+    "function": """
+        (function_definition
+          declarator: (function_declarator
+            declarator: (identifier) @function.name
+            parameters: (parameter_list) @function.params)
+          body: (compound_statement) @function.body) @function.def
+    """,
+    "struct": """
+        (struct_specifier
+          name: (type_identifier) @struct.name
+          body: (field_declaration_list) @struct.body) @struct.def
+    """,
+    "enum": """
+        (enum_specifier
+          name: (type_identifier) @enum.name
+          body: (enumerator_list) @enum.body) @enum.def
+    """
+}
+
+# Add YAML patterns
+YAML_PATTERNS = {
+    "mapping": """
+        (block_mapping_pair
+          key: (_) @mapping.key
+          value: (_) @mapping.value) @mapping
+    """,
+    "sequence": """
+        (block_sequence
+          (block_sequence_item
+            (_) @sequence.item)*) @sequence
+    """,
+    "anchor": """
+        (anchor
+          name: (anchor_name) @anchor.name) @anchor
+    """,
+    "alias": """
+        (alias
+          name: (alias_name) @alias.name) @alias
+    """
+}
+
+# Add TOML patterns
+TOML_PATTERNS = {
+    "table": """
+        (table
+          header: (table_header) @table.header
+          entries: (pair
+            key: (_) @table.key
+            value: (_) @table.value)*) @table
+    """,
+    "array": """
+        (array
+          value: (_)* @array.value) @array
+    """,
+    "inline_table": """
+        (inline_table
+          (pair
+            key: (_) @table.key
+            value: (_) @table.value)*) @inline_table
+    """
+}
+
+# Add Dockerfile patterns
+DOCKERFILE_PATTERNS = {
+    "instruction": """
+        (instruction
+          cmd: (_) @instruction.cmd
+          value: (_)* @instruction.value) @instruction
+    """,
+    "from": """
+        (from_instruction
+          image: (_) @from.image
+          tag: (_)? @from.tag
+          platform: (_)? @from.platform) @from
+    """,
+    "run": """
+        (run_instruction
+          command: (_) @run.command) @run
+    """
+}
+
+# Enhance Markdown patterns
+MARKDOWN_PATTERNS = {
+    "heading": """
+        (atx_heading
+          marker: (_) @heading.marker
+          content: (_) @heading.content) @heading
+    """,
+    "list": """
+        (list
+          item: (list_item
+            content: (_) @list.item.content)*) @list
+    """,
+    "link": """
+        [
+          (link
+            text: (_) @link.text
+            url: (_) @link.url) @link
+          (image
+            text: (_) @image.text
+            url: (_) @image.url) @image
+        ]
+    """,
+    "code_block": """
+        [
+          (fenced_code_block
+            language: (_)? @code.language
+            content: (_) @code.content) @code.block
+          (indented_code_block) @code.indented
+        ]
+    """,
+    "blockquote": """
+        (block_quote
+          content: (_) @quote.content) @quote
+    """
+}
+
 # Query patterns by language with assertions and settings
 QUERY_PATTERNS = {
-    "python": {
-        "function": """
-            [
-                (function_definition
-                  name: (identifier) @name
-                  parameters: (parameters) @params
-                  body: (block) @body
-                  decorator_list: (decorator_list)? @decorators
-                ) @definition.function
-                (#is? @definition.function "function")
-                (#is-not? @definition.function "method")
-                (#is-not? @name "")
-            ]
-        """,
-        "class": """
-            [
-                (class_definition
-                  name: (identifier) @name
-                  body: (block) @body
-                )
-            ] @class
-        """,
-        "method": """
-            [
-                (class_definition
-                  body: (block 
-                    (function_definition) @method.def
-                      name: (identifier) @method.name
-                      parameters: (parameters 
-                        (identifier) @method.self) @method.params
-                      body: (block) @method.body
-                      decorators: (decorator_list)? @method.decorators)
-                  (#eq? @method.self "self"))
-            ] @method
-        """,
-        "call": """
-            [
-                (call
-                  function: [
-                    (identifier) @call.name
-                    (attribute 
-                      object: (_) @call.object
-                      attribute: (identifier) @call.method)
-                  ]
-                  arguments: (argument_list) @call.args) @call
-            ]
-        """,
-        "import": """
-            [
-              (import_from_statement
-                module_name: (dotted_name) @import.module
-                name: (dotted_name) @import.name) @import.from
-              (import_statement 
-                name: (dotted_name) @import.module) @import.direct
-            ] @import
-            (#is-not? @import.module "__future__")
-        """,
-        "attribute": """
-            [
-                (attribute
-                  object: (_) @attribute.object
-                  attribute: (identifier) @attribute.name) @attribute
-            ]
-        """,
-        "string": """
-            [
-              (string) @string.complete
-              (string_content) @string.content
-              (formatted_string
-                interpolation: (formatted_string_content) @string.interpolation) @string.formatted
-            ] @string
-        """,
-        "comment": """
-            [
-              (comment) @comment.line
-              ((comment) @comment.docstring
-                (#match? @comment.docstring "^\\s*\"\"\""))
-            ] @comment
-        """,
-        "error": """
-            [
-              (ERROR) @error.syntax
-              (MISSING) @error.missing
-              (_
-                (#is? @error.incomplete incomplete)
-                (#is-not? @error.incomplete complete)) @error
-            ]
-        """
-    },
-    "javascript": {
-        "function": """
-            [
-              (function_declaration
-                name: (identifier) @function.name
-                parameters: (formal_parameters) @function.params
-                body: (statement_block) @function.body) @function.def
-              (arrow_function
-                parameters: (formal_parameters) @function.params
-                body: [
-                  (statement_block) @function.body
-                  (expression) @function.body
-                ]) @function.def
-            ]
-        """,
-        "class": """
-            (class_declaration
-              name: (identifier) @class.name
-              body: (class_body) @class.body
-              extends: (extends_clause)? @class.extends) @class.def
-        """,
-        "method": """
-            (method_definition
-              name: (property_identifier) @method.name
-              parameters: (formal_parameters) @method.params
-              body: (statement_block) @method.body) @method.def
-        """,
-        "import": """
-            [
-              (import_statement
-                source: (string) @import.source
-                clause: [
-                  (import_clause
-                    (identifier) @import.default)
-                  (named_imports
-                    (import_specifier
-                      name: (identifier) @import.name)) 
-                ]) @import
-              (require_call
-                arguments: (arguments (string) @import.source)) @import.require
-            ]
-        """
-    },
-    "typescript": {
-        "function": """
-            [
-              (function_declaration
-                name: (identifier) @function.name
-                parameters: (formal_parameters) @function.params
-                return_type: (type_annotation)? @function.return_type
-                body: (statement_block) @function.body) @function.def
-              (arrow_function
-                parameters: (formal_parameters) @function.params
-                return_type: (type_annotation)? @function.return_type
-                body: [
-                  (statement_block) @function.body
-                  (expression) @function.body
-                ]) @function.def
-            ]
-        """,
-        "interface": """
-            (interface_declaration
-              name: (type_identifier) @interface.name
-              extends_clause: (extends_type_clause)? @interface.extends
-              body: (object_type) @interface.body) @interface.def
-        """,
-        "type": """
-            (type_alias_declaration
-              name: (type_identifier) @type.name
-              value: (_) @type.value) @type.def
-        """
-    },
+    "python": PYTHON_PATTERNS,
+    **JS_VARIANT_PATTERNS,  # Add all JavaScript variants
+    "c": C_PATTERNS,
+    "yaml": YAML_PATTERNS,
+    "toml": TOML_PATTERNS,
+    "dockerfile": DOCKERFILE_PATTERNS,
+    "markdown": MARKDOWN_PATTERNS,
     "java": {
         "class": """
             (class_declaration
@@ -677,32 +911,6 @@ QUERY_PATTERNS = {
               body: (declaration_list) @namespace.body) @namespace.def
         """
     },
-    "jsx": {
-        **JS_TS_SHARED_PATTERNS,
-        "jsx_element": JS_TS_SHARED_PATTERNS["jsx_element"]
-    },
-    "tsx": {
-        **JS_TS_SHARED_PATTERNS,
-        **TS_PATTERNS,
-        "jsx_element": JS_TS_SHARED_PATTERNS["jsx_element"]
-    },
-    "bash": {
-        "function": """
-            (function_definition
-              name: (word) @function.name
-              body: (compound_statement) @function.body) @function.def
-        """,
-        "command": """
-            (command
-              name: (command_name) @command.name
-              argument: (command_argument)* @command.args) @command
-        """,
-        "variable": """
-            (variable_assignment
-              name: (variable_name) @variable.name
-              value: (_) @variable.value) @variable
-        """
-    },
     "html": {
         "element": """
             (element
@@ -765,22 +973,6 @@ QUERY_PATTERNS = {
                 value: (_) @object.value)*) @object
         """
     },
-    "yaml": {
-        "mapping": """
-            (block_mapping_pair
-              key: (_) @mapping.key
-              value: (_) @mapping.value) @mapping
-        """
-    },
-    "toml": {
-        "table": """
-            (table
-              header: (table_header) @table.header
-              entries: (pair
-                key: (_) @table.key
-                value: (_) @table.value)*) @table
-        """
-    },
     "xml": {
         "element": """
             (element
@@ -789,18 +981,6 @@ QUERY_PATTERNS = {
                 name: (_) @element.attr.name
                 value: (_)? @element.attr.value)*
               text: (text)* @element.text) @element
-        """
-    },
-    "markdown": {
-        "heading": """
-            (atx_heading
-              marker: (_) @heading.marker
-              content: (_) @heading.content) @heading
-        """,
-        "list": """
-            (list
-              item: (list_item
-                content: (_) @list.item.content)*) @list
         """
     },
     "text": {
@@ -925,6 +1105,74 @@ QUERY_PATTERNS = {
               parameters: (parameter_list) @function.params
               body: (block) @function.body) @function.def
         """
+    },
+    "bash": {
+        "function": """
+            (function_definition
+              name: (word) @function.name
+              body: (compound_statement) @function.body) @function.def
+        """,
+        "command": """
+            (command
+              name: (command_name) @command.name
+              argument: (command_argument)* @command.args) @command
+        """,
+        "variable": """
+            (variable_assignment
+              name: (variable_name) @variable.name
+              value: (_) @variable.value) @variable
+        """
+    },
+    "php": {
+        "function": """
+            (function_definition
+              name: (name) @function.name
+              parameters: (formal_parameters) @function.params
+              body: (compound_statement) @function.body) @function.def
+        """,
+        "class": """
+            (class_declaration
+              name: (name) @class.name
+              base_clause: (base_clause)? @class.extends
+              interfaces: (class_interface_clause)? @class.implements
+              body: (declaration_list) @class.body) @class.def
+        """,
+        "method": """
+            (method_declaration
+              name: (name) @method.name
+              parameters: (formal_parameters) @method.params
+              body: (compound_statement) @method.body) @method.def
+        """,
+        "namespace": """
+            (namespace_definition
+              name: (namespace_name) @namespace.name
+              body: (compound_statement) @namespace.body) @namespace.def
+        """
+    },
+    "c_sharp": {
+        "class": """
+            (class_declaration
+              name: (identifier) @class.name
+              base_list: (base_list)? @class.inherits
+              body: (declaration_list) @class.body) @class.def
+        """,
+        "method": """
+            (method_declaration
+              name: (identifier) @method.name
+              parameters: (parameter_list) @method.params
+              body: (block) @method.body) @method.def
+        """,
+        "interface": """
+            (interface_declaration
+              name: (identifier) @interface.name
+              base_list: (base_list)? @interface.extends
+              body: (declaration_list) @interface.body) @interface.def
+        """,
+        "property": """
+            (property_declaration
+              name: (identifier) @property.name
+              accessors: (accessor_list) @property.accessors) @property.def
+        """
     }
 }
 
@@ -954,12 +1202,24 @@ COMMON_PATTERNS = {
 }
 
 # Add common patterns to all languages
-for language in QUERY_PATTERNS:
-    QUERY_PATTERNS[language].update({
-        pattern_type: pattern
-        for pattern_type, pattern in COMMON_PATTERNS.items()
-        if pattern_type not in QUERY_PATTERNS[language]
-    })
+def get_language_patterns(language: str) -> Dict[str, str]:
+    """Get all patterns for a language, including common patterns.
+    
+    Args:
+        language: Language identifier
+        
+    Returns:
+        Dictionary of pattern type to pattern string
+    """
+    # Get base patterns for language
+    patterns = QUERY_PATTERNS.get(language, {}).copy()
+    
+    # Add common patterns only if not already defined
+    for pattern_type, pattern in COMMON_PATTERNS.items():
+        if pattern_type not in patterns:
+            patterns[pattern_type] = pattern
+            
+    return patterns
 
 # Default optimization settings by pattern type
 DEFAULT_OPTIMIZATIONS = {
@@ -1015,10 +1275,30 @@ DEFAULT_OPTIMIZATIONS = {
     )
 }
 
-# Add language variants
-JS_VARIANTS = {"javascript", "jsx", "typescript", "tsx"}
+# Helper function to get language for a file
+def get_language_for_file(filename: str) -> Optional[str]:
+    """Get the language for a file based on its name or extension.
+    
+    Args:
+        filename: Name of the file
+        
+    Returns:
+        Language identifier or None if not found
+    """
+    # First check if there's a custom parser
+    if get_custom_parser(filename):
+        # Let the FileService._detect_language handle custom parser language mapping
+        return None
+        
+    # Then check special filenames
+    if filename in SPECIAL_FILENAMES:
+        return SPECIAL_FILENAMES[filename]
+        
+    # Finally check extensions
+    ext = filename.split('.')[-1].lower() if '.' in filename else filename.lower()
+    return EXTENSION_TO_LANGUAGE.get(ext)
 
-# Update get_query_pattern to handle variants
+# Update get_query_pattern to use get_language_patterns
 def get_query_pattern(language: str, pattern_type: str) -> Optional[str]:
     """Get query pattern for language and type.
     
@@ -1029,13 +1309,26 @@ def get_query_pattern(language: str, pattern_type: str) -> Optional[str]:
     Returns:
         Query pattern string or None if not found
     """
-    if language not in QUERY_PATTERNS:
-        # Try to get pattern from base language
-        base_lang = get_base_language(language)
-        if base_lang != language and base_lang in QUERY_PATTERNS:
-            return QUERY_PATTERNS[base_lang].get(pattern_type)
+    # Skip pattern lookup for custom parser languages
+    if language in {'requirements', 'env', 'gitignore', 'editorconfig', 'lockfile'}:
         return None
-    return QUERY_PATTERNS[language].get(pattern_type)
+        
+    # First try to get the actual language if this is a filename
+    if '.' in language or language in SPECIAL_FILENAMES:
+        detected_lang = get_language_for_file(language)
+        if detected_lang:
+            language = detected_lang
+        
+    # Get all patterns for the language
+    patterns = get_language_patterns(language)
+    if pattern_type in patterns:
+        return patterns[pattern_type]
+        
+    # Try base language if not found
+    base_lang = get_base_language(language)
+    if base_lang != language:
+        patterns = get_language_patterns(base_lang)
+        return patterns.get(pattern_type)
 
 # Update get_optimization_settings to handle variants
 def get_optimization_settings(pattern_type: str, language: Optional[str] = None) -> QueryOptimizationSettings:
@@ -1084,8 +1377,8 @@ def get_base_language(language: Optional[str]) -> str:
         return "python"  # Default to Python as our primary language
         
     language = language.lower()
-    if language in {'jsx', 'tsx'}:
-        return 'javascript'
+    if language in {'jsx', 'tsx', 'javascript', 'typescript'}:
+        return 'javascript'  # All JS variants use the same base patterns
     elif language in {'hpp', 'cc', 'hh'}:
         return 'cpp'
     return language 

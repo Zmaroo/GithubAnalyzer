@@ -7,6 +7,7 @@ import numpy as np
 import time
 import threading
 from dataclasses import dataclass
+from pathlib import Path
 
 from GithubAnalyzer.services.core.database.embedding_service import CodeEmbeddingService
 from psycopg2.extensions import connection
@@ -106,14 +107,17 @@ class PostgresService:
             self._conn.commit()
             
             # Repositories table
-            cur.execute('''
-                CREATE TABLE repositories (
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS repositories (
                     id SERIAL PRIMARY KEY,
-                    repo_url TEXT NOT NULL UNIQUE,
-                    repo_name TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            ''')
+                    url TEXT NOT NULL,
+                    resource_type TEXT NOT NULL CHECK (resource_type IN ('codebase', 'documentation')),
+                    repo_name TEXT,
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             self._conn.commit()
             
             # Code snippets table with vector embeddings and metadata
@@ -124,6 +128,9 @@ class PostgresService:
                     file_path TEXT NOT NULL,
                     code_text TEXT NOT NULL,
                     language TEXT NOT NULL,
+                    syntax_valid BOOLEAN DEFAULT true,
+                    ast_data JSONB DEFAULT NULL,
+                    complexity_metrics JSONB DEFAULT NULL,
                     embedding VECTOR(768),
                     metadata JSONB DEFAULT NULL,
                     is_supported BOOLEAN DEFAULT true,
@@ -357,45 +364,42 @@ class PostgresService:
             self._conn.rollback()
             raise
 
-    def create_repository(self, repo_url: str) -> int:
-        """Create a new repository entry and return its ID."""
-        start_time = time.time()
-        self.ensure_connection()
-        try:
-            repo_name = repo_url.split('/')[-1]
-            with self._conn.cursor() as cur:
-                # Check if repo already exists
-                cur.execute('SELECT id FROM repositories WHERE repo_url = %s', (repo_url,))
-                existing = cur.fetchone()
+    def create_repository(self, url: str, resource_type: str = 'codebase', name: Optional[str] = None, description: Optional[str] = None) -> int:
+        """Create a new repository entry.
+        
+        Args:
+            url: URL or file path to the repository/documentation
+            resource_type: Type of resource ('codebase' or 'documentation')
+            name: Optional name for the resource
+            description: Optional description
+            
+        Returns:
+            Repository ID
+        """
+        with self._conn.cursor() as cur:
+            # Check if repository already exists
+            cur.execute(
+                "SELECT id FROM repositories WHERE url = %s AND resource_type = %s",
+                (url, resource_type)
+            )
+            existing = cur.fetchone()
+            if existing:
+                return int(existing[0])
                 
-                if existing:
-                    self._log('debug', 'Repository already exists',
-                             repo_url=repo_url,
-                             repo_id=existing[0],
-                             duration_ms=int((time.time() - start_time) * 1000))
-                    return existing[0]
+            # If no name provided, use last part of URL for codebase
+            if not name and resource_type == 'codebase':
+                name = Path(url.replace("file://", "")).name
                 
-                # Create new repo
-                cur.execute('''
-                    INSERT INTO repositories (repo_url, repo_name)
-                    VALUES (%s, %s)
-                    RETURNING id
-                ''', (repo_url, repo_name))
-                repo_id = cur.fetchone()[0]
-                self._conn.commit()
-                
-                self._log('info', 'Created new repository',
-                         repo_url=repo_url,
-                         repo_id=repo_id,
-                         duration_ms=int((time.time() - start_time) * 1000))
-                return repo_id
-        except Exception as e:
-            self._log('error', 'Failed to create repository',
-                     repo_url=repo_url,
-                     error=str(e),
-                     duration_ms=int((time.time() - start_time) * 1000))
-            self._conn.rollback()
-            raise
+            # Create new repository
+            cur.execute("""
+                INSERT INTO repositories (url, resource_type, repo_name, description)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
+            """, (url, resource_type, name, description))
+            
+            repo_id = cur.fetchone()[0]
+            self._conn.commit()
+            return int(repo_id)
 
     def semantic_search(self, query: str, limit: int = 5, 
                        filter_repo: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -600,39 +604,35 @@ class PostgresService:
                      duration_ms=int((time.time() - start_time) * 1000))
             raise
 
+    def get_repositories(self) -> List[Dict[str, Any]]:
+        """Get all repositories."""
+        with self._conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, url, resource_type, repo_name, description, 
+                       created_at, updated_at
+                FROM repositories
+            """)
+            columns = [desc[0] for desc in cur.description]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
+
     def get_all_code_snippets(self) -> List[Dict[str, Any]]:
-        """Get all code snippets from the database."""
-        start_time = time.time()
+        """Get all code snippets from the database.
+        
+        Returns:
+            List of dictionaries containing code snippet information
+        """
         self.ensure_connection()
-        try:
-            with self._conn.cursor() as cur:
-                cur.execute('''
-                    SELECT cs.file_path, cs.code_text, cs.language, cs.metadata, r.repo_url
-                    FROM code_snippets cs
-                    JOIN repositories r ON cs.repo_id = r.id
-                    WHERE cs.is_supported = true
-                ''')
-                results = cur.fetchall()
-                
-                self._log('debug', 'Retrieved all code snippets',
-                         snippet_count=len(results),
-                         duration_ms=int((time.time() - start_time) * 1000))
-                
-                return [
-                    {
-                        'file_path': r[0],
-                        'code_text': r[1],
-                        'language': r[2],
-                        'metadata': r[3],
-                        'repo_url': r[4]
-                    }
-                    for r in results
-                ]
-        except Exception as e:
-            self._log('error', 'Failed to retrieve code snippets',
-                     error=str(e),
-                     duration_ms=int((time.time() - start_time) * 1000))
-            raise
+        with self._conn.cursor() as cur:
+            cur.execute('''
+                SELECT id, repo_id, file_path, code_text, language, syntax_valid,
+                       ast_data, complexity_metrics, embedding, created_at
+                FROM code_snippets
+            ''')
+            columns = [desc[0] for desc in cur.description]
+            snippets = [dict(zip(columns, row)) for row in cur.fetchall()]
+            
+            self._log('debug', f'Retrieved {len(snippets)} code snippets')
+            return snippets
 
     def delete_file_snippets(self, file_path: str) -> None:
         """Delete all code snippets for a given file path."""
@@ -779,6 +779,126 @@ class PostgresService:
         except Exception as e:
             self._log('error', 'Failed to execute query',
                      query_length=len(query),
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            raise
+
+    def get_repository_files(self, repo_id: int) -> List[Dict[str, Any]]:
+        """Get all files for a given repository.
+        
+        Args:
+            repo_id: The ID of the repository
+            
+        Returns:
+            List of dictionaries containing file information
+        """
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute('''
+                    SELECT DISTINCT file_path, language
+                    FROM code_snippets
+                    WHERE repo_id = %s
+                    ORDER BY file_path
+                ''', (repo_id,))
+                columns = [desc[0] for desc in cur.description]
+                files = [dict(zip(columns, row)) for row in cur.fetchall()]
+                
+                self._log('debug', 'Retrieved repository files',
+                         repo_id=repo_id,
+                         file_count=len(files),
+                         duration_ms=int((time.time() - start_time) * 1000))
+                return files
+        except Exception as e:
+            self._log('error', 'Failed to retrieve repository files',
+                     repo_id=repo_id,
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            raise
+
+    def get_file_count(self) -> int:
+        """Get the total number of unique files in the database."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute('SELECT COUNT(DISTINCT file_path) FROM code_snippets')
+                count = cur.fetchone()[0]
+                
+                self._log('debug', 'Retrieved file count',
+                         count=count,
+                         duration_ms=int((time.time() - start_time) * 1000))
+                return count
+        except Exception as e:
+            self._log('error', 'Failed to get file count',
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            raise
+
+    def get_repository_count(self) -> int:
+        """Get the total number of repositories in the database."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute('SELECT COUNT(*) FROM repositories')
+                count = cur.fetchone()[0]
+                
+                self._log('debug', 'Retrieved repository count',
+                         count=count,
+                         duration_ms=int((time.time() - start_time) * 1000))
+                return count
+        except Exception as e:
+            self._log('error', 'Failed to get repository count',
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            raise
+
+    def get_language_distribution(self) -> Dict[str, int]:
+        """Get the distribution of programming languages in the database."""
+        start_time = time.time()
+        self.ensure_connection()
+        try:
+            with self._conn.cursor() as cur:
+                cur.execute('''
+                    SELECT language, COUNT(*) as count
+                    FROM code_snippets
+                    GROUP BY language
+                    ORDER BY count DESC
+                ''')
+                distribution = {row[0]: row[1] for row in cur.fetchall()}
+                
+                self._log('debug', 'Retrieved language distribution',
+                         language_count=len(distribution),
+                         total_snippets=sum(distribution.values()),
+                         duration_ms=int((time.time() - start_time) * 1000))
+                return distribution
+        except Exception as e:
+            self._log('error', 'Failed to get language distribution',
+                     error=str(e),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            raise
+
+    def get_database_info(self) -> Dict[str, Any]:
+        """Get comprehensive information about the database state."""
+        start_time = time.time()
+        try:
+            info = {
+                'file_count': self.get_file_count(),
+                'repository_count': self.get_repository_count(),
+                'language_distribution': self.get_language_distribution(),
+                'languages': list(self.get_languages())
+            }
+            
+            self._log('info', 'Retrieved database info',
+                     file_count=info['file_count'],
+                     repo_count=info['repository_count'],
+                     language_count=len(info['languages']),
+                     duration_ms=int((time.time() - start_time) * 1000))
+            return info
+        except Exception as e:
+            self._log('error', 'Failed to get database info',
                      error=str(e),
                      duration_ms=int((time.time() - start_time) * 1000))
             raise

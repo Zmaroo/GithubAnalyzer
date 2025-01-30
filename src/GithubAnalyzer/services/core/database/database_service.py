@@ -981,4 +981,17 @@ class DatabaseService:
                 }
             }
             
-        return overview 
+        return overview
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        if exc_type is not None:
+            self._logger.error("Error in context manager", extra={
+                'context': self._get_context(error=str(exc_val))
+            })
+        self.pg_service.disconnect()
+        self.neo4j_service.close() 

@@ -2,6 +2,8 @@
 import os
 import time
 import threading
+import tempfile
+import git
 from pathlib import Path
 from typing import List, Optional, Union, Set, Dict, Any
 from dataclasses import dataclass
@@ -631,6 +633,36 @@ class FileService:
         self._log("debug", "FileService initialized", 
                  base_path=str(self.base_path))
         
+    def clone_repository(self, repo_url: str) -> Optional[Path]:
+        """Clone or get local repository path.
+        
+        Args:
+            repo_url: URL of the repository to clone or local file path
+            
+        Returns:
+            Path to the repository directory, or None if cloning failed
+        """
+        try:
+            if repo_url.startswith('file://'):
+                # For local file URLs, just return the path
+                local_path = Path(repo_url.replace('file://', ''))
+                if not local_path.exists():
+                    self._log("error", "Local repository path does not exist",
+                            repo_url=repo_url)
+                    return None
+                return local_path
+            else:
+                # For git URLs, clone to a temporary directory
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    git.Repo.clone_from(repo_url, temp_dir)
+                    return Path(temp_dir)
+                    
+        except Exception as e:
+            self._log("error", "Failed to clone repository",
+                     repo_url=repo_url,
+                     error=str(e))
+            return None
+        
     def _get_context(self, **kwargs) -> Dict[str, Any]:
         """Get standard context for logging.
         
@@ -660,11 +692,12 @@ class FileService:
         context = self._get_context(**kwargs)
         getattr(self._logger, level)(message, extra={'context': context})
 
-    def get_repository_files(self, repo_path: Union[str, Path]) -> List[FileInfo]:
+    def get_repository_files(self, repo_path: Union[str, Path], repo_id: Optional[int] = None) -> List[FileInfo]:
         """Get all files from a repository directory.
         
         Args:
             repo_path: Path to the repository directory
+            repo_id: Optional repository ID to associate with files
             
         Returns:
             List of FileInfo objects for each file
@@ -687,14 +720,15 @@ class FileService:
             exclude_paths=list(DEFAULT_EXCLUDES)
         )
         
-        return self.list_files(repo_path, filter_config)
+        return self.list_files(repo_path, filter_config, repo_id)
         
-    def list_files(self, root_path: Path, filter_config: Optional[FileFilterConfig] = None) -> List[FileInfo]:
+    def list_files(self, root_path: Path, filter_config: Optional[FileFilterConfig] = None, repo_id: Optional[int] = None) -> List[FileInfo]:
         """List files in a directory, optionally filtered by configuration.
         
         Args:
             root_path: Root directory to start searching from.
             filter_config: Optional configuration for filtering files.
+            repo_id: Optional repository ID to associate with files.
             
         Returns:
             List of FileInfo objects for matching files.
@@ -724,6 +758,7 @@ class FileService:
                 file_info = FileInfo(
                     path=file_path,
                     language=language,
+                    repo_id=repo_id or 0,  # Use 0 as default if no repo_id provided
                     metadata={
                         'size': file_path.stat().st_size,
                         'modified': file_path.stat().st_mtime,
@@ -850,38 +885,42 @@ class FileService:
             
         return True
         
-    def _detect_language(self, file_path: Path) -> str:
-        """Detect the programming language of a file based on its extension.
+    def _detect_language(self, file_path: Union[str, Path]) -> str:
+        """Detect the programming language of a file.
         
         Args:
-            file_path: Path to the file to check.
+            file_path: Path to the file
             
         Returns:
-            The detected programming language, or 'plaintext' if not recognized.
+            Language identifier string
         """
+        file_path = str(file_path)
+        filename = Path(file_path).name.lower()
+        
+        # First check if we have a custom parser for this file
+        custom_parser = get_custom_parser(file_path)
+        if custom_parser:
+            if isinstance(custom_parser, RequirementsParser):
+                return "requirements"
+            elif isinstance(custom_parser, EnvFileParser):
+                return "env"
+            elif isinstance(custom_parser, GitignoreParser):
+                return "gitignore"
+            elif isinstance(custom_parser, EditorConfigParser):
+                return "editorconfig"
+            elif isinstance(custom_parser, LockFileParser):
+                return "lockfile"
+        
+        # If no custom parser, check special filenames
+        if filename in SPECIAL_FILENAMES:
+            return SPECIAL_FILENAMES[filename]
+        
+        # Use language service to detect language
         try:
-            # First check if we have a custom parser for this file
-            custom_parser = get_custom_parser(str(file_path))
-            if custom_parser:
-                # For files with custom parsers, return their custom type
-                parser_type = custom_parser.__class__.__name__
-                if parser_type == 'EnvFileParser':
-                    return 'env'
-                elif parser_type == 'RequirementsParser':
-                    return 'requirements'
-                elif parser_type == 'GitignoreParser':
-                    return 'gitignore'
-                elif parser_type == 'EditorConfigParser':
-                    return 'editorconfig'
-                elif parser_type == 'LockFileParser':
-                    return 'lockfile'
-            
-            # If no custom parser or it's not a recognized type,
-            # try tree-sitter language detection
-            return self._language_service.get_language_for_file(str(file_path))
-        except ValueError:
-            # If language detection fails, return plaintext
-            return 'plaintext'
+            return self._language_service.get_language_for_file(file_path)
+        except Exception as e:
+            self._log("warning", f"Failed to detect language: {str(e)}", file_path=file_path)
+            return "plaintext"
         
     def validate_language(self, file_info: FileInfo, expected_type: str) -> bool:
         """Validate that a file is of the expected language type.

@@ -132,43 +132,43 @@ class ParserService:
             ParserError: If parsing fails
         """
         try:
-            # Get parser for language
             parser = self._language_service.get_parser(language)
-            if not parser:
-                self._log("error", "Language not supported",
-                         language=language)
-                raise LanguageError(f"Language {language} not supported")
-                
-            # Enable tree-sitter logging
-            ts_logger.enable_parser_logging(parser)
             
-            # Parse content
-            tree = parser.parse(bytes(content, 'utf8'))
-            if not tree:
-                self._log("error", "Failed to parse content",
-                         language=language)
-                raise ParserError("Failed to parse content")
-                
-            # Check for syntax errors
-            is_supported = True
-            errors = []
-            if tree.root_node.has_error:
-                is_supported = False
-                errors.append("Syntax error detected")
-                self._log("warning", "Syntax error detected",
-                         language=language)
-                
-            # Extract functions and other structures
-            functions = self._query_handler.find_functions(tree.root_node, language)
-            classes = self._query_handler.find_nodes(tree, "class", language)
-            imports = self._query_handler.find_nodes(tree, "import", language)
+            # Set up logging callback
+            def logger_callback(log_type: int, msg: str) -> None:
+                level = logging.ERROR if log_type == 1 else logging.DEBUG
+                ts_logger.log(level, msg, extra={
+                    'context': {
+                        'source': 'tree-sitter',
+                        'type': 'parser',
+                        'log_type': 'error' if log_type == 1 else 'parse'
+                    }
+                })
+            
+            # Set the logger on the parser
+            parser.logger = logger_callback
+            
+            tree = parser.parse(bytes(content, "utf8"))
+            if tree is None:
+                raise ParserError(f"Failed to parse content for language {language}")
             
             # Get any missing or error nodes
             missing_nodes = self._query_handler.find_missing_nodes(tree.root_node)
             error_nodes = self._query_handler.find_error_nodes(tree.root_node)
             
-            # Disable tree-sitter logging for the parser
-            ts_logger.disable_parser_logging(parser)
+            # Check for syntax errors but don't fail the parse
+            errors = []
+            if tree.root_node.has_error:
+                errors.append("Syntax errors detected")
+                self._log("warning", "Syntax errors detected",
+                         language=language,
+                         error_count=len(error_nodes))
+                
+            # Extract functions and other structures
+            # Tree-sitter will still provide partial AST even with errors
+            functions = self._query_handler.find_functions(tree.root_node, language)
+            classes = self._query_handler.find_nodes(tree, "class", language)
+            imports = self._query_handler.find_nodes(tree, "import", language)
             
             self._log("debug", "Content parsed successfully",
                      language=language,
@@ -185,7 +185,7 @@ class ParserService:
                 functions=functions,
                 classes=classes,
                 imports=imports,
-                is_supported=is_supported,
+                is_supported=True,  # File is supported even with syntax errors
                 errors=errors,
                 missing_nodes=missing_nodes,
                 error_nodes=error_nodes

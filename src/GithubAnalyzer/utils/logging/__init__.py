@@ -177,14 +177,11 @@ class LoggerFactory:
             for handler in logger.handlers[:]:
                 logger.removeHandler(handler)
         
-        # Add TreeSitterLogHandler to all loggers to ensure direct capture
-        from .tree_sitter_logging import TreeSitterLogHandler
-        ts_handler = TreeSitterLogHandler(name)
-        ts_handler.setFormatter(self._formatter)
-        ts_handler.setLevel(level)
-        
-        for logger in [main_logger, parser_logger, query_logger]:
-            logger.addHandler(ts_handler)
+        # Add console handler with structured formatting to main logger
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(self._formatter)
+        console_handler.setLevel(level)
+        main_logger.addHandler(console_handler)
         
         # Configure common settings but skip file handlers for test loggers
         if not name.startswith('test'):

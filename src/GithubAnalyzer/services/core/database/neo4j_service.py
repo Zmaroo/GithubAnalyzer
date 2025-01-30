@@ -8,7 +8,7 @@ import threading
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
-from GithubAnalyzer.models.core.database import File, Function
+from GithubAnalyzer.models.core.file import FileInfo
 from GithubAnalyzer.utils.logging import get_logger
 
 # Initialize logger
@@ -92,7 +92,7 @@ class Neo4jService:
             self._log("error", "Failed to setup GDS procedures", error=str(e))
             raise
 
-    def analyze_code_dependencies(self, repo_id: str) -> Dict[str, Any]:
+    def analyze_code_dependencies(self, repo_id: int) -> Dict[str, Any]:
         """Analyze code dependencies using GDS algorithms."""
         start_time = time.time()
         self._log("debug", "Starting code dependency analysis", repo_id=repo_id)
@@ -127,7 +127,7 @@ class Neo4jService:
                     RETURN node.name as name, node.type as type, score
                     ORDER BY score DESC
                     LIMIT 10
-                """, repo_id=repo_id)
+                """, {'repo_id': int(repo_id)})
                 
                 # Run betweenness centrality
                 betweenness_result = session.run("""
@@ -138,7 +138,7 @@ class Neo4jService:
                     RETURN node.name as name, node.type as type, score
                     ORDER BY score DESC
                     LIMIT 10
-                """, repo_id=repo_id)
+                """, {'repo_id': int(repo_id)})
                 
                 # Cleanup projection
                 session.run("CALL gds.graph.drop('code_deps')")
@@ -218,7 +218,7 @@ class Neo4jService:
             
             return [dict(record) for record in result]
             
-    def detect_code_communities(self, repo_id: str) -> Dict[str, List[str]]:
+    def detect_code_communities(self, repo_id: int) -> Dict[str, List[str]]:
         """Detect code communities using GDS community detection.
         
         Uses Louvain algorithm to identify:
@@ -253,7 +253,7 @@ class Neo4jService:
                 WITH communityId, collect(node.name) as components
                 RETURN communityId, components
                 ORDER BY size(components) DESC
-            """, repo_id=repo_id)
+            """, {'repo_id': int(repo_id)})
             
             # Cleanup projection
             session.run("CALL gds.graph.drop('code_communities')")
@@ -263,7 +263,7 @@ class Neo4jService:
                 for record in result
             }
             
-    def find_code_paths(self, start_func: str, end_func: str, repo_id: str) -> List[List[str]]:
+    def find_code_paths(self, start_func: str, end_func: str, repo_id: int) -> List[List[str]]:
         """Find paths between code components using GDS path finding.
         
         Uses shortest path algorithms to identify:
@@ -299,14 +299,14 @@ class Neo4jService:
                 })
                 YIELD path
                 RETURN [node in nodes(path) | node.name] as path_names
-            """, start=start_func, end=end_func, repo_id=repo_id)
+            """, {'start': start_func, 'end': end_func, 'repo_id': int(repo_id)})
             
             # Cleanup projection
             session.run("CALL gds.graph.drop('code_paths')")
             
             return [record['path_names'] for record in result]
             
-    def export_graph_data(self, repo_id: str, format: str = 'json') -> str:
+    def export_graph_data(self, repo_id: int, format: str = 'json') -> str:
         """Export graph data using APOC export procedures.
         
         Args:
@@ -328,7 +328,7 @@ class Neo4jService:
                     )
                     YIELD data
                     RETURN data
-                """, repo_id=repo_id)
+                """, {'repo_id': int(repo_id)})
             else:
                 result = session.run("""
                     CALL apoc.export.cypher.query(
@@ -338,7 +338,7 @@ class Neo4jService:
                     )
                     YIELD cypherStatements
                     RETURN cypherStatements
-                """, repo_id=repo_id)
+                """, {'repo_id': int(repo_id)})
                 
             return result.single()[0]
             
@@ -402,12 +402,12 @@ class Neo4jService:
                 FOR (c:Class) ON (c.language)
             """)
             
-    def create_file_node(self, file: File) -> None:
+    def create_file_node(self, file: FileInfo) -> None:
         """Create a file node with language information."""
         start_time = time.time()
         self._log("debug", "Creating file node", 
                  repo_id=file.repo_id, 
-                 path=file.path,
+                 path=str(file.path),
                  language=file.language)
         
         try:
@@ -420,33 +420,33 @@ class Neo4jService:
                         f.created_at = datetime()
                     MERGE (f)-[:HAS_LANGUAGE]->(l)
                 """, {
-                    'repo_id': file.repo_id,
-                    'path': file.path,
+                    'repo_id': int(file.repo_id),
+                    'path': str(file.path),
                     'language': file.language
                 })
                 
                 duration = (time.time() - start_time) * 1000
                 self._log("info", "File node created successfully",
                          repo_id=file.repo_id,
-                         path=file.path,
+                         path=str(file.path),
                          language=file.language,
                          duration_ms=duration)
                          
         except Exception as e:
             self._log("error", "Failed to create file node",
                      repo_id=file.repo_id,
-                     path=file.path,
+                     path=str(file.path),
                      language=file.language,
                      error=str(e))
             raise
 
-    def create_function_node(self, function: Function, ast_data: Dict[str, Any]) -> None:
+    def create_function_node(self, function: Dict[str, str], ast_data: Dict[str, Any]) -> None:
         """Create a function node with AST information."""
         start_time = time.time()
         self._log("debug", "Creating function node",
-                 repo_id=function.repo_id,
-                 file_path=function.file_path,
-                 function_name=function.name)
+                 repo_id=function['repo_id'],
+                 file_path=function['file_path'],
+                 function_name=function['name'])
         
         try:
             with self._driver.session() as session:
@@ -464,9 +464,9 @@ class Neo4jService:
                         fn.created_at = datetime()
                     MERGE (f)-[:CONTAINS]->(fn)
                 """, {
-                    'repo_id': function.repo_id,
-                    'file_path': function.file_path,
-                    'name': function.name,
+                    'repo_id': int(function['repo_id']),
+                    'file_path': function['file_path'],
+                    'name': function['name'],
                     'ast_data': json.dumps(ast_data),
                     'start_point': json.dumps(ast_data.get('start_point')),
                     'end_point': json.dumps(ast_data.get('end_point'))
@@ -474,20 +474,20 @@ class Neo4jService:
                 
                 duration = (time.time() - start_time) * 1000
                 self._log("info", "Function node created successfully",
-                         repo_id=function.repo_id,
-                         file_path=function.file_path,
-                         function_name=function.name,
+                         repo_id=function['repo_id'],
+                         file_path=function['file_path'],
+                         function_name=function['name'],
                          duration_ms=duration)
                          
         except Exception as e:
             self._log("error", "Failed to create function node",
-                     repo_id=function.repo_id,
-                     file_path=function.file_path,
-                     function_name=function.name,
+                     repo_id=function['repo_id'],
+                     file_path=function['file_path'],
+                     function_name=function['name'],
                      error=str(e))
             raise
 
-    def create_class_node(self, repo_id: str, file_path: str, class_name: str,
+    def create_class_node(self, repo_id: int, file_path: str, class_name: str,
                          ast_data: Dict[str, Any]) -> None:
         """Create a class node with AST information."""
         with self._driver.session() as session:
@@ -505,7 +505,7 @@ class Neo4jService:
                     c.created_at = datetime()
                 MERGE (f)-[:CONTAINS]->(c)
             """, {
-                'repo_id': repo_id,
+                'repo_id': int(repo_id),
                 'file_path': file_path,
                 'name': class_name,
                 'ast_data': json.dumps(ast_data),
@@ -513,7 +513,7 @@ class Neo4jService:
                 'end_point': json.dumps(ast_data.get('end_point'))
             })
             
-    def create_function_relationship(self, caller: Function, callee: Function) -> None:
+    def create_function_relationship(self, caller: Dict[str, str], callee: Dict[str, str]) -> None:
         """Create a relationship between functions."""
         with self._driver.session() as session:
             session.run("""
@@ -530,12 +530,12 @@ class Neo4jService:
                 MERGE (caller)-[r:CALLS]->(callee)
                 SET r.created_at = datetime()
             """, {
-                'caller_repo_id': caller.repo_id,
-                'caller_file_path': caller.file_path,
-                'caller_name': caller.name,
-                'callee_repo_id': callee.repo_id,
-                'callee_file_path': callee.file_path,
-                'callee_name': callee.name
+                'caller_repo_id': int(caller['repo_id']),
+                'caller_file_path': caller['file_path'],
+                'caller_name': caller['name'],
+                'callee_repo_id': int(callee['repo_id']),
+                'callee_file_path': callee['file_path'],
+                'callee_name': callee['name']
             })
             
     def get_file_relationships(self, file_path: str) -> Dict[str, Any]:

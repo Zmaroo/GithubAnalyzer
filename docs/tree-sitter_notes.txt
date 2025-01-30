@@ -198,3 +198,28 @@ Creates a query with a function definition pattern and an #eq? predicate
 Verifies that the pattern information includes is_rooted and is_non_local flags
 Verifies that the assertions field is a dictionary (even if empty)
 Would you like me to make any other improvements to the test or implementation?
+
+Here are the things to keep in mind. There are many different tree-sitter native methods for for finding functions, nodes, errors. The python specific tree-sitter documentation is here @Tree-sitter v24 Documentation . More specific information on these methods can be found in the non-python specific tree-sitter documentation here @Tree-sitter-actual-documentation . We access tree-sitter instances of parse and language through the tree-sitter-language-pack:
+
+from tree_sitter_language_pack import get_binding, get_language, get_parser
+
+python_binding = get_binding('python')  # this is an int pointing to the C binding
+python_lang = get_language('python')  # this is an instance of tree_sitter.Language
+python_parser = get_parser('python')  # this is an instance of tree_sitter.Parser
+
+The only tree-sitter method that accepts a logger parameter is tree-sitter parse. The tree-sitter parse logging is accessed through callback method. All other tree-sitter methods must use our regular central logging @logging :
+
+class tree_sitter.LogType
+Bases: IntEnum
+
+The type of a log message.
+
+Added in version 0.24.0.
+
+Members
+PARSE = 0
+LEX = 1
+
+(The enum error we keep getting happens because we are not setting the 'parse'/'lex')
+
+Every time you switch between tree-sitter matches and captures, you have to change the way we unpack what is returned. 
