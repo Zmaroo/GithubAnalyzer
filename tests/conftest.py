@@ -88,10 +88,25 @@ def test_logging_setup():
     console_handler.setFormatter(StructuredFormatter())
     ts_logger.addHandler(console_handler)
     
+    # Suppress service unavailable warnings
+    service_logger = factory.get_logger('services')
+    service_logger.setLevel(logging.ERROR)  # Only show errors, not warnings
+    
+    # Suppress Neo4j connection warnings
+    neo4j_logger = factory.get_logger('neo4j')
+    neo4j_logger.setLevel(logging.ERROR)
+    
+    # Suppress database warnings
+    db_logger = factory.get_logger('database')
+    db_logger.setLevel(logging.ERROR)
+    
     return {
         'main_logger': main_logger,
         'ts_logger': ts_logger,
-        'parser_logger': ts_logger.getChild('parser')
+        'parser_logger': ts_logger.getChild('parser'),
+        'service_logger': service_logger,
+        'neo4j_logger': neo4j_logger,
+        'db_logger': db_logger
     }
 
 @pytest.fixture

@@ -1,0 +1,280 @@
+{
+  "language": "typescript",
+  "pattern": "\n            [\n              (function_declaration)\n              (function_expression)\n              (arrow_function)\n              (method_definition)\n            ] @function\n        ",
+  "total_functions": 21,
+  "functions": [
+    {
+      "type": "method_definition",
+      "start_point": {
+        "row": 8,
+        "column": 4
+      },
+      "end_point": {
+        "row": 10,
+        "column": 5
+      },
+      "code": "public addUser(user: User): void {\n        this.users.push(user);\n    }",
+      "name": "addUser"
+    },
+    {
+      "type": "arrow_function",
+      "start_point": {
+        "row": 12,
+        "column": 22
+      },
+      "end_point": {
+        "row": 16,
+        "column": 5
+      },
+      "code": "(data: User[]): User[] => {\n        return data.map((user: User) => {\n            return { ...user, id: user.id + 1 };\n        });\n    }",
+      "name": "Anonymous"
+    },
+    {
+      "type": "arrow_function",
+      "start_point": {
+        "row": 13,
+        "column": 24
+      },
+      "end_point": {
+        "row": 15,
+        "column": 9
+      },
+      "code": "(user: User) => {\n            return { ...user, id: user.id + 1 };\n        }",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_expression",
+      "start_point": {
+        "row": 18,
+        "column": 24
+      },
+      "end_point": {
+        "row": 20,
+        "column": 5
+      },
+      "code": "function(user: User): User {\n        return { ...user, name: user.name.toUpperCase() };\n    }",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 30,
+        "column": 0
+      },
+      "end_point": {
+        "row": 32,
+        "column": 1
+      },
+      "code": "function regularFunction(): string {\n    return \"Hello\";\n}",
+      "name": "regularFunction"
+    },
+    {
+      "type": "arrow_function",
+      "start_point": {
+        "row": 35,
+        "column": 22
+      },
+      "end_point": {
+        "row": 37,
+        "column": 1
+      },
+      "code": "(name: string): string => {\n    return `Hello ${name}`;\n}",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 40,
+        "column": 0
+      },
+      "end_point": {
+        "row": 42,
+        "column": 1
+      },
+      "code": "async function asyncFunction(): Promise<string> {\n    return \"async result\";\n}",
+      "name": "asyncFunction"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 45,
+        "column": 0
+      },
+      "end_point": {
+        "row": 47,
+        "column": 1
+      },
+      "code": "function genericFunction<T>(arg: T): T {\n    return arg;\n}",
+      "name": "genericFunction"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 50,
+        "column": 0
+      },
+      "end_point": {
+        "row": 52,
+        "column": 1
+      },
+      "code": "function optionalParams(required: string, optional?: number): string {\n    return `${required} ${optional || ''}`;\n}",
+      "name": "optionalParams"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 55,
+        "column": 0
+      },
+      "end_point": {
+        "row": 57,
+        "column": 1
+      },
+      "code": "function restParams(...numbers: number[]): number {\n    return numbers.reduce((a, b) => a + b, 0);\n}",
+      "name": "restParams"
+    },
+    {
+      "type": "arrow_function",
+      "start_point": {
+        "row": 56,
+        "column": 26
+      },
+      "end_point": {
+        "row": 56,
+        "column": 41
+      },
+      "code": "(a, b) => a + b",
+      "name": "Anonymous"
+    },
+    {
+      "type": "method_definition",
+      "start_point": {
+        "row": 63,
+        "column": 4
+      },
+      "end_point": {
+        "row": 65,
+        "column": 5
+      },
+      "code": "constructor() {\n        this.value = 42;\n    }",
+      "name": "constructor"
+    },
+    {
+      "type": "method_definition",
+      "start_point": {
+        "row": 68,
+        "column": 4
+      },
+      "end_point": {
+        "row": 70,
+        "column": 5
+      },
+      "code": "public instanceMethod(): number {\n        return this.value;\n    }",
+      "name": "instanceMethod"
+    },
+    {
+      "type": "method_definition",
+      "start_point": {
+        "row": 73,
+        "column": 4
+      },
+      "end_point": {
+        "row": 75,
+        "column": 5
+      },
+      "code": "private privateMethod(): void {\n        console.log(\"private\");\n    }",
+      "name": "privateMethod"
+    },
+    {
+      "type": "method_definition",
+      "start_point": {
+        "row": 78,
+        "column": 4
+      },
+      "end_point": {
+        "row": 80,
+        "column": 5
+      },
+      "code": "static staticMethod(): string {\n        return \"static\";\n    }",
+      "name": "staticMethod"
+    },
+    {
+      "type": "method_definition",
+      "start_point": {
+        "row": 83,
+        "column": 4
+      },
+      "end_point": {
+        "row": 85,
+        "column": 5
+      },
+      "code": "get valueGetter(): number {\n        return this.value;\n    }",
+      "name": "valueGetter"
+    },
+    {
+      "type": "method_definition",
+      "start_point": {
+        "row": 88,
+        "column": 4
+      },
+      "end_point": {
+        "row": 90,
+        "column": 5
+      },
+      "code": "set valueSetter(v: number) {\n        this.value = v;\n    }",
+      "name": "valueSetter"
+    },
+    {
+      "type": "method_definition",
+      "start_point": {
+        "row": 93,
+        "column": 4
+      },
+      "end_point": {
+        "row": 95,
+        "column": 5
+      },
+      "code": "async asyncMethod(): Promise<number> {\n        return this.value;\n    }",
+      "name": "asyncMethod"
+    },
+    {
+      "type": "method_definition",
+      "start_point": {
+        "row": 102,
+        "column": 4
+      },
+      "end_point": {
+        "row": 104,
+        "column": 5
+      },
+      "code": "concreteMethod(): string {\n        return \"concrete\";\n    }",
+      "name": "concreteMethod"
+    },
+    {
+      "type": "arrow_function",
+      "start_point": {
+        "row": 109,
+        "column": 42
+      },
+      "end_point": {
+        "row": 109,
+        "column": 54
+      },
+      "code": "(x) => x * 2",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 114,
+        "column": 0
+      },
+      "end_point": {
+        "row": 116,
+        "column": 1
+      },
+      "code": "function overloaded(x: any): any {\n    return x;\n}",
+      "name": "overloaded"
+    }
+  ]
+}

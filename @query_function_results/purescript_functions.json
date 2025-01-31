@@ -1,0 +1,384 @@
+{
+  "language": "purescript",
+  "pattern": "\n            [\n              (function)\n              (exp_lambda)\n            ] @function\n        ",
+  "total_functions": 29,
+  "functions": [
+    {
+      "type": "function",
+      "start_point": {
+        "row": 26,
+        "column": 2
+      },
+      "end_point": {
+        "row": 29,
+        "column": 36
+      },
+      "code": "process (User { age })\n    | age < 0 = Left \"Invalid age\"\n    | age < 18 = Left \"Underage\"\n    | otherwise = Right \"Adult user\"",
+      "name": "process"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 33,
+        "column": 0
+      },
+      "end_point": {
+        "row": 33,
+        "column": 30
+      },
+      "code": "getName (User { name }) = name",
+      "name": "getName"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 36,
+        "column": 0
+      },
+      "end_point": {
+        "row": 36,
+        "column": 27
+      },
+      "code": "getAge (User { age }) = age",
+      "name": "getAge"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 40,
+        "column": 0
+      },
+      "end_point": {
+        "row": 42,
+        "column": 41
+      },
+      "code": "createUser name age\n  | age < 0 = Nothing\n  | otherwise = Just $ User { name, age }",
+      "name": "createUser"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 46,
+        "column": 0
+      },
+      "end_point": {
+        "row": 50,
+        "column": 24
+      },
+      "code": "formatUser user = case process user of\n  Left err -> \"Error: \" <> err\n  Right msg -> \"Success: \" <> msg\n\n-- Higher-order function",
+      "name": "formatUser"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 52,
+        "column": 0
+      },
+      "end_point": {
+        "row": 52,
+        "column": 29
+      },
+      "code": "processUsers = map formatUser",
+      "name": "processUsers"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 56,
+        "column": 0
+      },
+      "end_point": {
+        "row": 61,
+        "column": 19
+      },
+      "code": "getUppercaseName = getName >>> toUpper\n  where\n    toUpper :: String -> String\n    toUpper str = str -- Placeholder: PureScript doesn't have a built-in toUpper\n\n-- Monadic function",
+      "name": "getUppercaseName"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 59,
+        "column": 4
+      },
+      "end_point": {
+        "row": 59,
+        "column": 21
+      },
+      "code": "toUpper str = str",
+      "name": "toUpper"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 63,
+        "column": 0
+      },
+      "end_point": {
+        "row": 67,
+        "column": 33
+      },
+      "code": "validateUser user = do\n  log $ \"Validating user: \" <> getName user\n  log $ formatUser user\n\n-- Function with pattern matching",
+      "name": "validateUser"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 69,
+        "column": 0
+      },
+      "end_point": {
+        "row": 73,
+        "column": 24
+      },
+      "code": "describeAge age\n  | age < 0 = \"Invalid age\"\n  | age < 18 = \"Minor\"\n  | age < 65 = \"Adult\"\n  | otherwise = \"Senior\"",
+      "name": "describeAge"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 77,
+        "column": 0
+      },
+      "end_point": {
+        "row": 83,
+        "column": 39
+      },
+      "code": "findUser users name = \n  users # filter (\\user -> getName user == name) # head\n  where\n    head [] = Nothing\n    head (x:_) = Just x\n\n-- Function with type class constraints",
+      "name": "findUser"
+    },
+    {
+      "type": "exp_lambda",
+      "start_point": {
+        "row": 78,
+        "column": 18
+      },
+      "end_point": {
+        "row": 78,
+        "column": 47
+      },
+      "code": "\\user -> getName user == name",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 80,
+        "column": 4
+      },
+      "end_point": {
+        "row": 80,
+        "column": 21
+      },
+      "code": "head [] = Nothing",
+      "name": "head"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 81,
+        "column": 4
+      },
+      "end_point": {
+        "row": 81,
+        "column": 23
+      },
+      "code": "head (x:_) = Just x",
+      "name": "head"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 85,
+        "column": 0
+      },
+      "end_point": {
+        "row": 94,
+        "column": 15
+      },
+      "code": "countAdults users = \n  users \n    # filter isAdult\n    # length\n  where\n    isAdult user = case process user of\n      Right \"Adult user\" -> true\n      _ -> false\n\n-- Main program",
+      "name": "countAdults"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 90,
+        "column": 4
+      },
+      "end_point": {
+        "row": 94,
+        "column": 15
+      },
+      "code": "isAdult user = case process user of\n      Right \"Adult user\" -> true\n      _ -> false\n\n-- Main program",
+      "name": "isAdult"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 96,
+        "column": 0
+      },
+      "end_point": {
+        "row": 131,
+        "column": 19
+      },
+      "code": "main = do\n  -- Create users\n  let user1 = createUser \"John\" 25\n      user2 = createUser \"Alice\" 17\n      users = [user1, user2] # catMaybes\n  \n  -- Test basic functions\n  log \"Users:\"\n  for_ users \\user -> do\n    log $ getName user <> \" (\" <> show (getAge user) <> \")\"\n  \n  -- Test processing\n  log \"\\nProcessing results:\"\n  for_ (processUsers users) \\result -> do\n    log result\n  \n  -- Test validation\n  log \"\\nValidation:\"\n  for_ users validateUser\n  \n  -- Test age description\n  log \"\\nAge descriptions:\"\n  for_ users \\user -> do\n    log $ getName user <> \": \" <> describeAge (getAge user)\n  \n  -- Test user finding\n  log \"\\nFinding user:\"\n  case findUser users \"John\" of\n    Just user -> log $ \"Found: \" <> getName user\n    Nothing -> log \"User not found\"\n  \n  -- Test adult counting\n  log \"\\nStatistics:\"\n  log $ \"Adult count: \" <> show (countAdults users)\n\n-- Helper functions",
+      "name": "main"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 98,
+        "column": 6
+      },
+      "end_point": {
+        "row": 98,
+        "column": 34
+      },
+      "code": "user1 = createUser \"John\" 25",
+      "name": "user1"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 99,
+        "column": 6
+      },
+      "end_point": {
+        "row": 99,
+        "column": 35
+      },
+      "code": "user2 = createUser \"Alice\" 17",
+      "name": "user2"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 100,
+        "column": 6
+      },
+      "end_point": {
+        "row": 100,
+        "column": 40
+      },
+      "code": "users = [user1, user2] # catMaybes",
+      "name": "users"
+    },
+    {
+      "type": "exp_lambda",
+      "start_point": {
+        "row": 104,
+        "column": 13
+      },
+      "end_point": {
+        "row": 107,
+        "column": 20
+      },
+      "code": "\\user -> do\n    log $ getName user <> \" (\" <> show (getAge user) <> \")\"\n  \n  -- Test processing",
+      "name": "Anonymous"
+    },
+    {
+      "type": "exp_lambda",
+      "start_point": {
+        "row": 109,
+        "column": 28
+      },
+      "end_point": {
+        "row": 112,
+        "column": 20
+      },
+      "code": "\\result -> do\n    log result\n  \n  -- Test validation",
+      "name": "Anonymous"
+    },
+    {
+      "type": "exp_lambda",
+      "start_point": {
+        "row": 118,
+        "column": 13
+      },
+      "end_point": {
+        "row": 121,
+        "column": 22
+      },
+      "code": "\\user -> do\n    log $ getName user <> \": \" <> describeAge (getAge user)\n  \n  -- Test user finding",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 133,
+        "column": 0
+      },
+      "end_point": {
+        "row": 138,
+        "column": 69
+      },
+      "code": "catMaybes arr = arr # filter isJust # map fromJust\n  where\n    isJust (Just _) = true\n    isJust Nothing = false\n    fromJust (Just x) = x\n    fromJust Nothing = unsafeCrashWith \"Impossible: fromJust Nothing\"",
+      "name": "catMaybes"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 135,
+        "column": 4
+      },
+      "end_point": {
+        "row": 135,
+        "column": 26
+      },
+      "code": "isJust (Just _) = true",
+      "name": "isJust"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 136,
+        "column": 4
+      },
+      "end_point": {
+        "row": 136,
+        "column": 26
+      },
+      "code": "isJust Nothing = false",
+      "name": "isJust"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 137,
+        "column": 4
+      },
+      "end_point": {
+        "row": 137,
+        "column": 25
+      },
+      "code": "fromJust (Just x) = x",
+      "name": "fromJust"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 138,
+        "column": 4
+      },
+      "end_point": {
+        "row": 138,
+        "column": 69
+      },
+      "code": "fromJust Nothing = unsafeCrashWith \"Impossible: fromJust Nothing\"",
+      "name": "fromJust"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 141,
+        "column": 0
+      },
+      "end_point": {
+        "row": 141,
+        "column": 21
+      },
+      "code": "for_ = flip traverse_",
+      "name": "for_"
+    }
+  ]
+}

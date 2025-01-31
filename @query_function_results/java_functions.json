@@ -1,0 +1,33 @@
+{
+  "language": "java",
+  "pattern": "\n            [\n              (method_declaration)\n              (constructor_declaration)\n            ] @function\n        ",
+  "total_functions": 2,
+  "functions": [
+    {
+      "type": "constructor_declaration",
+      "start_point": {
+        "row": 3,
+        "column": 4
+      },
+      "end_point": {
+        "row": 5,
+        "column": 5
+      },
+      "code": "public Service(String name) {\n        this.name = name;\n    }",
+      "name": "Service"
+    },
+    {
+      "type": "method_declaration",
+      "start_point": {
+        "row": 7,
+        "column": 4
+      },
+      "end_point": {
+        "row": 9,
+        "column": 5
+      },
+      "code": "public String getName() {\n        return name;\n    }",
+      "name": "getName"
+    }
+  ]
+}

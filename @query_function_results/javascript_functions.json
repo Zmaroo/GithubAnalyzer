@@ -1,0 +1,98 @@
+{
+  "language": "javascript",
+  "pattern": "\n            [\n              (function_declaration)\n              (function_expression)\n              (arrow_function)\n              (method_definition)\n            ] @function\n        ",
+  "total_functions": 7,
+  "functions": [
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 0,
+        "column": 0
+      },
+      "end_point": {
+        "row": 2,
+        "column": 1
+      },
+      "code": "function greet(name) {\n    return `Hello, ${name}!`;\n}",
+      "name": "greet"
+    },
+    {
+      "type": "method_definition",
+      "start_point": {
+        "row": 5,
+        "column": 4
+      },
+      "end_point": {
+        "row": 7,
+        "column": 5
+      },
+      "code": "constructor() {\n        this.users = [];\n    }",
+      "name": "constructor"
+    },
+    {
+      "type": "method_definition",
+      "start_point": {
+        "row": 9,
+        "column": 4
+      },
+      "end_point": {
+        "row": 11,
+        "column": 5
+      },
+      "code": "addUser(user) {\n        this.users.push(user);\n    }",
+      "name": "addUser"
+    },
+    {
+      "type": "function_expression",
+      "start_point": {
+        "row": 15,
+        "column": 16
+      },
+      "end_point": {
+        "row": 19,
+        "column": 1
+      },
+      "code": "function() {\n    return function(data) {\n        return data.process();\n    }\n}",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_expression",
+      "start_point": {
+        "row": 16,
+        "column": 11
+      },
+      "end_point": {
+        "row": 18,
+        "column": 5
+      },
+      "code": "function(data) {\n        return data.process();\n    }",
+      "name": "Anonymous"
+    },
+    {
+      "type": "arrow_function",
+      "start_point": {
+        "row": 22,
+        "column": 16
+      },
+      "end_point": {
+        "row": 24,
+        "column": 1
+      },
+      "code": "(input) => {\n    return input.map(x => x * 2);\n}",
+      "name": "Anonymous"
+    },
+    {
+      "type": "arrow_function",
+      "start_point": {
+        "row": 23,
+        "column": 21
+      },
+      "end_point": {
+        "row": 23,
+        "column": 31
+      },
+      "code": "x => x * 2",
+      "name": "Anonymous"
+    }
+  ]
+}

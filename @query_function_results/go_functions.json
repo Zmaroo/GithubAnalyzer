@@ -1,0 +1,33 @@
+{
+  "language": "go",
+  "pattern": "\n            [\n              (function_declaration)\n              (method_declaration)\n            ] @function\n        ",
+  "total_functions": 2,
+  "functions": [
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 6,
+        "column": 0
+      },
+      "end_point": {
+        "row": 8,
+        "column": 1
+      },
+      "code": "func NewServer(port int) *Server {\n    return &Server{port: port}\n}",
+      "name": "NewServer"
+    },
+    {
+      "type": "method_declaration",
+      "start_point": {
+        "row": 10,
+        "column": 0
+      },
+      "end_point": {
+        "row": 12,
+        "column": 1
+      },
+      "code": "func (s *Server) Start() error {\n    return nil\n}",
+      "name": "Start"
+    }
+  ]
+}

@@ -1,0 +1,215 @@
+{
+  "language": "lua",
+  "pattern": "\n            [\n              (function_definition)\n              (function_declaration)\n            ] @function\n        ",
+  "total_functions": 16,
+  "functions": [
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 1,
+        "column": 0
+      },
+      "end_point": {
+        "row": 3,
+        "column": 3
+      },
+      "code": "function add(a, b)\n    return a + b\nend",
+      "name": "add"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 6,
+        "column": 0
+      },
+      "end_point": {
+        "row": 8,
+        "column": 3
+      },
+      "code": "local function subtract(a, b)\n    return a - b\nend",
+      "name": "subtract"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 11,
+        "column": 17
+      },
+      "end_point": {
+        "row": 13,
+        "column": 3
+      },
+      "code": "function(a, b)\n    return a * b\nend",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 16,
+        "column": 0
+      },
+      "end_point": {
+        "row": 18,
+        "column": 3
+      },
+      "code": "function divmod(a, b)\n    return math.floor(a/b), a % b\nend",
+      "name": "divmod"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 21,
+        "column": 0
+      },
+      "end_point": {
+        "row": 27,
+        "column": 3
+      },
+      "code": "function sum(...)\n    local result = 0\n    for _, v in ipairs({...}) do\n        result = result + v\n    end\n    return result\nend",
+      "name": "sum"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 34,
+        "column": 10
+      },
+      "end_point": {
+        "row": 36,
+        "column": 7
+      },
+      "code": "function(self, x)\n        self.value = self.value + x\n    end",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 39,
+        "column": 15
+      },
+      "end_point": {
+        "row": 41,
+        "column": 7
+      },
+      "code": "function(self, x)\n        self.value = self.value - x\n    end",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 45,
+        "column": 0
+      },
+      "end_point": {
+        "row": 47,
+        "column": 3
+      },
+      "code": "function Calculator:multiply(x)\n    self.value = self.value * x\nend",
+      "name": "Calculator:multiply"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 50,
+        "column": 0
+      },
+      "end_point": {
+        "row": 62,
+        "column": 3
+      },
+      "code": "local function createPerson(name)\n    local person = {\n        name = name,\n        \n        -- Method\n        greet = function(self)\n            return \"Hello, I'm \" .. self.name\n        end\n    }\n    \n    -- Return the instance\n    return person\nend",
+      "name": "createPerson"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 55,
+        "column": 16
+      },
+      "end_point": {
+        "row": 57,
+        "column": 11
+      },
+      "code": "function(self)\n            return \"Hello, I'm \" .. self.name\n        end",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 65,
+        "column": 0
+      },
+      "end_point": {
+        "row": 71,
+        "column": 3
+      },
+      "code": "function counter()\n    local count = 0\n    return function()\n        count = count + 1\n        return count\n    end\nend",
+      "name": "counter"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 67,
+        "column": 11
+      },
+      "end_point": {
+        "row": 70,
+        "column": 7
+      },
+      "code": "function()\n        count = count + 1\n        return count\n    end",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 74,
+        "column": 0
+      },
+      "end_point": {
+        "row": 77,
+        "column": 3
+      },
+      "code": "function makeOperations()\n    return function(x) return x + 1 end,\n           function(x) return x - 1 end\nend",
+      "name": "makeOperations"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 75,
+        "column": 11
+      },
+      "end_point": {
+        "row": 75,
+        "column": 39
+      },
+      "code": "function(x) return x + 1 end",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 76,
+        "column": 11
+      },
+      "end_point": {
+        "row": 76,
+        "column": 39
+      },
+      "code": "function(x) return x - 1 end",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 80,
+        "column": 0
+      },
+      "end_point": {
+        "row": 96,
+        "column": 3
+      },
+      "code": "local function main()\n    -- Test regular function\n    print(add(5, 3))\n    \n    -- Test calculator\n    Calculator:add(10)\n    print(Calculator.value)\n    \n    -- Test person\n    local person = createPerson(\"Alice\")\n    print(person:greet())\n    \n    -- Test counter\n    local count = counter()\n    print(count())\n    print(count())\nend",
+      "name": "main"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 import logging
 from typing import Dict, Any, Optional
 from pathlib import Path
-from tree_sitter import Parser
+from tree_sitter import Parser, LogType
 
 from . import get_logger, get_tree_sitter_logger
 
@@ -43,11 +43,19 @@ def configure_parser_logging(parser: Parser, logger_name: str = "tree_sitter") -
     # Get the tree-sitter logger
     ts_logger = get_tree_sitter_logger(logger_name)
     
-    # Create a logging callback
-    def logger_callback(msg: str) -> None:
-        ts_logger.debug(msg, extra={'context': {'source': 'tree-sitter', 'type': 'parser'}})
+    # Create a logging callback that handles both PARSE and LEX log types
+    def logger_callback(log_type: LogType, msg: str) -> None:
+        context = {
+            'source': 'tree-sitter',
+            'type': 'parser',
+            'log_type': 'parse' if log_type == LogType.PARSE else 'lex'
+        }
+        if log_type == LogType.PARSE:
+            ts_logger.debug(msg, extra={'context': context})
+        else:  # LEX
+            ts_logger.info(msg, extra={'context': context})
     
     # Set the logger on the parser
-    parser.logger = logger_callback
+    parser.set_logger_callback(logger_callback)
     
     return ts_logger 

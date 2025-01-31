@@ -1,0 +1,176 @@
+{
+  "language": "bash",
+  "pattern": "\n            [\n              (function_definition)\n            ] @function\n        ",
+  "total_functions": 13,
+  "functions": [
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 7,
+        "column": 0
+      },
+      "end_point": {
+        "row": 17,
+        "column": 1
+      },
+      "code": "validate_age() {\n    local age=$1\n    if ! [[ \"$age\" =~ ^[0-9]+$ ]]; then\n        echo \"Error: Age must be a number\"\n        return 1\n    elif [ \"$age\" -lt 0 ]; then\n        echo \"Error: Age cannot be negative\"\n        return 1\n    fi\n    return 0\n}",
+      "name": "validate_age"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 20,
+        "column": 0
+      },
+      "end_point": {
+        "row": 27,
+        "column": 1
+      },
+      "code": "is_adult() {\n    local age=$1\n    if [ \"$age\" -ge \"$DEFAULT_AGE\" ]; then\n        return 0  # true in bash\n    else\n        return 1  # false in bash\n    fi\n}",
+      "name": "is_adult"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 30,
+        "column": 0
+      },
+      "end_point": {
+        "row": 34,
+        "column": 1
+      },
+      "code": "format_user() {\n    local name=$1\n    local age=$2\n    echo \"$name ($age years old)\"\n}",
+      "name": "format_user"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 37,
+        "column": 0
+      },
+      "end_point": {
+        "row": 41,
+        "column": 1
+      },
+      "code": "create_greeting() {\n    local name=$1\n    local prefix=${2:-\"Hello\"}\n    echo \"$prefix, $name!\"\n}",
+      "name": "create_greeting"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 44,
+        "column": 0
+      },
+      "end_point": {
+        "row": 62,
+        "column": 1
+      },
+      "code": "process_user_opts() {\n    local OPTIND opt\n    local name=\"\" age=\"\"\n    \n    while getopts \"n:a:\" opt; do\n        case $opt in\n            n) name=\"$OPTARG\" ;;\n            a) age=\"$OPTARG\" ;;\n            *) return 1 ;;\n        esac\n    done\n    \n    if [ -z \"$name\" ] || [ -z \"$age\" ]; then\n        echo \"Error: Both name (-n) and age (-a) are required\"\n        return 1\n    fi\n    \n    format_user \"$name\" \"$age\"\n}",
+      "name": "process_user_opts"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 65,
+        "column": 0
+      },
+      "end_point": {
+        "row": 75,
+        "column": 1
+      },
+      "code": "process_users() {\n    local -n users=$1  # nameref to array\n    local count=0\n    \n    for user in \"${users[@]}\"; do\n        echo \"Processing: $user\"\n        ((count++))\n    done\n    \n    echo \"Processed $count users\"\n}",
+      "name": "process_users"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 78,
+        "column": 0
+      },
+      "end_point": {
+        "row": 88,
+        "column": 1
+      },
+      "code": "save_user() {\n    local name=$1\n    local age=$2\n    \n    if ! validate_age \"$age\"; then\n        return 1\n    fi\n    \n    echo \"$name:$age\" >> \"$DB_FILE\"\n    echo \"User saved successfully\"\n}",
+      "name": "save_user"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 91,
+        "column": 0
+      },
+      "end_point": {
+        "row": 100,
+        "column": 1
+      },
+      "code": "get_users() {\n    if [ ! -f \"$DB_FILE\" ]; then\n        echo \"No users found\"\n        return 1\n    fi\n    \n    while IFS=: read -r name age; do\n        format_user \"$name\" \"$age\"\n    done < \"$DB_FILE\"\n}",
+      "name": "get_users"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 103,
+        "column": 0
+      },
+      "end_point": {
+        "row": 109,
+        "column": 1
+      },
+      "code": "get_adult_users() {\n    while IFS=: read -r name age; do\n        if is_adult \"$age\"; then\n            format_user \"$name\" \"$age\"\n        fi\n    done < \"$DB_FILE\"\n}",
+      "name": "get_adult_users"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 112,
+        "column": 0
+      },
+      "end_point": {
+        "row": 126,
+        "column": 1
+      },
+      "code": "create_user() {\n    local name=$1\n    local age=$2\n    \n    if [ -z \"$name\" ]; then\n        echo \"Error: Name is required\" >&2\n        return 1\n    fi\n    \n    if ! validate_age \"$age\"; then\n        return 1\n    fi\n    \n    save_user \"$name\" \"$age\"\n}",
+      "name": "create_user"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 129,
+        "column": 0
+      },
+      "end_point": {
+        "row": 137,
+        "column": 1
+      },
+      "code": "validate_name() {\n    local name=$1\n    if [[ \"$name\" =~ ^[A-Za-z][A-Za-z\\ \\']*$ ]]; then\n        return 0\n    else\n        echo \"Error: Invalid name format\"\n        return 1\n    fi\n}",
+      "name": "validate_name"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 140,
+        "column": 0
+      },
+      "end_point": {
+        "row": 144,
+        "column": 1
+      },
+      "code": "cleanup() {\n    echo \"Cleaning up...\"\n    [ -f \"$DB_FILE\" ] && rm \"$DB_FILE\"\n    echo \"Cleanup complete\"\n}",
+      "name": "cleanup"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 150,
+        "column": 0
+      },
+      "end_point": {
+        "row": 183,
+        "column": 1
+      },
+      "code": "main() {\n    # Test basic functions\n    echo \"Creating users...\"\n    create_user \"John\" \"25\"\n    create_user \"Alice\" \"17\"\n    \n    echo -e \"\\nAll users:\"\n    get_users\n    \n    echo -e \"\\nAdult users:\"\n    get_adult_users\n    \n    # Test array processing\n    local -a user_list=(\"John (25)\" \"Alice (17)\" \"Bob (30)\")\n    echo -e \"\\nProcessing user list:\"\n    process_users user_list\n    \n    # Test option processing\n    echo -e \"\\nProcessing user with options:\"\n    process_user_opts -n \"Charlie\" -a \"22\"\n    \n    # Test greetings\n    echo -e \"\\nGreetings:\"\n    create_greeting \"David\"\n    create_greeting \"Eve\" \"Hi\"\n    \n    # Test validation\n    echo -e \"\\nValidation tests:\"\n    validate_name \"John Doe\" && echo \"Valid name\"\n    validate_name \"John123\" || echo \"Invalid name\"\n    \n    validate_age \"25\" && echo \"Valid age\"\n    validate_age \"-5\" || echo \"Invalid age\"\n}",
+      "name": "main"
+    }
+  ]
+}

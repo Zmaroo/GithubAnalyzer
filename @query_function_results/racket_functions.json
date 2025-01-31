@@ -1,0 +1,735 @@
+{
+  "language": "racket",
+  "pattern": "\n            (list\n                (symbol) @def_type\n                (#match? @def_type \"^(define|define-syntax|\u03bb|lambda|define/contract)$\")\n            ) @function\n        ",
+  "total_functions": 56,
+  "functions": [
+    {
+      "type": "list",
+      "start_point": {
+        "row": 12,
+        "column": 0
+      },
+      "end_point": {
+        "row": 16,
+        "column": 28
+      },
+      "code": "(define (create-user name age)\n  (cond\n    [(< age 0) (error 'create-user \"Age cannot be negative\")]\n    [(> age 150) (error 'create-user \"Age cannot be greater than 150\")]\n    [else (user name age)]))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 12,
+        "column": 1
+      },
+      "end_point": {
+        "row": 12,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 19,
+        "column": 0
+      },
+      "end_point": {
+        "row": 23,
+        "column": 63
+      },
+      "code": "(define (process-user u)\n  (match u\n    [(user _ age) #:when (< age 0) \"Invalid age\"]\n    [(user _ age) #:when (< age 18) \"Underage\"]\n    [(user name _) (format \"Processing adult user: ~a\" name)]))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 19,
+        "column": 1
+      },
+      "end_point": {
+        "row": 19,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 26,
+        "column": 0
+      },
+      "end_point": {
+        "row": 27,
+        "column": 33
+      },
+      "code": "(define (create-greeting name [prefix \"Hello\"])\n  (format \"~a, ~a!\" prefix name))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 26,
+        "column": 1
+      },
+      "end_point": {
+        "row": 26,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 30,
+        "column": 0
+      },
+      "end_point": {
+        "row": 31,
+        "column": 19
+      },
+      "code": "(define (process-users users proc)\n  (map proc users))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 30,
+        "column": 1
+      },
+      "end_point": {
+        "row": 30,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 34,
+        "column": 0
+      },
+      "end_point": {
+        "row": 36,
+        "column": 31
+      },
+      "code": "(define (make-age-checker min-age)\n  (\u03bb (u)\n    (>= (user-age u) min-age)))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 34,
+        "column": 1
+      },
+      "end_point": {
+        "row": 34,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 35,
+        "column": 2
+      },
+      "end_point": {
+        "row": 36,
+        "column": 30
+      },
+      "code": "(\u03bb (u)\n    (>= (user-age u) min-age))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 35,
+        "column": 3
+      },
+      "end_point": {
+        "row": 35,
+        "column": 5
+      },
+      "code": "\u03bb",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 39,
+        "column": 0
+      },
+      "end_point": {
+        "row": 43,
+        "column": 41
+      },
+      "code": "(define (find-user users name)\n  (cond\n    [(null? users) #f]\n    [(string=? (user-name (car users)) name) (car users)]\n    [else (find-user (cdr users) name)]))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 39,
+        "column": 1
+      },
+      "end_point": {
+        "row": 39,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 46,
+        "column": 0
+      },
+      "end_point": {
+        "row": 49,
+        "column": 7
+      },
+      "code": "(define (get-adult-users users)\n  (for/list ([u users]\n             #:when (>= (user-age u) 18))\n    u))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 46,
+        "column": 1
+      },
+      "end_point": {
+        "row": 46,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 52,
+        "column": 0
+      },
+      "end_point": {
+        "row": 55,
+        "column": 27
+      },
+      "code": "(define (get-user-stats users)\n  (let ([total (length users)]\n        [adults (length (get-adult-users users))])\n    (values total adults)))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 52,
+        "column": 1
+      },
+      "end_point": {
+        "row": 52,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 58,
+        "column": 0
+      },
+      "end_point": {
+        "row": 59,
+        "column": 58
+      },
+      "code": "(define (format-user u)\n  (format \"~a (~a years old)\" (user-name u) (user-age u)))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 58,
+        "column": 1
+      },
+      "end_point": {
+        "row": 58,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 62,
+        "column": 0
+      },
+      "end_point": {
+        "row": 63,
+        "column": 14
+      },
+      "code": "(define (create-user-registry)\n  (make-hash))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 62,
+        "column": 1
+      },
+      "end_point": {
+        "row": 62,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 65,
+        "column": 0
+      },
+      "end_point": {
+        "row": 66,
+        "column": 39
+      },
+      "code": "(define (add-user-to-registry registry u)\n  (hash-set! registry (user-name u) u))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 65,
+        "column": 1
+      },
+      "end_point": {
+        "row": 65,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 68,
+        "column": 0
+      },
+      "end_point": {
+        "row": 69,
+        "column": 30
+      },
+      "code": "(define (get-user-from-registry registry name)\n  (hash-ref registry name #f))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 68,
+        "column": 1
+      },
+      "end_point": {
+        "row": 68,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 72,
+        "column": 0
+      },
+      "end_point": {
+        "row": 77,
+        "column": 18
+      },
+      "code": "(define (validate-user u)\n  (with-handlers ([exn:fail? (\u03bb (e) (exn-message e))])\n    (cond\n      [(string=? (user-name u) \"\") (error 'validate-user \"Name cannot be empty\")]\n      [(< (user-age u) 0) (error 'validate-user \"Age cannot be negative\")]\n      [else #t])))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 72,
+        "column": 1
+      },
+      "end_point": {
+        "row": 72,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 73,
+        "column": 29
+      },
+      "end_point": {
+        "row": 73,
+        "column": 53
+      },
+      "code": "(\u03bb (e) (exn-message e))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 73,
+        "column": 30
+      },
+      "end_point": {
+        "row": 73,
+        "column": 32
+      },
+      "code": "\u03bb",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 80,
+        "column": 0
+      },
+      "end_point": {
+        "row": 85,
+        "column": 35
+      },
+      "code": "(define (user-stream users)\n  (stream-cons\n   (car users)\n   (if (null? (cdr users))\n       empty-stream\n       (user-stream (cdr users)))))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 80,
+        "column": 1
+      },
+      "end_point": {
+        "row": 80,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 88,
+        "column": 0
+      },
+      "end_point": {
+        "row": 91,
+        "column": 57
+      },
+      "code": "(define (process-user/cc u success failure)\n  (if (>= (user-age u) 18)\n      (success (format \"Adult user: ~a\" (user-name u)))\n      (failure (format \"Minor user: ~a\" (user-name u)))))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 88,
+        "column": 1
+      },
+      "end_point": {
+        "row": 88,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 99,
+        "column": 0
+      },
+      "end_point": {
+        "row": 164,
+        "column": 10
+      },
+      "code": "(define (main)\n  (printf \"Creating users...\\n\")\n  (define users\n    (list (create-user \"John\" 25)\n          (create-user \"Alice\" 17)))\n  \n  ;; Test basic functions\n  (printf \"\\nUsers:\\n\")\n  (for-each (\u03bb (u) (printf \"~a\\n\" (format-user u))) users)\n  \n  ;; Test processing\n  (printf \"\\nProcessing results:\\n\")\n  (for-each (\u03bb (result) (printf \"~a\\n\" result))\n            (process-users users process-user))\n  \n  ;; Test user stats\n  (printf \"\\nUser statistics:\\n\")\n  (let-values ([(total adults) (get-user-stats users)])\n    (printf \"Total users: ~a\\n\" total)\n    (printf \"Adult users: ~a\\n\" adults))\n  \n  ;; Test user finding\n  (printf \"\\nFinding user:\\n\")\n  (let ([found (find-user users \"John\")])\n    (when found\n      (printf \"Found: ~a\\n\" (format-user found))))\n  \n  ;; Test registry\n  (printf \"\\nTesting registry:\\n\")\n  (define registry (create-user-registry))\n  (for-each (\u03bb (u) (add-user-to-registry registry u)) users)\n  (let ([found (get-user-from-registry registry \"John\")])\n    (when found\n      (printf \"Found in registry: ~a\\n\" (format-user found))))\n  \n  ;; Test streams\n  (printf \"\\nTesting streams:\\n\")\n  (let ([s (user-stream users)])\n    (stream-for-each\n     (\u03bb (u) (printf \"Stream user: ~a\\n\" (format-user u)))\n     s))\n  \n  ;; Test continuations\n  (printf \"\\nTesting continuations:\\n\")\n  (for-each\n   (\u03bb (u)\n     (process-user/cc\n      u\n      (\u03bb (success) (printf \"Success: ~a\\n\" success))\n      (\u03bb (failure) (printf \"Failure: ~a\\n\" failure))))\n   users)\n  \n  ;; Test macro\n  (printf \"\\nTesting macro:\\n\")\n  (with-user \"Bob\" 30\n    (printf \"Created user: ~a\\n\" (format-user u)))\n  \n  ;; Test validation\n  (printf \"\\nTesting validation:\\n\")\n  (for-each\n   (\u03bb (u)\n     (let ([result (validate-user u)])\n       (printf \"Validation result for ~a: ~a\\n\"\n               (user-name u)\n               (if (eq? result #t) \"valid\" result))))\n   users))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 99,
+        "column": 1
+      },
+      "end_point": {
+        "row": 99,
+        "column": 7
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 101,
+        "column": 2
+      },
+      "end_point": {
+        "row": 103,
+        "column": 36
+      },
+      "code": "(define users\n    (list (create-user \"John\" 25)\n          (create-user \"Alice\" 17)))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 101,
+        "column": 3
+      },
+      "end_point": {
+        "row": 101,
+        "column": 9
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 107,
+        "column": 12
+      },
+      "end_point": {
+        "row": 107,
+        "column": 52
+      },
+      "code": "(\u03bb (u) (printf \"~a\\n\" (format-user u)))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 107,
+        "column": 13
+      },
+      "end_point": {
+        "row": 107,
+        "column": 15
+      },
+      "code": "\u03bb",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 111,
+        "column": 12
+      },
+      "end_point": {
+        "row": 111,
+        "column": 48
+      },
+      "code": "(\u03bb (result) (printf \"~a\\n\" result))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 111,
+        "column": 13
+      },
+      "end_point": {
+        "row": 111,
+        "column": 15
+      },
+      "code": "\u03bb",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 128,
+        "column": 2
+      },
+      "end_point": {
+        "row": 128,
+        "column": 42
+      },
+      "code": "(define registry (create-user-registry))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 128,
+        "column": 3
+      },
+      "end_point": {
+        "row": 128,
+        "column": 9
+      },
+      "code": "define",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 129,
+        "column": 12
+      },
+      "end_point": {
+        "row": 129,
+        "column": 54
+      },
+      "code": "(\u03bb (u) (add-user-to-registry registry u))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 129,
+        "column": 13
+      },
+      "end_point": {
+        "row": 129,
+        "column": 15
+      },
+      "code": "\u03bb",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 138,
+        "column": 5
+      },
+      "end_point": {
+        "row": 138,
+        "column": 58
+      },
+      "code": "(\u03bb (u) (printf \"Stream user: ~a\\n\" (format-user u)))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 138,
+        "column": 6
+      },
+      "end_point": {
+        "row": 138,
+        "column": 8
+      },
+      "code": "\u03bb",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 144,
+        "column": 3
+      },
+      "end_point": {
+        "row": 148,
+        "column": 55
+      },
+      "code": "(\u03bb (u)\n     (process-user/cc\n      u\n      (\u03bb (success) (printf \"Success: ~a\\n\" success))\n      (\u03bb (failure) (printf \"Failure: ~a\\n\" failure))))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 144,
+        "column": 4
+      },
+      "end_point": {
+        "row": 144,
+        "column": 6
+      },
+      "code": "\u03bb",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 147,
+        "column": 6
+      },
+      "end_point": {
+        "row": 147,
+        "column": 53
+      },
+      "code": "(\u03bb (success) (printf \"Success: ~a\\n\" success))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 147,
+        "column": 7
+      },
+      "end_point": {
+        "row": 147,
+        "column": 9
+      },
+      "code": "\u03bb",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 148,
+        "column": 6
+      },
+      "end_point": {
+        "row": 148,
+        "column": 53
+      },
+      "code": "(\u03bb (failure) (printf \"Failure: ~a\\n\" failure))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 148,
+        "column": 7
+      },
+      "end_point": {
+        "row": 148,
+        "column": 9
+      },
+      "code": "\u03bb",
+      "name": "Anonymous"
+    },
+    {
+      "type": "list",
+      "start_point": {
+        "row": 159,
+        "column": 3
+      },
+      "end_point": {
+        "row": 163,
+        "column": 53
+      },
+      "code": "(\u03bb (u)\n     (let ([result (validate-user u)])\n       (printf \"Validation result for ~a: ~a\\n\"\n               (user-name u)\n               (if (eq? result #t) \"valid\" result))))",
+      "name": "Anonymous"
+    },
+    {
+      "type": "symbol",
+      "start_point": {
+        "row": 159,
+        "column": 4
+      },
+      "end_point": {
+        "row": 159,
+        "column": 6
+      },
+      "code": "\u03bb",
+      "name": "Anonymous"
+    }
+  ]
+}

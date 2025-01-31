@@ -1,0 +1,163 @@
+{
+  "language": "ada",
+  "pattern": "\n            [\n              (subprogram_declaration)\n              (subprogram_body)\n              (package_body)\n            ] @function\n        ",
+  "total_functions": 12,
+  "functions": [
+    {
+      "type": "subprogram_body",
+      "start_point": {
+        "row": 4,
+        "column": 0
+      },
+      "end_point": {
+        "row": 170,
+        "column": 17
+      },
+      "code": "procedure User_Manager is\n   -- Type definitions\n   type Age_Type is range 0 .. 150;\n   \n   type User is record\n      Name : Unbounded_String;\n      Age  : Age_Type;\n   end record;\n   \n   type User_Array is array (Positive range <>) of User;\n   \n   -- Exception declaration\n   Invalid_Age : exception;\n   \n   -- Function to create a user\n   function Create_User (Name : String; Age : Integer) return User is\n   begin\n      if Age < 0 then\n         raise Invalid_Age with \"Age cannot be negative\";\n      end if;\n      \n      return (Name => To_Unbounded_String(Name),\n              Age  => Age_Type(Age));\n   end Create_User;\n   \n   -- Procedure to print user info\n   procedure Print_User (U : User) is\n   begin\n      Put(To_String(U.Name));\n      Put(\" (\");\n      Put(Integer(U.Age), 0);\n      Put_Line(\" years old)\");\n   end Print_User;\n   \n   -- Function with out parameter\n   procedure Get_User_Info (U : User; Name : out String; Age : out Integer) is\n   begin\n      Name := To_String(U.Name);\n      Age := Integer(U.Age);\n   end Get_User_Info;\n   \n   -- Generic function\n   generic\n      Min_Age : Age_Type;\n   function Check_Age (U : User) return Boolean;\n   \n   function Check_Age (U : User) return Boolean is\n   begin\n      return U.Age >= Min_Age;\n   end Check_Age;\n   \n   -- Instantiate generic function\n   function Is_Adult is new Check_Age(Min_Age => 18);\n   \n   -- Function that returns an access type\n   type User_Access is access User;\n   \n   function Create_User_Access (Name : String; Age : Integer) return User_Access is\n   begin\n      return new User'(Create_User(Name, Age));\n   end Create_User_Access;\n   \n   -- Procedure with array parameter\n   procedure Process_Users (Users : User_Array) is\n   begin\n      for I in Users'Range loop\n         Put(\"Processing user: \");\n         Print_User(Users(I));\n      end loop;\n   end Process_Users;\n   \n   -- Function returning multiple values using out parameters\n   procedure Analyze_Age (U : User; \n                         Is_Adult : out Boolean; \n                         Message : out String) is\n   begin\n      Is_Adult := U.Age >= 18;\n      if Is_Adult then\n         Message := \"Adult user     \";\n      else\n         Message := \"Underage user  \";\n      end if;\n   end Analyze_Age;\n   \n   -- Protected type for thread-safe user processing\n   protected User_Processor is\n      procedure Process_User (U : in User);\n      function Get_Processed_Count return Natural;\n   private\n      Processed_Count : Natural := 0;\n   end User_Processor;\n   \n   protected body User_Processor is\n      procedure Process_User (U : in User) is\n      begin\n         Put_Line(\"Processing in protected object: \");\n         Print_User(U);\n         Processed_Count := Processed_Count + 1;\n      end Process_User;\n      \n      function Get_Processed_Count return Natural is\n      begin\n         return Processed_Count;\n      end Get_Processed_Count;\n   end User_Processor;\n   \n   -- Main program variables\n   User1, User2 : User;\n   Users : User_Array(1..2);\n   User_Ptr : User_Access;\n   Is_User_Adult : Boolean;\n   Status_Message : String(1..13);\n   \nbegin\n   -- Create users\n   User1 := Create_User(\"John\", 25);\n   User2 := Create_User(\"Alice\", 17);\n   Users := (User1, User2);\n   \n   -- Test basic functions\n   Put_Line(\"Created users:\");\n   Print_User(User1);\n   Print_User(User2);\n   \n   -- Test array processing\n   New_Line;\n   Put_Line(\"Processing users:\");\n   Process_Users(Users);\n   \n   -- Test age checking\n   New_Line;\n   Put_Line(\"Age check results:\");\n   for U of Users loop\n      if Is_Adult(U) then\n         Put_Line(To_String(U.Name) & \" is an adult\");\n      else\n         Put_Line(To_String(U.Name) & \" is not an adult\");\n      end if;\n   end loop;\n   \n   -- Test access type\n   New_Line;\n   Put_Line(\"Testing access type:\");\n   User_Ptr := Create_User_Access(\"Bob\", 30);\n   Print_User(User_Ptr.all);\n   \n   -- Test protected object\n   New_Line;\n   Put_Line(\"Testing protected object:\");\n   User_Processor.Process_User(User1);\n   Put_Line(\"Processed count: \" & \n            Integer'Image(User_Processor.Get_Processed_Count));\n   \n   -- Test multiple out parameters\n   New_Line;\n   Put_Line(\"Testing age analysis:\");\n   for U of Users loop\n      Analyze_Age(U, Is_User_Adult, Status_Message);\n      Put_Line(To_String(U.Name) & \": \" & Status_Message);\n   end loop;\n   \nexception\n   when Invalid_Age =>\n      Put_Line(\"Error: Invalid age provided\");\n   when others =>\n      Put_Line(\"Unexpected error occurred\");\nend User_Manager;",
+      "name": "Anonymous"
+    },
+    {
+      "type": "subprogram_body",
+      "start_point": {
+        "row": 19,
+        "column": 3
+      },
+      "end_point": {
+        "row": 27,
+        "column": 19
+      },
+      "code": "function Create_User (Name : String; Age : Integer) return User is\n   begin\n      if Age < 0 then\n         raise Invalid_Age with \"Age cannot be negative\";\n      end if;\n      \n      return (Name => To_Unbounded_String(Name),\n              Age  => Age_Type(Age));\n   end Create_User;",
+      "name": "Anonymous"
+    },
+    {
+      "type": "subprogram_body",
+      "start_point": {
+        "row": 30,
+        "column": 3
+      },
+      "end_point": {
+        "row": 36,
+        "column": 18
+      },
+      "code": "procedure Print_User (U : User) is\n   begin\n      Put(To_String(U.Name));\n      Put(\" (\");\n      Put(Integer(U.Age), 0);\n      Put_Line(\" years old)\");\n   end Print_User;",
+      "name": "Anonymous"
+    },
+    {
+      "type": "subprogram_body",
+      "start_point": {
+        "row": 39,
+        "column": 3
+      },
+      "end_point": {
+        "row": 43,
+        "column": 21
+      },
+      "code": "procedure Get_User_Info (U : User; Name : out String; Age : out Integer) is\n   begin\n      Name := To_String(U.Name);\n      Age := Integer(U.Age);\n   end Get_User_Info;",
+      "name": "Anonymous"
+    },
+    {
+      "type": "subprogram_body",
+      "start_point": {
+        "row": 50,
+        "column": 3
+      },
+      "end_point": {
+        "row": 53,
+        "column": 17
+      },
+      "code": "function Check_Age (U : User) return Boolean is\n   begin\n      return U.Age >= Min_Age;\n   end Check_Age;",
+      "name": "Anonymous"
+    },
+    {
+      "type": "subprogram_body",
+      "start_point": {
+        "row": 61,
+        "column": 3
+      },
+      "end_point": {
+        "row": 64,
+        "column": 26
+      },
+      "code": "function Create_User_Access (Name : String; Age : Integer) return User_Access is\n   begin\n      return new User'(Create_User(Name, Age));\n   end Create_User_Access;",
+      "name": "Anonymous"
+    },
+    {
+      "type": "subprogram_body",
+      "start_point": {
+        "row": 67,
+        "column": 3
+      },
+      "end_point": {
+        "row": 73,
+        "column": 21
+      },
+      "code": "procedure Process_Users (Users : User_Array) is\n   begin\n      for I in Users'Range loop\n         Put(\"Processing user: \");\n         Print_User(Users(I));\n      end loop;\n   end Process_Users;",
+      "name": "Anonymous"
+    },
+    {
+      "type": "subprogram_body",
+      "start_point": {
+        "row": 76,
+        "column": 3
+      },
+      "end_point": {
+        "row": 86,
+        "column": 19
+      },
+      "code": "procedure Analyze_Age (U : User; \n                         Is_Adult : out Boolean; \n                         Message : out String) is\n   begin\n      Is_Adult := U.Age >= 18;\n      if Is_Adult then\n         Message := \"Adult user     \";\n      else\n         Message := \"Underage user  \";\n      end if;\n   end Analyze_Age;",
+      "name": "Anonymous"
+    },
+    {
+      "type": "subprogram_declaration",
+      "start_point": {
+        "row": 90,
+        "column": 6
+      },
+      "end_point": {
+        "row": 90,
+        "column": 43
+      },
+      "code": "procedure Process_User (U : in User);",
+      "name": "Anonymous"
+    },
+    {
+      "type": "subprogram_declaration",
+      "start_point": {
+        "row": 91,
+        "column": 6
+      },
+      "end_point": {
+        "row": 91,
+        "column": 50
+      },
+      "code": "function Get_Processed_Count return Natural;",
+      "name": "Anonymous"
+    },
+    {
+      "type": "subprogram_body",
+      "start_point": {
+        "row": 97,
+        "column": 6
+      },
+      "end_point": {
+        "row": 102,
+        "column": 23
+      },
+      "code": "procedure Process_User (U : in User) is\n      begin\n         Put_Line(\"Processing in protected object: \");\n         Print_User(U);\n         Processed_Count := Processed_Count + 1;\n      end Process_User;",
+      "name": "Anonymous"
+    },
+    {
+      "type": "subprogram_body",
+      "start_point": {
+        "row": 104,
+        "column": 6
+      },
+      "end_point": {
+        "row": 107,
+        "column": 30
+      },
+      "code": "function Get_Processed_Count return Natural is\n      begin\n         return Processed_Count;\n      end Get_Processed_Count;",
+      "name": "Anonymous"
+    }
+  ]
+}

@@ -563,12 +563,26 @@ TS_PATTERNS = {
 
 # JavaScript/TypeScript/JSX/TSX variants
 JS_VARIANT_PATTERNS = {
-    lang: {
-        **JS_TS_SHARED_PATTERNS,
-        "jsx_element": JS_TS_SHARED_PATTERNS["jsx_element"],
-        **(TS_PATTERNS if lang in {"typescript", "tsx"} else {})
+    "javascript": {
+        "function": """
+            [
+              (function_declaration)
+              (function_expression)
+              (arrow_function)
+              (method_definition)
+            ] @function
+        """
+    },
+    "typescript": {
+        "function": """
+            [
+              (function_declaration)
+              (function_expression)
+              (arrow_function)
+              (method_definition)
+            ] @function
+        """
     }
-    for lang in JS_VARIANTS
 }
 
 # Pattern templates for common structures
@@ -645,72 +659,18 @@ def create_class_pattern(
 PYTHON_PATTERNS = {
     "function": """
         [
-          ; Regular function definition
-          (function_definition
-            name: (identifier) @function.name
-            parameters: (parameters) @function.params
-            body: (block) @function.body) @function.def
-
-          ; Method definition in class
-          (function_definition
-            name: (identifier) @function.name
-            parameters: (parameters) @function.params
-            body: (block) @function.body) @function.def
-
-          ; Lambda function
-          (lambda
-            parameters: (lambda_parameters)? @function.params
-            body: (_) @function.body) @function.def
-        ]
-    """,
-    "class": """
-        (class_definition
-          name: (identifier) @class.name
-          superclasses: (argument_list)? @class.superclasses
-          body: (block [
-            (function_definition
-              name: (identifier) @class.method.name
-              parameters: (parameters) @class.method.params
-              body: (block) @class.method.body)
-          ]*) @class.body) @class.def
-    """,
-    "import": """
-        [
-          (import_statement
-            name: (dotted_name) @import.module
-            alias: (identifier)? @import.alias) @import
-            
-          (import_from_statement
-            module_name: (dotted_name) @import.from
-            name: (dotted_name) @import.name) @import.from_stmt
-        ]
-    """,
-    "error": """
-        [
-          (ERROR) @error.syntax
-          (MISSING) @error.missing
-        ] @error
+          (function_definition)
+          (lambda)
+        ] @function
     """
 }
 
 # Add C-specific patterns
 C_PATTERNS = {
     "function": """
-        (function_definition
-          declarator: (function_declarator
-            declarator: (identifier) @function.name
-            parameters: (parameter_list) @function.params)
-          body: (compound_statement) @function.body) @function.def
-    """,
-    "struct": """
-        (struct_specifier
-          name: (type_identifier) @struct.name
-          body: (field_declaration_list) @struct.body) @struct.def
-    """,
-    "enum": """
-        (enum_specifier
-          name: (type_identifier) @enum.name
-          body: (enumerator_list) @enum.body) @enum.def
+        [
+          (function_definition)
+        ] @function
     """
 }
 
@@ -812,366 +772,447 @@ MARKDOWN_PATTERNS = {
     """
 }
 
+# Add patterns for additional languages that don't have tree-sitter grammars yet
+ADDITIONAL_LANGUAGE_PATTERNS = {
+    "julia": {
+        "function": """
+            [
+              (function_definition)
+              (short_function_definition)
+              (function_expression)
+            ] @function
+        """
+    },
+    "perl": {
+        "function": """
+            [
+              (subroutine_declaration_statement)
+              (anonymous_subroutine_expression)
+            ] @function
+        """
+    },
+    "pascal": {
+        "function": """
+            [
+              (function_declaration)
+              (procedure_declaration)
+            ] @function
+        """
+    },
+    "fortran": {
+        "function": """
+            [
+              (function_definition)
+              (subroutine_definition)
+            ] @function
+        """
+    },
+    "d": {
+        "function": """
+            [
+              (function_declaration)
+              (constructor_declaration)
+              (destructor_declaration)
+            ] @function
+        """
+    },
+    "groovy": {
+        "function": """
+            (func) @function
+        """
+    },
+    "racket": {
+        "function": """
+            (list
+                (symbol) @def_type
+                (#match? @def_type "^(define|define-syntax|λ|lambda|define/contract)$")
+            ) @function
+        """
+    },
+    "clojure": {
+        "function": """
+            (list_lit
+                (sym_lit) @def_type
+                (#match? @def_type "^(defn|defn-|defmacro|defmethod|fn)$")
+            ) @function
+        """
+    },
+    "elixir": {
+        "function": """
+            [
+                ; Module, protocol, and implementation definitions
+                (call
+                    target: (identifier) @def_type
+                    (#match? @def_type "^(defmodule|defprotocol|defimpl)$")
+                ) @module
+
+                ; Function definitions (including macros and guards)
+                (call
+                    target: (identifier) @def_type
+                    (#match? @def_type "^(def|defp|defmacro|defguard)$")
+                    args: (arguments
+                        .  ; Ensure this is the first argument
+                        [
+                            ; Simple function head
+                            (identifier) @name
+                            ; Function head with parameters
+                            (call
+                                target: (identifier) @name
+                                args: (_)* @params
+                            )
+                        ]
+                        .  ; Ensure this is followed by
+                        [
+                            ; Block body
+                            (do_block) @body
+                            ; Single expression body with do:
+                            (keywords
+                                .
+                                (pair
+                                    key: (identifier) @keyword
+                                    (#eq? @keyword "do")
+                                    value: (_) @body
+                                )
+                            )
+                        ]
+                    )
+                ) @function.def
+
+                ; Anonymous functions
+                (anonymous_function
+                    args: (arguments) @params
+                    body: (_) @body
+                ) @function.anon
+            ]
+        """
+    },
+    "haskell": {
+        "function": """
+            [
+              (function)
+              (lambda)
+            ] @function
+        """
+    },
+    "purescript": {
+        "function": """
+            [
+              (function)
+              (exp_lambda)
+            ] @function
+        """
+    },
+    "dart": {
+        "function": """
+            [
+              (function_signature)
+              (method_signature)
+              (constructor_signature)
+              (function_expression)
+              (function_body)
+            ] @function
+        """
+    },
+    "hack": {
+        "function": """
+            [
+              (function_declaration)
+              (method_declaration)
+              (constructor_declaration)
+              (lambda_expression)
+              (async_function_declaration)
+            ] @function
+        """
+    },
+    "gleam": {
+        "function": """
+            [
+              (function_definition)
+              (pub_function)
+              (lambda_expression)
+              (fn_expression)
+            ] @function
+        """
+    },
+    "haxe": {
+        "function": """
+            [
+              (function_definition)
+              (method_definition)
+              (constructor_definition)
+              (arrow_expression)
+              (abstract_definition)
+            ] @function
+        """
+    },
+    "ocaml": {
+        "function": """
+            [
+              (let_binding)
+              (let_rec_binding)
+              (value_binding)
+              (method_binding)
+              (fun_binding)
+            ] @function
+        """
+    }
+}
+
 # Query patterns by language with assertions and settings
 QUERY_PATTERNS = {
-    "python": PYTHON_PATTERNS,
-    **JS_VARIANT_PATTERNS,  # Add all JavaScript variants
-    "c": C_PATTERNS,
+    "python": {
+        "function": """
+            [
+              (function_definition)
+              (lambda)
+            ] @function
+        """
+    },
+    **JS_VARIANT_PATTERNS,  # Add JavaScript variants
+    "c": {
+        "function": """
+            [
+              (function_definition)
+            ] @function
+        """
+    },
     "yaml": YAML_PATTERNS,
     "toml": TOML_PATTERNS,
     "dockerfile": DOCKERFILE_PATTERNS,
     "markdown": MARKDOWN_PATTERNS,
     "java": {
-        "class": """
-            (class_declaration
-              name: (identifier) @class.name
-              superclass: (superclass)? @class.superclass
-              interfaces: (super_interfaces)? @class.interfaces
-              body: (class_body) @class.body) @class.def
-        """,
-        "method": """
-            (method_declaration
-              modifiers: (modifiers)? @method.modifiers
-              type: (_) @method.return_type
-              name: (identifier) @method.name
-              parameters: (formal_parameters) @method.params
-              body: (block) @method.body) @method.def
-        """,
-        "interface": """
-            (interface_declaration
-              name: (identifier) @interface.name
-              extends: (extends_interfaces)? @interface.extends
-              body: (interface_body) @interface.body) @interface.def
+        "function": """
+            [
+              (method_declaration)
+              (constructor_declaration)
+            ] @function
         """
     },
     "go": {
         "function": """
-            (function_declaration
-              name: (identifier) @function.name
-              parameters: (parameter_list) @function.params
-              result: [
-                (parameter_list) @function.return
-                (type_identifier) @function.return
-              ]?
-              body: (block) @function.body) @function.def
-        """,
-        "struct": """
-            (type_declaration
-              (type_spec
-                name: (type_identifier) @struct.name
-                type: (struct_type
-                  fields: (field_declaration_list) @struct.fields))) @struct.def
-        """,
-        "interface": """
-            (type_declaration
-              (type_spec
-                name: (type_identifier) @interface.name
-                type: (interface_type
-                  methods: (method_spec_list) @interface.methods))) @interface.def
+            [
+              (function_declaration)
+              (method_declaration)
+            ] @function
         """
     },
     "rust": {
         "function": """
-            (function_item
-              name: (identifier) @function.name
-              parameters: (parameters) @function.params
-              return_type: (type_identifier)? @function.return_type
-              body: (block) @function.body) @function.def
-        """,
-        "struct": """
-            (struct_item
-              name: (type_identifier) @struct.name
-              fields: (field_declaration_list) @struct.fields) @struct.def
-        """,
-        "impl": """
-            (impl_item
-              type: (type_identifier) @impl.type
-              trait: (type_identifier)? @impl.trait
-              body: (declaration_list) @impl.body) @impl.def
+            [
+              (function_item)
+              (closure_expression)
+            ] @function
         """
     },
     "cpp": {
         "function": """
-            (function_definition
-              declarator: (function_declarator
-                declarator: (identifier) @function.name
-                parameters: (parameter_list) @function.params)
-              type: (_) @function.return_type
-              body: (compound_statement) @function.body) @function.def
-        """,
-        "class": """
-            (class_specifier
-              name: (type_identifier) @class.name
-              bases: (base_class_clause)? @class.bases
-              body: (field_declaration_list) @class.body) @class.def
-        """,
-        "namespace": """
-            (namespace_definition
-              name: (identifier) @namespace.name
-              body: (declaration_list) @namespace.body) @namespace.def
-        """
-    },
-    "html": {
-        "element": """
-            (element
-              tag_name: (_) @element.tag
-              attribute: (attribute
-                name: (_) @element.attr.name
-                value: (_)? @element.attr.value)*
-              text: (text)* @element.text) @element
-        """
-    },
-    "css": {
-        "rule": """
-            (rule_set
-              selectors: (selectors) @rule.selectors
-              block: (block) @rule.block) @rule
-        """,
-        "property": """
-            (declaration
-              name: (property_name) @property.name
-              value: (property_value) @property.value) @property
+            [
+              (function_definition)
+              (method_definition)
+            ] @function
         """
     },
     "scala": {
         "function": """
-            (function_definition
-              name: (identifier) @function.name
-              parameters: (parameters) @function.params
-              body: (block) @function.body) @function.def
+            [
+              (function_definition)
+              (class_definition)
+            ] @function
         """
     },
     "ruby": {
         "function": """
-            (method
-              name: (identifier) @function.name
-              parameters: (method_parameters)? @function.params
-              body: (body_statement) @function.body) @function.def
+            [
+              (method)
+              (singleton_method)
+            ] @function
         """
     },
     "swift": {
         "function": """
-            (function_declaration
-              name: (identifier) @function.name
-              parameters: (parameter_clause) @function.params
-              body: (code_block) @function.body) @function.def
+            [
+              (function_declaration)
+              (protocol_function_declaration)
+              (lambda_function_type)
+            ] @function
         """
     },
     "kotlin": {
         "function": """
-            (function_declaration
-              name: (simple_identifier) @function.name
-              parameters: (parameter_list) @function.params
-              body: (function_body) @function.body) @function.def
-        """
-    },
-    "json": {
-        "object": """
-            (object
-              (pair
-                key: (string) @object.key
-                value: (_) @object.value)*) @object
-        """
-    },
-    "xml": {
-        "element": """
-            (element
-              tag_name: (_) @element.tag
-              attribute: (attribute
-                name: (_) @element.attr.name
-                value: (_)? @element.attr.value)*
-              text: (text)* @element.text) @element
-        """
-    },
-    "text": {
-        "line": """
-            (line) @line
-        """
-    },
-    "rst": {
-        "directive": """
-            (directive
-              name: (_) @directive.name
-              content: (_) @directive.content) @directive
-        """
-    },
-    "org": {
-        "heading": """
-            (heading
-              stars: (_) @heading.level
-              content: (_) @heading.content) @heading
-        """
-    },
-    "ini": {
-        "section": """
-            (section
-              name: (_) @section.name
-              entries: (entry
-                key: (_) @section.key
-                value: (_) @section.value)*) @section
+            [
+              (function_declaration)
+              (lambda_literal)
+            ] @function
         """
     },
     "lua": {
         "function": """
-            (function_definition
-              name: (_) @function.name
-              parameters: (parameters) @function.params
-              body: (block) @function.body) @function.def
+            [
+              (function_definition)
+              (function_declaration)
+            ] @function
         """
     },
     "r": {
         "function": """
-            (function_definition
-              name: (identifier) @function.name
-              parameters: (formal_parameters) @function.params
-              body: (expression_list) @function.body) @function.def
+            [
+              (function_definition)
+            ] @function
         """
     },
-    "elm": {
+    "tcl": {
         "function": """
-            (value_declaration
-              name: (lower_case_identifier) @function.name
-              parameters: (pattern)* @function.params
-              body: (expression) @function.body) @function.def
+            [
+              (command)
+            ] @function
         """
     },
-    "elixir": {
+    "verilog": {
         "function": """
-            (function
-              name: (identifier) @function.name
-              parameters: (parameters) @function.params
-              body: (do_block) @function.body) @function.def
+            [
+              (function_declaration)
+              (task_declaration)
+            ] @function
         """
     },
-    "erlang": {
+    "ada": {
         "function": """
-            (function
-              name: (atom) @function.name
-              clauses: (function_clause)* @function.clauses) @function.def
-        """
-    },
-    "haskell": {
-        "function": """
-            (function
-              name: (variable) @function.name
-              parameters: (patterns) @function.params
-              body: (rhs) @function.body) @function.def
-        """
-    },
-    "ocaml": {
-        "function": """
-            (let_binding
-              pattern: (value_name) @function.name
-              parameters: (parameter)* @function.params
-              body: (expression) @function.body) @function.def
-        """
-    },
-    "perl": {
-        "subroutine": """
-            (subroutine_declaration
-              name: (identifier) @function.name
-              body: (block) @function.body) @function.def
-        """
-    },
-    "protobuf": {
-        "message": """
-            (message
-              name: (identifier) @message.name
-              body: (message_body) @message.body) @message.def
-        """
-    },
-    "sql": {
-        "select": """
-            (select_statement
-              columns: (select_expression_list) @select.columns
-              from: (from_clause) @select.from
-              where: (where_clause)? @select.where) @select
-        """
-    },
-    "vue": {
-        "template": """
-            (template_element
-              content: (_) @template.content) @template
-        """,
-        "script": """
-            (script_element
-              content: (_) @script.content) @script
-        """
-    },
-    "zig": {
-        "function": """
-            (function_declaration
-              name: (identifier) @function.name
-              parameters: (parameter_list) @function.params
-              body: (block) @function.body) @function.def
+            [
+              (subprogram_declaration)
+              (subprogram_body)
+              (package_body)
+            ] @function
         """
     },
     "bash": {
         "function": """
-            (function_definition
-              name: (word) @function.name
-              body: (compound_statement) @function.body) @function.def
-        """,
-        "command": """
-            (command
-              name: (command_name) @command.name
-              argument: (command_argument)* @command.args) @command
-        """,
-        "variable": """
-            (variable_assignment
-              name: (variable_name) @variable.name
-              value: (_) @variable.value) @variable
+            [
+              (function_definition)
+            ] @function
         """
     },
-    "php": {
+    "zig": {
         "function": """
-            (function_definition
-              name: (name) @function.name
-              parameters: (formal_parameters) @function.params
-              body: (compound_statement) @function.body) @function.def
-        """,
-        "class": """
-            (class_declaration
-              name: (name) @class.name
-              base_clause: (base_clause)? @class.extends
-              interfaces: (class_interface_clause)? @class.implements
-              body: (declaration_list) @class.body) @class.def
-        """,
-        "method": """
-            (method_declaration
-              name: (name) @method.name
-              parameters: (formal_parameters) @method.params
-              body: (compound_statement) @method.body) @method.def
-        """,
-        "namespace": """
-            (namespace_definition
-              name: (namespace_name) @namespace.name
-              body: (compound_statement) @namespace.body) @namespace.def
+            [
+              (FnProto)
+              (FieldOrFnCall)
+            ] @function
         """
     },
-    "c_sharp": {
-        "class": """
-            (class_declaration
-              name: (identifier) @class.name
-              base_list: (base_list)? @class.inherits
-              body: (declaration_list) @class.body) @class.def
-        """,
-        "method": """
-            (method_declaration
-              name: (identifier) @method.name
-              parameters: (parameter_list) @method.params
-              body: (block) @method.body) @method.def
-        """,
-        "interface": """
-            (interface_declaration
-              name: (identifier) @interface.name
-              base_list: (base_list)? @interface.extends
-              body: (declaration_list) @interface.body) @interface.def
-        """,
-        "property": """
-            (property_declaration
-              name: (identifier) @property.name
-              accessors: (accessor_list) @property.accessors) @property.def
+    "commonlisp": {
+        "function": """
+            [
+              (defun)
+              (defun_header)
+              (defun_keyword)
+            ] @function
+        """
+    },
+    "erlang": {
+        "function": """
+            [
+              (fun_decl)
+              (anonymous_fun)
+              (fun_clause)
+              (function_clause)
+            ] @function
+        """
+    },
+    "groovy": {
+        "function": """
+            (func) @function
+        """
+    },
+    "racket": {
+        "function": """
+            (list
+                (symbol) @def_type
+                (#match? @def_type "^(define|define-syntax|λ|lambda|define/contract)$")
+            ) @function
+        """
+    },
+    "clojure": {
+        "function": """
+            (list_lit
+                (sym_lit) @def_type
+                (#match? @def_type "^(defn|defn-|defmacro|defmethod|fn)$")
+            ) @function
+        """
+    },
+    "elixir": {
+        "function": """
+            [
+                ; Module, protocol, and implementation definitions
+                (call
+                    target: (identifier) @def_type
+                    (#match? @def_type "^(defmodule|defprotocol|defimpl)$")
+                ) @module
+
+                ; Function definitions (including macros and guards)
+                (call
+                    target: (identifier) @def_type
+                    (#match? @def_type "^(def|defp|defmacro|defguard)$")
+                    args: (arguments
+                        .  ; Ensure this is the first argument
+                        [
+                            ; Simple function head
+                            (identifier) @name
+                            ; Function head with parameters
+                            (call
+                                target: (identifier) @name
+                                args: (_)* @params
+                            )
+                        ]
+                        .  ; Ensure this is followed by
+                        [
+                            ; Block body
+                            (do_block) @body
+                            ; Single expression body with do:
+                            (keywords
+                                .
+                                (pair
+                                    key: (identifier) @keyword
+                                    (#eq? @keyword "do")
+                                    value: (_) @body
+                                )
+                            )
+                        ]
+                    )
+                ) @function.def
+
+                ; Anonymous functions
+                (anonymous_function
+                    args: (arguments) @params
+                    body: (_) @body
+                ) @function.anon
+            ]
+        """
+    },
+    "haskell": {
+        "function": """
+            [
+              (function)
+              (lambda)
+            ] @function
+        """
+    },
+    "purescript": {
+        "function": """
+            [
+              (function)
+              (exp_lambda)
+            ] @function
+        """
+    },
+    "dart": {
+        "function": """
+            [
+              (function_signature)
+              (method_signature)
+              (constructor_signature)
+              (function_expression)
+              (function_body)
+            ] @function
         """
     }
 }
@@ -1382,3 +1423,6 @@ def get_base_language(language: Optional[str]) -> str:
     elif language in {'hpp', 'cc', 'hh'}:
         return 'cpp'
     return language 
+
+# Update QUERY_PATTERNS to include additional languages that don't have tree-sitter grammars
+QUERY_PATTERNS.update(ADDITIONAL_LANGUAGE_PATTERNS) 

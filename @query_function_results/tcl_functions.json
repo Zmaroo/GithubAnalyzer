@@ -1,0 +1,1463 @@
+{
+  "language": "tcl",
+  "pattern": "\n            [\n              (command)\n            ] @function\n        ",
+  "total_functions": 112,
+  "functions": [
+    {
+      "type": "command",
+      "start_point": {
+        "row": 5,
+        "column": 4
+      },
+      "end_point": {
+        "row": 5,
+        "column": 32
+      },
+      "code": "variable users [dict create]",
+      "name": "variable"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 5,
+        "column": 20
+      },
+      "end_point": {
+        "row": 5,
+        "column": 31
+      },
+      "code": "dict create",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 8,
+        "column": 4
+      },
+      "end_point": {
+        "row": 8,
+        "column": 27
+      },
+      "code": "variable DEFAULT_AGE 18",
+      "name": "variable"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 13,
+        "column": 12
+      },
+      "end_point": {
+        "row": 13,
+        "column": 42
+      },
+      "code": "error \"Age cannot be negative\"",
+      "name": "error"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 15,
+        "column": 8
+      },
+      "end_point": {
+        "row": 15,
+        "column": 48
+      },
+      "code": "return [dict create name $name age $age]",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 15,
+        "column": 16
+      },
+      "end_point": {
+        "row": 15,
+        "column": 47
+      },
+      "code": "dict create name $name age $age",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 20,
+        "column": 18
+      },
+      "end_point": {
+        "row": 20,
+        "column": 37
+      },
+      "code": "dict get $user name",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 21,
+        "column": 17
+      },
+      "end_point": {
+        "row": 21,
+        "column": 35
+      },
+      "code": "dict get $user age",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 23,
+        "column": 12
+      },
+      "end_point": {
+        "row": 23,
+        "column": 44
+      },
+      "code": "return \"$name is $age years old\"",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 25,
+        "column": 12
+      },
+      "end_point": {
+        "row": 25,
+        "column": 33
+      },
+      "code": "return \"$name ($age)\"",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 31,
+        "column": 21
+      },
+      "end_point": {
+        "row": 31,
+        "column": 25
+      },
+      "code": "list",
+      "name": "list"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 33,
+        "column": 12
+      },
+      "end_point": {
+        "row": 33,
+        "column": 47
+      },
+      "code": "lappend results [format_user $user]",
+      "name": "lappend"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 33,
+        "column": 29
+      },
+      "end_point": {
+        "row": 33,
+        "column": 46
+      },
+      "code": "format_user $user",
+      "name": "format_user"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 35,
+        "column": 8
+      },
+      "end_point": {
+        "row": 35,
+        "column": 23
+      },
+      "code": "return $results",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 40,
+        "column": 8
+      },
+      "end_point": {
+        "row": 40,
+        "column": 28
+      },
+      "code": "variable DEFAULT_AGE",
+      "name": "variable"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 41,
+        "column": 17
+      },
+      "end_point": {
+        "row": 41,
+        "column": 35
+      },
+      "code": "dict get $user age",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 42,
+        "column": 8
+      },
+      "end_point": {
+        "row": 42,
+        "column": 44
+      },
+      "code": "return [expr {$age >= $DEFAULT_AGE}]",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 47,
+        "column": 8
+      },
+      "end_point": {
+        "row": 47,
+        "column": 30
+      },
+      "code": "upvar 1 $user_var user",
+      "name": "upvar"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 48,
+        "column": 8
+      },
+      "end_point": {
+        "row": 48,
+        "column": 32
+      },
+      "code": "dict set user name $name",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 49,
+        "column": 8
+      },
+      "end_point": {
+        "row": 49,
+        "column": 30
+      },
+      "code": "dict set user age $age",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 54,
+        "column": 14
+      },
+      "end_point": {
+        "row": 54,
+        "column": 36
+      },
+      "code": "dict exists $user name",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 54,
+        "column": 43
+      },
+      "end_point": {
+        "row": 54,
+        "column": 64
+      },
+      "code": "dict exists $user age",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 55,
+        "column": 12
+      },
+      "end_point": {
+        "row": 55,
+        "column": 42
+      },
+      "code": "error \"Invalid user structure\"",
+      "name": "error"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 57,
+        "column": 17
+      },
+      "end_point": {
+        "row": 57,
+        "column": 35
+      },
+      "code": "dict get $user age",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 58,
+        "column": 14
+      },
+      "end_point": {
+        "row": 58,
+        "column": 36
+      },
+      "code": "string is integer $age",
+      "name": "string"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 59,
+        "column": 12
+      },
+      "end_point": {
+        "row": 59,
+        "column": 42
+      },
+      "code": "error \"Age must be an integer\"",
+      "name": "error"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 62,
+        "column": 12
+      },
+      "end_point": {
+        "row": 62,
+        "column": 42
+      },
+      "code": "error \"Age cannot be negative\"",
+      "name": "error"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 64,
+        "column": 8
+      },
+      "end_point": {
+        "row": 64,
+        "column": 16
+      },
+      "code": "return 1",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 69,
+        "column": 8
+      },
+      "end_point": {
+        "row": 69,
+        "column": 55
+      },
+      "code": "return [regexp {^[A-Za-z][A-Za-z\\ \\']*$} $name]",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 69,
+        "column": 16
+      },
+      "end_point": {
+        "row": 69,
+        "column": 54
+      },
+      "code": "regexp {^[A-Za-z][A-Za-z\\ \\']*$} $name",
+      "name": "regexp"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 69,
+        "column": 24
+      },
+      "end_point": {
+        "row": 69,
+        "column": 47
+      },
+      "code": "^[A-Za-z][A-Za-z\\ \\']*$",
+      "name": "^"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 69,
+        "column": 26
+      },
+      "end_point": {
+        "row": 69,
+        "column": 32
+      },
+      "code": "A-Za-z",
+      "name": "A-Za-z"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 69,
+        "column": 34
+      },
+      "end_point": {
+        "row": 69,
+        "column": 44
+      },
+      "code": "A-Za-z\\ \\'",
+      "name": "A-Za-z"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 74,
+        "column": 8
+      },
+      "end_point": {
+        "row": 74,
+        "column": 22
+      },
+      "code": "variable users",
+      "name": "variable"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 75,
+        "column": 18
+      },
+      "end_point": {
+        "row": 75,
+        "column": 37
+      },
+      "code": "dict get $user name",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 76,
+        "column": 8
+      },
+      "end_point": {
+        "row": 76,
+        "column": 34
+      },
+      "code": "dict set users $name $user",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 81,
+        "column": 19
+      },
+      "end_point": {
+        "row": 81,
+        "column": 37
+      },
+      "code": "llength $user_list",
+      "name": "llength"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 84,
+        "column": 17
+      },
+      "end_point": {
+        "row": 84,
+        "column": 31
+      },
+      "code": "is_adult $user",
+      "name": "is_adult"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 85,
+        "column": 16
+      },
+      "end_point": {
+        "row": 85,
+        "column": 32
+      },
+      "code": "incr adult_count",
+      "name": "incr"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 88,
+        "column": 8
+      },
+      "end_point": {
+        "row": 88,
+        "column": 41
+      },
+      "code": "return [list $total $adult_count]",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 88,
+        "column": 16
+      },
+      "end_point": {
+        "row": 88,
+        "column": 40
+      },
+      "code": "list $total $adult_count",
+      "name": "list"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 94,
+        "column": 17
+      },
+      "end_point": {
+        "row": 94,
+        "column": 36
+      },
+      "code": "dict get $user name",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 95,
+        "column": 16
+      },
+      "end_point": {
+        "row": 95,
+        "column": 28
+      },
+      "code": "return $user",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 98,
+        "column": 8
+      },
+      "end_point": {
+        "row": 98,
+        "column": 17
+      },
+      "code": "return \"\"",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 103,
+        "column": 8
+      },
+      "end_point": {
+        "row": 103,
+        "column": 32
+      },
+      "code": "return \"$prefix, $name!\"",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 108,
+        "column": 18
+      },
+      "end_point": {
+        "row": 108,
+        "column": 35
+      },
+      "code": "string trim $name",
+      "name": "string"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 109,
+        "column": 18
+      },
+      "end_point": {
+        "row": 109,
+        "column": 55
+      },
+      "code": "string totitle [string tolower $name]",
+      "name": "string"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 109,
+        "column": 34
+      },
+      "end_point": {
+        "row": 109,
+        "column": 54
+      },
+      "code": "string tolower $name",
+      "name": "string"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 110,
+        "column": 8
+      },
+      "end_point": {
+        "row": 110,
+        "column": 20
+      },
+      "code": "return $name",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 115,
+        "column": 15
+      },
+      "end_point": {
+        "row": 115,
+        "column": 31
+      },
+      "code": "open $filename w",
+      "name": "open"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 117,
+        "column": 12
+      },
+      "end_point": {
+        "row": 117,
+        "column": 69
+      },
+      "code": "puts $f [list [dict get $user name] [dict get $user age]]",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 117,
+        "column": 21
+      },
+      "end_point": {
+        "row": 117,
+        "column": 68
+      },
+      "code": "list [dict get $user name] [dict get $user age]",
+      "name": "list"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 117,
+        "column": 27
+      },
+      "end_point": {
+        "row": 117,
+        "column": 46
+      },
+      "code": "dict get $user name",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 117,
+        "column": 49
+      },
+      "end_point": {
+        "row": 117,
+        "column": 67
+      },
+      "code": "dict get $user age",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 119,
+        "column": 8
+      },
+      "end_point": {
+        "row": 119,
+        "column": 16
+      },
+      "code": "close $f",
+      "name": "close"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 124,
+        "column": 19
+      },
+      "end_point": {
+        "row": 124,
+        "column": 23
+      },
+      "code": "list",
+      "name": "list"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 125,
+        "column": 15
+      },
+      "end_point": {
+        "row": 125,
+        "column": 31
+      },
+      "code": "open $filename r",
+      "name": "open"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 126,
+        "column": 16
+      },
+      "end_point": {
+        "row": 126,
+        "column": 28
+      },
+      "code": "gets $f line",
+      "name": "gets"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 127,
+        "column": 12
+      },
+      "end_point": {
+        "row": 127,
+        "column": 34
+      },
+      "code": "lassign $line name age",
+      "name": "lassign"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 128,
+        "column": 12
+      },
+      "end_point": {
+        "row": 128,
+        "column": 50
+      },
+      "code": "lappend users [create_user $name $age]",
+      "name": "lappend"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 128,
+        "column": 27
+      },
+      "end_point": {
+        "row": 128,
+        "column": 49
+      },
+      "code": "create_user $name $age",
+      "name": "create_user"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 130,
+        "column": 8
+      },
+      "end_point": {
+        "row": 130,
+        "column": 16
+      },
+      "code": "close $f",
+      "name": "close"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 131,
+        "column": 8
+      },
+      "end_point": {
+        "row": 131,
+        "column": 21
+      },
+      "code": "return $users",
+      "name": "return"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 138,
+        "column": 15
+      },
+      "end_point": {
+        "row": 138,
+        "column": 49
+      },
+      "code": "UserManager::create_user \"John\" 25",
+      "name": "UserManager::create_user"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 139,
+        "column": 15
+      },
+      "end_point": {
+        "row": 139,
+        "column": 50
+      },
+      "code": "UserManager::create_user \"Alice\" 17",
+      "name": "UserManager::create_user"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 140,
+        "column": 15
+      },
+      "end_point": {
+        "row": 140,
+        "column": 33
+      },
+      "code": "list $user1 $user2",
+      "name": "list"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 143,
+        "column": 4
+      },
+      "end_point": {
+        "row": 143,
+        "column": 17
+      },
+      "code": "puts \"Users:\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 145,
+        "column": 8
+      },
+      "end_point": {
+        "row": 145,
+        "column": 45
+      },
+      "code": "puts [UserManager::format_user $user]",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 145,
+        "column": 14
+      },
+      "end_point": {
+        "row": 145,
+        "column": 44
+      },
+      "code": "UserManager::format_user $user",
+      "name": "UserManager::format_user"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 149,
+        "column": 4
+      },
+      "end_point": {
+        "row": 149,
+        "column": 28
+      },
+      "code": "puts \"\\nVerbose format:\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 151,
+        "column": 8
+      },
+      "end_point": {
+        "row": 151,
+        "column": 47
+      },
+      "code": "puts [UserManager::format_user $user 1]",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 151,
+        "column": 14
+      },
+      "end_point": {
+        "row": 151,
+        "column": 46
+      },
+      "code": "UserManager::format_user $user 1",
+      "name": "UserManager::format_user"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 155,
+        "column": 4
+      },
+      "end_point": {
+        "row": 155,
+        "column": 25
+      },
+      "code": "puts \"\\nAdult check:\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 157,
+        "column": 18
+      },
+      "end_point": {
+        "row": 157,
+        "column": 37
+      },
+      "code": "dict get $user name",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 158,
+        "column": 13
+      },
+      "end_point": {
+        "row": 158,
+        "column": 40
+      },
+      "code": "UserManager::is_adult $user",
+      "name": "UserManager::is_adult"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 159,
+        "column": 12
+      },
+      "end_point": {
+        "row": 159,
+        "column": 36
+      },
+      "code": "puts \"$name is an adult\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 161,
+        "column": 12
+      },
+      "end_point": {
+        "row": 161,
+        "column": 40
+      },
+      "code": "puts \"$name is not an adult\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 166,
+        "column": 4
+      },
+      "end_point": {
+        "row": 166,
+        "column": 27
+      },
+      "code": "puts \"\\nUpdating user:\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 168,
+        "column": 4
+      },
+      "end_point": {
+        "row": 168,
+        "column": 52
+      },
+      "code": "UserManager::update_user test_user \"John Doe\" 26",
+      "name": "UserManager::update_user"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 169,
+        "column": 4
+      },
+      "end_point": {
+        "row": 169,
+        "column": 46
+      },
+      "code": "puts [UserManager::format_user $test_user]",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 169,
+        "column": 10
+      },
+      "end_point": {
+        "row": 169,
+        "column": 45
+      },
+      "code": "UserManager::format_user $test_user",
+      "name": "UserManager::format_user"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 172,
+        "column": 4
+      },
+      "end_point": {
+        "row": 172,
+        "column": 24
+      },
+      "code": "puts \"\\nValidation:\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 174,
+        "column": 20
+      },
+      "end_point": {
+        "row": 174,
+        "column": 52
+      },
+      "code": "UserManager::validate_user $user",
+      "name": "UserManager::validate_user"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 175,
+        "column": 12
+      },
+      "end_point": {
+        "row": 175,
+        "column": 45
+      },
+      "code": "puts \"Validation failed: $result\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 177,
+        "column": 12
+      },
+      "end_point": {
+        "row": 177,
+        "column": 32
+      },
+      "code": "puts \"User is valid\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 182,
+        "column": 4
+      },
+      "end_point": {
+        "row": 182,
+        "column": 29
+      },
+      "code": "puts \"\\nName validation:\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 183,
+        "column": 4
+      },
+      "end_point": {
+        "row": 183,
+        "column": 60
+      },
+      "code": "puts \"John Doe: [UserManager::validate_name \"John Doe\"]\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 183,
+        "column": 21
+      },
+      "end_point": {
+        "row": 183,
+        "column": 58
+      },
+      "code": "UserManager::validate_name \"John Doe\"",
+      "name": "UserManager::validate_name"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 184,
+        "column": 4
+      },
+      "end_point": {
+        "row": 184,
+        "column": 58
+      },
+      "code": "puts \"John123: [UserManager::validate_name \"John123\"]\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 184,
+        "column": 20
+      },
+      "end_point": {
+        "row": 184,
+        "column": 56
+      },
+      "code": "UserManager::validate_name \"John123\"",
+      "name": "UserManager::validate_name"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 187,
+        "column": 4
+      },
+      "end_point": {
+        "row": 187,
+        "column": 29
+      },
+      "code": "puts \"\\nUser statistics:\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 188,
+        "column": 4
+      },
+      "end_point": {
+        "row": 188,
+        "column": 66
+      },
+      "code": "lassign [UserManager::get_user_stats $users] total adult_count",
+      "name": "lassign"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 188,
+        "column": 13
+      },
+      "end_point": {
+        "row": 188,
+        "column": 47
+      },
+      "code": "UserManager::get_user_stats $users",
+      "name": "UserManager::get_user_stats"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 189,
+        "column": 4
+      },
+      "end_point": {
+        "row": 189,
+        "column": 30
+      },
+      "code": "puts \"Total users: $total\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 190,
+        "column": 4
+      },
+      "end_point": {
+        "row": 190,
+        "column": 36
+      },
+      "code": "puts \"Adult users: $adult_count\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 193,
+        "column": 4
+      },
+      "end_point": {
+        "row": 193,
+        "column": 26
+      },
+      "code": "puts \"\\nFinding user:\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 194,
+        "column": 20
+      },
+      "end_point": {
+        "row": 194,
+        "column": 56
+      },
+      "code": "UserManager::find_user $users \"John\"",
+      "name": "UserManager::find_user"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 196,
+        "column": 8
+      },
+      "end_point": {
+        "row": 196,
+        "column": 60
+      },
+      "code": "puts \"Found: [UserManager::format_user $found_user]\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 196,
+        "column": 22
+      },
+      "end_point": {
+        "row": 196,
+        "column": 58
+      },
+      "code": "UserManager::format_user $found_user",
+      "name": "UserManager::format_user"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 200,
+        "column": 4
+      },
+      "end_point": {
+        "row": 200,
+        "column": 29
+      },
+      "code": "puts \"\\nProcessed names:\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 202,
+        "column": 18
+      },
+      "end_point": {
+        "row": 202,
+        "column": 37
+      },
+      "code": "dict get $user name",
+      "name": "dict"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 203,
+        "column": 8
+      },
+      "end_point": {
+        "row": 203,
+        "column": 46
+      },
+      "code": "puts [UserManager::process_name $name]",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 203,
+        "column": 14
+      },
+      "end_point": {
+        "row": 203,
+        "column": 45
+      },
+      "code": "UserManager::process_name $name",
+      "name": "UserManager::process_name"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 207,
+        "column": 4
+      },
+      "end_point": {
+        "row": 207,
+        "column": 37
+      },
+      "code": "puts \"\\nTesting file operations:\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 208,
+        "column": 4
+      },
+      "end_point": {
+        "row": 208,
+        "column": 51
+      },
+      "code": "UserManager::save_users \"test_users.txt\" $users",
+      "name": "UserManager::save_users"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 209,
+        "column": 22
+      },
+      "end_point": {
+        "row": 209,
+        "column": 62
+      },
+      "code": "UserManager::load_users \"test_users.txt\"",
+      "name": "UserManager::load_users"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 210,
+        "column": 4
+      },
+      "end_point": {
+        "row": 210,
+        "column": 24
+      },
+      "code": "puts \"Loaded users:\"",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 212,
+        "column": 8
+      },
+      "end_point": {
+        "row": 212,
+        "column": 45
+      },
+      "code": "puts [UserManager::format_user $user]",
+      "name": "puts"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 212,
+        "column": 14
+      },
+      "end_point": {
+        "row": 212,
+        "column": 44
+      },
+      "code": "UserManager::format_user $user",
+      "name": "UserManager::format_user"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 214,
+        "column": 4
+      },
+      "end_point": {
+        "row": 214,
+        "column": 32
+      },
+      "code": "file delete \"test_users.txt\"",
+      "name": "file"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 218,
+        "column": 5
+      },
+      "end_point": {
+        "row": 218,
+        "column": 16
+      },
+      "code": "info script",
+      "name": "info"
+    },
+    {
+      "type": "command",
+      "start_point": {
+        "row": 219,
+        "column": 4
+      },
+      "end_point": {
+        "row": 219,
+        "column": 8
+      },
+      "code": "main",
+      "name": "main"
+    }
+  ]
+}

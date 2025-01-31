@@ -37,7 +37,7 @@ from .query_patterns import (
 from .language_service import LanguageService
 from .traversal_service import TreeSitterTraversal
 
-# Initialize logger
+# Initialize logger with proper configuration
 logger = get_tree_sitter_logger("query")
 
 @dataclass
@@ -559,130 +559,112 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
                 
         return len(errors) == 0, errors
 
-    def find_functions(self, target_node):
-        """Find function definitions in the tree using pure tree-sitter query.
+    def find_functions(self, target_node: Union[Node, Tree]) -> List[Dict[str, Any]]:
+        """Find all function definitions in the given node.
         
         Args:
-            target_node: The node to search for functions in.
+            target_node: Node or Tree to search for functions
             
         Returns:
-            A list of dictionaries containing function information.
-            Each dictionary includes:
-            - function.def: The function definition node
-            - function.name: The name node (if named function)
-            - name: Alias for function.name (for compatibility)
-            - is_named: Boolean indicating if function has a name
-            - other captured nodes from the query
+            List of function information dictionaries
         """
-        logger = get_logger("tree_sitter.query")
-        
-        pattern = get_query_pattern(self._language_name, "function")
-        if not pattern:
-            logger.warning("No function pattern found for language", extra={
-                'language': self._language_name
-            })
-            return []
+        pattern = self._function_pattern
         
         try:
+            # Create and execute query
             query = self._language.query(pattern)
-            
-            # Get all captures in one go - this includes both named and anonymous functions
-            captures = query.captures(target_node)
-            
-            logger.debug("Found function captures", extra={
-                'capture_count': query.capture_count,
-                'pattern_count': query.pattern_count,
-                'capture_names': list(captures.keys()),
-                'total_captures': len(captures)
+            captures_dict = query.captures(target_node)
+
+            # Log detailed capture information
+            self._log("debug", "Found function captures", extra={
+                'context': {
+                    'source': 'tree-sitter',
+                    'type': 'query',
+                    'capture_names': list(captures_dict.keys()),
+                    'capture_counts': {name: len(nodes) for name, nodes in captures_dict.items()},
+                    'language': self._language_name
+                }
             })
-            
+
             # Group captures by function definition node
             functions = []
             seen_funcs = set()
-            
-            # Process each function definition capture
-            for def_key in ["function.def", "function", "arrow_function", "function_expression"]:
-                if def_key not in captures:
-                    logger.debug(f"No captures found for {def_key}")
+
+            # First process function definitions
+            for func_node in captures_dict.get('function.def', []):
+                if func_node in seen_funcs:
                     continue
                     
-                logger.debug(f"Processing captures for {def_key}", extra={
-                    'capture_count': len(captures[def_key]),
-                    'capture_type': def_key
-                })
-                    
-                for func_def in captures[def_key]:
-                    # Skip if we've already processed this function
-                    if func_def.id in seen_funcs:
-                        logger.debug("Skipping duplicate function", extra={
-                            'function_id': func_def.id,
-                            'function_type': func_def.type,
-                            'start_point': func_def.start_point
-                        })
-                        continue
-                    seen_funcs.add(func_def.id)
-                    
-                    current_function = {
-                        "function.def": func_def,
-                        "function.name": None,
-                        "name": None,
-                        "is_named": False
+                seen_funcs.add(func_node)
+                func_info = {
+                    'function.def': func_node,
+                    'function.name': None,
+                    'name': None,
+                    'is_named': False,
+                    'start_point': func_node.start_point,
+                    'end_point': func_node.end_point,
+                    'type': func_node.type
+                }
+                
+                # Log function definition found
+                self._log("debug", f"Found function definition", extra={
+                    'context': {
+                        'source': 'tree-sitter',
+                        'type': 'query',
+                        'function_type': func_node.type,
+                        'start_point': func_node.start_point,
+                        'end_point': func_node.end_point
                     }
-                    
-                    logger.debug("Processing function", extra={
-                        'function_id': func_def.id,
-                        'function_type': func_def.type,
-                        'start_point': func_def.start_point,
-                        'end_point': func_def.end_point,
-                        'parent_type': func_def.parent.type if func_def.parent else None
-                    })
-                    
-                    # Check for name in captures first
-                    if "function.name" in captures:
-                        for name_node in captures["function.name"]:
-                            # Use native field access to verify relationship
-                            if name_node == func_def.child_by_field_name("name"):
-                                current_function["function.name"] = name_node
-                                current_function["name"] = name_node
-                                current_function["is_named"] = True
-                                logger.debug("Found function name", extra={
-                                    'function_id': func_def.id,
-                                    'name': name_node.text.decode('utf-8'),
-                                    'name_start': name_node.start_point
+                })
+                
+                functions.append(func_info)
+
+            # Then process function names
+            for name_node in captures_dict.get('function.name', []):
+                # Find the function this name belongs to by checking parent nodes
+                parent = name_node.parent
+                while parent:
+                    if parent in seen_funcs:
+                        # Find the function entry and update it
+                        for func in functions:
+                            if func['function.def'] == parent:
+                                func['function.name'] = name_node
+                                func['name'] = name_node.text.decode('utf8')
+                                func['is_named'] = True
+                                
+                                # Log function name association
+                                self._log("debug", f"Associated function name", extra={
+                                    'context': {
+                                        'source': 'tree-sitter',
+                                        'type': 'query',
+                                        'function_name': func['name'],
+                                        'function_type': func['type']
+                                    }
                                 })
                                 break
-                    
-                    # Add any other captures that belong to this function
-                    for capture_name, nodes in captures.items():
-                        if capture_name not in ["function.def", "function", "function.name", "name", "arrow_function", "function_expression"]:
-                            for node in nodes:
-                                # Use native field access to check if node belongs to this function
-                                if node.parent == func_def or func_def.child_by_field_name(capture_name) == node:
-                                    current_function[capture_name] = node
-                                    logger.debug(f"Added capture {capture_name}", extra={
-                                        'function_id': func_def.id,
-                                        'capture_type': capture_name,
-                                        'node_type': node.type,
-                                        'node_start': node.start_point
-                                    })
-                                    break
-                    
-                    functions.append(current_function)
-            
-            logger.info("Function search complete", extra={
-                'total_functions': len(functions),
-                'named_functions': sum(1 for f in functions if f['is_named']),
-                'anonymous_functions': sum(1 for f in functions if not f['is_named']),
-                'function_types': [f['function.def'].type for f in functions]
+                        break
+                    parent = parent.parent
+
+            self._log("info", "Function search complete", extra={
+                'context': {
+                    'source': 'tree-sitter',
+                    'type': 'query',
+                    'total_functions': len(functions),
+                    'named_functions': sum(1 for f in functions if f['is_named']),
+                    'language': self._language_name
+                }
             })
-            
+
             return functions
             
         except Exception as e:
-            logger.error("Error finding functions", extra={
-                'error': str(e),
-                'language': self._language_name,
-                'error_type': type(e).__name__
+            self._log("error", f"Error finding functions: {str(e)}", extra={
+                'context': {
+                    'source': 'tree-sitter',
+                    'type': 'query',
+                    'error': str(e),
+                    'error_type': type(e).__name__
+                }
             })
             return []
 
@@ -821,3 +803,108 @@ class TreeSitterQueryHandler(TreeSitterServiceBase):
         except Exception as e:
             self._logger.error(f"Error getting pattern for {pattern_type} in {language}: {str(e)}")
             return None
+
+def find_functions(tree: Tree, query: Query) -> List[Dict[str, Any]]:
+    """Find all functions in the tree using the provided query.
+    
+    Args:
+        tree: The parsed tree to search
+        query: The compiled query to use
+        
+    Returns:
+        List of found functions with their details
+    """
+    functions = []
+    
+    try:
+        # Execute query using captures() method
+        captures = query.captures(tree.root_node)
+        
+        logger.debug(
+            "Executing function query",
+            extra={
+                'context': {
+                    'source': 'tree-sitter',
+                    'type': 'query',
+                    'log_type': 'query',
+                    'captures_count': len(captures)
+                }
+            }
+        )
+        
+        # Group captures by their function definition
+        current_function = {}
+        
+        for capture_name, node in captures:
+            try:
+                if capture_name == 'function.def':
+                    # If we have a previous function, add it to the list
+                    if current_function:
+                        functions.append(current_function)
+                    
+                    # Start a new function
+                    current_function = {
+                        'type': node.type,
+                        'start_point': node.start_point,
+                        'end_point': node.end_point,
+                        'name': None,
+                        'params': None,
+                        'body': None
+                    }
+                    
+                elif capture_name == 'function.name' and current_function:
+                    current_function['name'] = node.text.decode('utf-8')
+                elif capture_name == 'function.params' and current_function:
+                    current_function['params'] = node.text.decode('utf-8')
+                elif capture_name == 'function.body' and current_function:
+                    current_function['body'] = node.text.decode('utf-8')
+                
+                logger.debug(
+                    f"Processing capture {capture_name}",
+                    extra={
+                        'context': {
+                            'source': 'tree-sitter',
+                            'type': 'query',
+                            'log_type': 'query',
+                            'capture_name': capture_name,
+                            'node_type': node.type,
+                            'start_point': node.start_point,
+                            'end_point': node.end_point
+                        }
+                    }
+                )
+                
+            except Exception as e:
+                logger.error(
+                    f"Error processing capture {capture_name}: {str(e)}",
+                    extra={
+                        'context': {
+                            'source': 'tree-sitter',
+                            'type': 'query',
+                            'log_type': 'error',
+                            'error_type': type(e).__name__,
+                            'capture_name': capture_name
+                        }
+                    }
+                )
+                continue
+        
+        # Add the last function if exists
+        if current_function:
+            functions.append(current_function)
+            
+    except Exception as e:
+        logger.error(
+            f"Error executing function query: {str(e)}",
+            extra={
+                'context': {
+                    'source': 'tree-sitter',
+                    'type': 'query',
+                    'log_type': 'error',
+                    'error_type': type(e).__name__
+                }
+            }
+        )
+        raise
+        
+    return functions

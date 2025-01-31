@@ -1,0 +1,202 @@
+{
+  "language": "scala",
+  "pattern": "\n            [\n              (function_definition)\n              (class_definition)\n            ] @function\n        ",
+  "total_functions": 15,
+  "functions": [
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 1,
+        "column": 0
+      },
+      "end_point": {
+        "row": 1,
+        "column": 36
+      },
+      "code": "def add(a: Int, b: Int): Int = a + b",
+      "name": "add"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 4,
+        "column": 0
+      },
+      "end_point": {
+        "row": 4,
+        "column": 28
+      },
+      "code": "def identity[T](x: T): T = x",
+      "name": "identity"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 7,
+        "column": 0
+      },
+      "end_point": {
+        "row": 7,
+        "column": 43
+      },
+      "code": "def curriedAdd(x: Int)(y: Int): Int = x + y",
+      "name": "curriedAdd"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 10,
+        "column": 0
+      },
+      "end_point": {
+        "row": 10,
+        "column": 60
+      },
+      "code": "def greet(name: String = \"World\"): String = s\"Hello, $name!\"",
+      "name": "greet"
+    },
+    {
+      "type": "class_definition",
+      "start_point": {
+        "row": 13,
+        "column": 0
+      },
+      "end_point": {
+        "row": 16,
+        "column": 1
+      },
+      "code": "case class Person(name: String, age: Int) {\n  def greet(): String = s\"Hello, my name is $name\"\n  def birthday(): Person = copy(age = age + 1)\n}",
+      "name": "Person"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 14,
+        "column": 2
+      },
+      "end_point": {
+        "row": 14,
+        "column": 50
+      },
+      "code": "def greet(): String = s\"Hello, my name is $name\"",
+      "name": "greet"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 15,
+        "column": 2
+      },
+      "end_point": {
+        "row": 15,
+        "column": 46
+      },
+      "code": "def birthday(): Person = copy(age = age + 1)",
+      "name": "birthday"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 21,
+        "column": 2
+      },
+      "end_point": {
+        "row": 21,
+        "column": 34
+      },
+      "code": "def move(): String = \"Moving...\"",
+      "name": "move"
+    },
+    {
+      "type": "class_definition",
+      "start_point": {
+        "row": 25,
+        "column": 0
+      },
+      "end_point": {
+        "row": 28,
+        "column": 1
+      },
+      "code": "class Dog(name: String) extends Animal {\n  def speak(): String = \"Woof!\"\n  override def move(): String = \"Running on four legs\"\n}",
+      "name": "Dog"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 26,
+        "column": 2
+      },
+      "end_point": {
+        "row": 26,
+        "column": 31
+      },
+      "code": "def speak(): String = \"Woof!\"",
+      "name": "speak"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 27,
+        "column": 2
+      },
+      "end_point": {
+        "row": 27,
+        "column": 54
+      },
+      "code": "override def move(): String = \"Running on four legs\"",
+      "name": "move"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 32,
+        "column": 2
+      },
+      "end_point": {
+        "row": 32,
+        "column": 33
+      },
+      "code": "def square(x: Int): Int = x * x",
+      "name": "square"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 33,
+        "column": 2
+      },
+      "end_point": {
+        "row": 33,
+        "column": 35
+      },
+      "code": "def cube(x: Int): Int = x * x * x",
+      "name": "cube"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 37,
+        "column": 0
+      },
+      "end_point": {
+        "row": 37,
+        "column": 52
+      },
+      "code": "def applyTwice(f: Int => Int, x: Int): Int = f(f(x))",
+      "name": "applyTwice"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 48,
+        "column": 0
+      },
+      "end_point": {
+        "row": 52,
+        "column": 0
+      },
+      "code": "def printWithContext(message: String)(implicit ctx: String): Unit =\n  println(s\"[$ctx] $message\")\n\n// Main object\n",
+      "name": "printWithContext"
+    }
+  ]
+}

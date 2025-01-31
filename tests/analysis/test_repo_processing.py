@@ -244,13 +244,16 @@ def test_repo_processing_flow(sample_repo, python_parser_with_logging):
     
     # Test named functions
     named_ts_functions = [f for f in ts_functions if f['is_named']]
-    assert len(named_ts_functions) >= 1  # UserManager methods
+    assert len(named_ts_functions) == 3  # addUser method, process field, transform field
     ts_function_names = [f['function.name'].text.decode('utf-8') for f in named_ts_functions]
-    assert 'addUser' in ts_function_names
+    assert set(ts_function_names) == {'addUser', 'process', 'transform'}
     
     # Test anonymous functions
     anon_ts_functions = [f for f in ts_functions if not f['is_named']]
-    assert len(anon_ts_functions) >= 2  # process function and transform arrow function
+    assert len(anon_ts_functions) == 3  # process arrow function, nested map arrow function, transform function expression
+    
+    # Total function count
+    assert len(ts_functions) == 6  # Total of all named and anonymous functions
     
     # Go
     go_query_handler = TreeSitterQueryHandler(language=go_tree.language, language_name="go")

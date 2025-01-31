@@ -1,0 +1,241 @@
+{
+  "language": "python",
+  "pattern": "\n            [\n              (function_definition)\n              (lambda)\n            ] @function\n        ",
+  "total_functions": 18,
+  "functions": [
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 3,
+        "column": 0
+      },
+      "end_point": {
+        "row": 4,
+        "column": 18
+      },
+      "code": "def regular_function():\n    return \"Hello\"",
+      "name": "regular_function"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 7,
+        "column": 0
+      },
+      "end_point": {
+        "row": 8,
+        "column": 51
+      },
+      "code": "def typed_function(name: str, age: int) -> str:\n    return f\"Hello {name}, you are {age} years old\"",
+      "name": "typed_function"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 11,
+        "column": 0
+      },
+      "end_point": {
+        "row": 12,
+        "column": 25
+      },
+      "code": "async def async_function():\n    return \"async result\"",
+      "name": "async_function"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 16,
+        "column": 4
+      },
+      "end_point": {
+        "row": 17,
+        "column": 23
+      },
+      "code": "def __init__(self):\n        self.value = 42",
+      "name": "__init__"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 19,
+        "column": 4
+      },
+      "end_point": {
+        "row": 20,
+        "column": 25
+      },
+      "code": "def instance_method(self):\n        return self.value",
+      "name": "instance_method"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 23,
+        "column": 4
+      },
+      "end_point": {
+        "row": 24,
+        "column": 29
+      },
+      "code": "def class_method(cls):\n        return \"class method\"",
+      "name": "class_method"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 27,
+        "column": 4
+      },
+      "end_point": {
+        "row": 28,
+        "column": 30
+      },
+      "code": "def static_method():\n        return \"static method\"",
+      "name": "static_method"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 31,
+        "column": 4
+      },
+      "end_point": {
+        "row": 32,
+        "column": 25
+      },
+      "code": "def property_method(self):\n        return self.value",
+      "name": "property_method"
+    },
+    {
+      "type": "lambda",
+      "start_point": {
+        "row": 35,
+        "column": 14
+      },
+      "end_point": {
+        "row": 35,
+        "column": 29
+      },
+      "code": "lambda x: x * 2",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 38,
+        "column": 0
+      },
+      "end_point": {
+        "row": 41,
+        "column": 25
+      },
+      "code": "def outer_function(x):\n    def inner_function(y):\n        return x + y\n    return inner_function",
+      "name": "outer_function"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 39,
+        "column": 4
+      },
+      "end_point": {
+        "row": 40,
+        "column": 20
+      },
+      "code": "def inner_function(y):\n        return x + y",
+      "name": "inner_function"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 44,
+        "column": 0
+      },
+      "end_point": {
+        "row": 46,
+        "column": 11
+      },
+      "code": "def generator_function():\n    yield 1\n    yield 2",
+      "name": "generator_function"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 49,
+        "column": 0
+      },
+      "end_point": {
+        "row": 52,
+        "column": 18
+      },
+      "code": "def decorator(func):\n    def wrapper(*args, **kwargs):\n        return func(*args, **kwargs)\n    return wrapper",
+      "name": "decorator"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 50,
+        "column": 4
+      },
+      "end_point": {
+        "row": 51,
+        "column": 36
+      },
+      "code": "def wrapper(*args, **kwargs):\n        return func(*args, **kwargs)",
+      "name": "wrapper"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 55,
+        "column": 0
+      },
+      "end_point": {
+        "row": 56,
+        "column": 18
+      },
+      "code": "def default_args(x, y=10, z=\"default\"):\n    return x, y, z",
+      "name": "default_args"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 59,
+        "column": 0
+      },
+      "end_point": {
+        "row": 60,
+        "column": 23
+      },
+      "code": "def variadic_function(*args, **kwargs):\n    return args, kwargs",
+      "name": "variadic_function"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 63,
+        "column": 0
+      },
+      "end_point": {
+        "row": 65,
+        "column": 15
+      },
+      "code": "async def async_generator():\n    for i in range(3):\n        yield i",
+      "name": "async_generator"
+    },
+    {
+      "type": "function_definition",
+      "start_point": {
+        "row": 72,
+        "column": 4
+      },
+      "end_point": {
+        "row": 73,
+        "column": 12
+      },
+      "code": "def abstract_method(self):\n        pass",
+      "name": "abstract_method"
+    }
+  ]
+}
