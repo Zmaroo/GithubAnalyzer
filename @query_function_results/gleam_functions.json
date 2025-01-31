@@ -1,0 +1,163 @@
+{
+  "language": "gleam",
+  "pattern": "\n            [\n              (function)\n              (anonymous_function)\n            ] @function\n        ",
+  "total_functions": 12,
+  "functions": [
+    {
+      "type": "function",
+      "start_point": {
+        "row": 23,
+        "column": 0
+      },
+      "end_point": {
+        "row": 29,
+        "column": 1
+      },
+      "code": "pub fn create_user(name: Name, age: Age) -> Result(User, String) {\n  case age {\n    age if age < 0 -> Error(\"Age cannot be negative\")\n    age if age > 150 -> Error(\"Age cannot be greater than 150\")\n    _ -> Ok(User(name, age))\n  }\n}",
+      "name": "create_user"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 32,
+        "column": 0
+      },
+      "end_point": {
+        "row": 38,
+        "column": 1
+      },
+      "code": "pub fn process_user(user: User) -> ProcessResult {\n  case user {\n    User(_, age) if age < 0 -> Failure(\"Invalid age\")\n    User(_, age) if age < 18 -> Failure(\"Underage\")\n    User(name, _) -> Success(\"Processing adult user: \" <> name)\n  }\n}",
+      "name": "process_user"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 41,
+        "column": 0
+      },
+      "end_point": {
+        "row": 44,
+        "column": 1
+      },
+      "code": "pub fn create_greeting(name: String, prefix: Option(String)) -> String {\n  let actual_prefix = option.unwrap(prefix, \"Hello\")\n  actual_prefix <> \", \" <> name <> \"!\"\n}",
+      "name": "create_greeting"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 47,
+        "column": 0
+      },
+      "end_point": {
+        "row": 53,
+        "column": 1
+      },
+      "code": "pub fn get_user_stats(users: Users) -> #(Int, Int) {\n  let total = list.length(users)\n  let adults = users\n    |> list.filter(is_adult)\n    |> list.length()\n  #(total, adults)\n}",
+      "name": "get_user_stats"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 56,
+        "column": 0
+      },
+      "end_point": {
+        "row": 64,
+        "column": 1
+      },
+      "code": "pub fn format_user(user: User) -> String {\n  case user {\n    User(name, age) -> \n      name\n      |> string.append(\" (\")\n      |> string.append(int.to_string(age))\n      |> string.append(\" years old)\")\n  }\n}",
+      "name": "format_user"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 67,
+        "column": 0
+      },
+      "end_point": {
+        "row": 69,
+        "column": 1
+      },
+      "code": "pub fn process_users(users: Users, processor: fn(User) -> String) -> List(String) {\n  list.map(users, processor)\n}",
+      "name": "process_users"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 72,
+        "column": 0
+      },
+      "end_point": {
+        "row": 78,
+        "column": 1
+      },
+      "code": "pub fn create_age_checker(min_age: Int) -> fn(User) -> Bool {\n  fn(user: User) -> Bool {\n    case user {\n      User(_, age) -> age >= min_age\n    }\n  }\n}",
+      "name": "create_age_checker"
+    },
+    {
+      "type": "anonymous_function",
+      "start_point": {
+        "row": 73,
+        "column": 2
+      },
+      "end_point": {
+        "row": 77,
+        "column": 3
+      },
+      "code": "fn(user: User) -> Bool {\n    case user {\n      User(_, age) -> age >= min_age\n    }\n  }",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 81,
+        "column": 0
+      },
+      "end_point": {
+        "row": 88,
+        "column": 1
+      },
+      "code": "pub fn find_user(users: Users, name: String) -> Option(User) {\n  users\n  |> list.find(fn(user) {\n    case user {\n      User(n, _) -> n == name\n    }\n  })\n}",
+      "name": "find_user"
+    },
+    {
+      "type": "anonymous_function",
+      "start_point": {
+        "row": 83,
+        "column": 15
+      },
+      "end_point": {
+        "row": 87,
+        "column": 3
+      },
+      "code": "fn(user) {\n    case user {\n      User(n, _) -> n == name\n    }\n  }",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 91,
+        "column": 0
+      },
+      "end_point": {
+        "row": 95,
+        "column": 1
+      },
+      "code": "fn is_adult(user: User) -> Bool {\n  case user {\n    User(_, age) -> age >= 18\n  }\n}",
+      "name": "is_adult"
+    },
+    {
+      "type": "function",
+      "start_point": {
+        "row": 98,
+        "column": 0
+      },
+      "end_point": {
+        "row": 201,
+        "column": 1
+      },
+      "code": "pub fn validate_user(user: User) -> Result(User, String) {\n  case user {\n    User(name, age) if string.length(name) == 0 -> \n      Error(\"Name cannot be empty\")\n    User(_, age) if age < 0 -> \n      Error(\"Age cannot be negative\")\n    user -> \n      Ok(user)\n  }\n}\n\n// Function using list operations\npub fn get_adult_users(users: Users) -> Users {\n  list.filter(users, is_adult)\n}\n\n// Function using string manipulation\npub fn process_name(name: String) -> String {\n  name\n  |> string.trim()\n  |> string.lowercase\n  |> string.capitalise\n}\n\n// Main function to demonstrate usage\npub fn main() {\n  // Create users\n  let user1 = create_user(\"John\", 25)\n  let user2 = create_user(\"Alice\", 17)\n  \n  case #(user1, user2) {\n    #(Ok(u1), Ok(u2)) -> {\n      let users = [u1, u2]\n      \n      // Test basic functions\n      io.println(\"Users:\")\n      users\n      |> list.map(format_user)\n      |> list.each(io.println)\n      \n      // Test processing\n      io.println(\"\\nProcessing results:\")\n      users\n      |> list.map(process_user)\n      |> list.each(fn(result) {\n        case result {\n          Success(msg) -> io.println(msg)\n          Failure(err) -> io.println(\"Error: \" <> err)\n        }\n      })\n      \n      // Test user stats\n      let #(total, adults) = get_user_stats(users)\n      io.println(\"\\nStats:\")\n      io.println(\"Total users: \" <> int.to_string(total))\n      io.println(\"Adult users: \" <> int.to_string(adults))\n      \n      // Test user finding\n      io.println(\"\\nFinding user:\")\n      case find_user(users, \"John\") {\n        Some(user) -> io.println(\"Found: \" <> format_user(user))\n        None -> io.println(\"User not found\")\n      }\n      \n      // Test age checker\n      let is_adult = create_age_checker(18)\n      io.println(\"\\nAge check:\")\n      users\n      |> list.map(fn(user) {\n        case user {\n          User(name, _) if is_adult(user) -> \n            name <> \" is an adult\"\n          User(name, _) -> \n            name <> \" is not an adult\"\n        }\n      })\n      |> list.each(io.println)\n      \n      // Test validation\n      io.println(\"\\nValidation:\")\n      users\n      |> list.map(validate_user)\n      |> list.each(fn(result) {\n        case result {\n          Ok(_) -> io.println(\"User is valid\")\n          Error(msg) -> io.println(\"Validation error: \" <> msg)\n        }\n      })\n      \n      // Test name processing\n      io.println(\"\\nProcessed names:\")\n      users\n      |> list.map(fn(user) {\n        case user {\n          User(name, _) -> process_name(name)\n        }\n      })\n      |> list.each(io.println)\n    }\n    \n    #(Error(e1), _) -> io.println(\"Error creating user1: \" <> e1)\n    #(_, Error(e2)) -> io.println(\"Error creating user2: \" <> e2)\n  }\n}",
+      "name": "validate_user"
+    }
+  ]
+}

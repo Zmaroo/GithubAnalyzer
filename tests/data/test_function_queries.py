@@ -2,8 +2,9 @@ from tree_sitter_language_pack import get_binding, get_language, get_parser
 import json
 from pathlib import Path
 import os
-from GithubAnalyzer.services.analysis.parsers.traversal_service import TreeSitterTraversal
-from GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger
+from src.GithubAnalyzer.services.analysis.parsers.traversal_service import TreeSitterTraversal
+from src.GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger
+from src.GithubAnalyzer.services.analysis.parsers.query_patterns import QUERY_PATTERNS, JS_VARIANT_PATTERNS
 import logging
 from typing import List
 
@@ -46,7 +47,6 @@ SAMPLE_FILES = {
     "gleam": "sample.gleam",
     "hack": "sample.hack",
     "haxe": "sample.hx",
-    "ocaml": "sample.ml",
     "commonlisp": "sample.lisp",
     "clojure": "sample.clj",
     "ada": "sample.adb",
@@ -120,7 +120,6 @@ def process_language(language_name: str, query_pattern: str, sample_file: Path):
     # Create and execute query
     try:
         # Get the pattern from query_patterns.py
-        from GithubAnalyzer.services.analysis.parsers.query_patterns import QUERY_PATTERNS
         if language_name in QUERY_PATTERNS and "function" in QUERY_PATTERNS[language_name]:
             query_pattern = QUERY_PATTERNS[language_name]["function"]
         
@@ -195,7 +194,7 @@ def process_language(language_name: str, query_pattern: str, sample_file: Path):
         print(f"    Code: {func['code'][:100]}...")  # Print first 100 chars of code
 
 def main():
-    from GithubAnalyzer.services.analysis.parsers.query_patterns import QUERY_PATTERNS, JS_VARIANT_PATTERNS
+    
     
     # First, print debug information about available languages and patterns
     print("\n=== Language Support Analysis ===")
@@ -253,7 +252,7 @@ def analyze_ast_nodes(lang: str, sample_file: str):
         tree = parser.parse(code)
     
     # Create query from the pattern
-    from GithubAnalyzer.services.analysis.parsers.query_patterns import QUERY_PATTERNS
+    
     pattern = QUERY_PATTERNS[lang]["function"]
     query = language.query(pattern)
     
@@ -372,7 +371,7 @@ def analyze_all_languages():
     ts_logger.setLevel(logging.INFO)
 
     # Get all languages that have function patterns
-    from GithubAnalyzer.services.analysis.parsers.query_patterns import QUERY_PATTERNS
+    
     
     # First, print debug information about available languages and patterns
     print("\n=== Language Support Analysis ===")
@@ -442,41 +441,162 @@ def analyze_specific_languages(languages: List[str]):
         except Exception as e:
             print(f"Error analyzing {lang}: {e}")
 
-if __name__ == "__main__":
-    from GithubAnalyzer.services.analysis.parsers.query_patterns import QUERY_PATTERNS
+def test_haxe_function_pattern():
+    """Test that the Haxe function pattern correctly identifies functions."""
+    language_name = "haxe"
+    sample_file = Path(__file__).parent / SAMPLE_FILES[language_name]
     
-    # Only test the 3 supported languages
+    # Read the file
+    with open(sample_file, 'rb') as f:
+        code = f.read()
+    
+    # Get parser and language
+    parser = get_parser(language_name)
+    language = get_language(language_name)
+    
+    # Parse content
+    tree = parser.parse(code)
+    assert tree is not None, "Failed to parse Haxe file"
+    
+    # Get the pattern from query_patterns.py
+    assert language_name in QUERY_PATTERNS, f"No patterns defined for {language_name}"
+    assert "function" in QUERY_PATTERNS[language_name], f"No function pattern defined for {language_name}"
+    
+    query_pattern = QUERY_PATTERNS[language_name]["function"]
+    query = language.query(query_pattern)
+    
+    # Execute query
+    matches = query.matches(tree.root_node)
+    assert len(matches) > 0, "No functions found in Haxe sample file"
+    
+    # Process matches
+    functions = []
+    for pattern_index, capture_dict in matches:
+        for capture_name, nodes in capture_dict.items():
+            for node in nodes:
+                function_text = code[node.start_byte:node.end_byte].decode('utf8')
+                functions.append({
+                    "type": node.type,
+                    "code": function_text
+                })
+    
+    # Verify we found the expected function types
+    function_types = set(f["type"] for f in functions)
+    expected_types = {"function_declaration"}
+    assert function_types.intersection(expected_types), f"Did not find expected function types. Found: {function_types}"
+
+def test_hack_function_pattern():
+    """Test that the Hack function pattern correctly identifies functions."""
+    language_name = "hack"
+    sample_file = Path(__file__).parent / SAMPLE_FILES[language_name]
+    
+    # Read the file
+    with open(sample_file, 'rb') as f:
+        code = f.read()
+    
+    # Get parser and language
+    parser = get_parser(language_name)
+    language = get_language(language_name)
+    
+    # Parse content
+    tree = parser.parse(code)
+    assert tree is not None, "Failed to parse Hack file"
+    
+    # Get the pattern from query_patterns.py
+    assert language_name in QUERY_PATTERNS, f"No patterns defined for {language_name}"
+    assert "function" in QUERY_PATTERNS[language_name], f"No function pattern defined for {language_name}"
+    
+    query_pattern = QUERY_PATTERNS[language_name]["function"]
+    query = language.query(query_pattern)
+    
+    # Execute query
+    matches = query.matches(tree.root_node)
+    assert len(matches) > 0, "No functions found in Hack sample file"
+    
+    # Process matches
+    functions = []
+    for pattern_index, capture_dict in matches:
+        for capture_name, nodes in capture_dict.items():
+            for node in nodes:
+                function_text = code[node.start_byte:node.end_byte].decode('utf8')
+                functions.append({
+                    "type": node.type,
+                    "code": function_text
+                })
+    
+    # Verify we found the expected function types
+    function_types = set(f["type"] for f in functions)
+    expected_types = {"method_declaration", "function_declaration", "constructor_declaration", "async_function_declaration", "lambda_expression"}
+    assert function_types.intersection(expected_types), f"Did not find expected function types. Found: {function_types}"
+
+def test_gleam_function_pattern():
+    """Test that the Gleam function pattern correctly identifies functions."""
+    language_name = "gleam"
+    sample_file = Path(__file__).parent / SAMPLE_FILES[language_name]
+    
+    # Read the file
+    with open(sample_file, 'rb') as f:
+        code = f.read()
+    
+    # Get parser and language
+    parser = get_parser(language_name)
+    language = get_language(language_name)
+    
+    # Parse content
+    tree = parser.parse(code)
+    assert tree is not None, "Failed to parse Gleam file"
+    
+    # Get the pattern from query_patterns.py
+    assert language_name in QUERY_PATTERNS, f"No patterns defined for {language_name}"
+    assert "function" in QUERY_PATTERNS[language_name], f"No function pattern defined for {language_name}"
+    
+    query_pattern = QUERY_PATTERNS[language_name]["function"]
+    query = language.query(query_pattern)
+    
+    # Execute query
+    matches = query.matches(tree.root_node)
+    assert len(matches) > 0, "No functions found in Gleam sample file"
+    
+    # Process matches
+    functions = []
+    for pattern_index, capture_dict in matches:
+        for capture_name, nodes in capture_dict.items():
+            for node in nodes:
+                function_text = code[node.start_byte:node.end_byte].decode('utf8')
+                functions.append({
+                    "type": node.type,
+                    "code": function_text
+                })
+    
+    # Verify we found the expected function types
+    function_types = set(f["type"] for f in functions)
+    expected_types = {"function", "anonymous_function"}
+    assert function_types.intersection(expected_types), f"Did not find expected function types. Found: {function_types}"
+
+if __name__ == "__main__":
+    # Process all languages that have both patterns and sample files
     languages_to_test = {
         lang: SAMPLE_FILES[lang]
-        for lang in ['hack', 'gleam', 'haxe']
+        for lang in QUERY_PATTERNS.keys()
+        if "function" in QUERY_PATTERNS[lang] and lang in SAMPLE_FILES
     }
-
-    print("\n=== Testing New Language Patterns ===")
-    print("\nTesting the following languages:")
+    
+    print("\n=== Processing Languages ===\n")
+    
+    # Get the directory where this script is located
+    current_dir = Path(__file__).parent
+    
+    print(f"Found {len(languages_to_test)} languages to process")
+    print("\nWill process the following languages:")
     for lang in sorted(languages_to_test.keys()):
         print(f"  - {lang}")
     
     print("\n=== Beginning Analysis ===\n")
-
-    # Create output directory if it doesn't exist
-    OUTPUT_DIR.mkdir(exist_ok=True)
-
-    # Process each language
-    for lang, sample_file in sorted(languages_to_test.items()):
-        file_path = Path(os.path.join(os.path.dirname(__file__), sample_file))
-        if not file_path.exists():
-            print(f"\nSkipping {lang} - sample file not found: {sample_file}")
-            continue
-            
-        print(f"\nProcessing {lang}...")
+    
+    for language_name, sample_file in sorted(languages_to_test.items()):
+        sample_file = current_dir / sample_file
+        print(f"\nProcessing {language_name} from {sample_file}...")
         try:
-            # First get all node types to see what's available
-            nodes = get_all_node_types(str(file_path))
-            print(f"\nAvailable node types in {lang}:")
-            for node in nodes:
-                print(f"  - {node}")
-                
-            # Then process the language
-            process_language(lang, QUERY_PATTERNS[lang]["function"], file_path)
+            process_language(language_name, QUERY_PATTERNS[language_name]["function"], sample_file)
         except Exception as e:
-            print(f"Error processing {lang}: {str(e)}") 
+            print(f"Error processing {language_name}: {str(e)}") 

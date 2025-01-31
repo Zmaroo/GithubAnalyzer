@@ -1,6 +1,0 @@
-{
-  "language": "verilog",
-  "pattern": "\n            [\n              (function_declaration)\n              (task_declaration)\n            ] @function\n        ",
-  "total_functions": 0,
-  "functions": []
-}

@@ -1,0 +1,241 @@
+{
+  "language": "hack",
+  "pattern": "\n            [\n              (method_declaration)\n              (function_declaration)\n              (lambda_expression)\n            ] @function\n        ",
+  "total_functions": 18,
+  "functions": [
+    {
+      "type": "method_declaration",
+      "start_point": {
+        "row": 13,
+        "column": 4
+      },
+      "end_point": {
+        "row": 13,
+        "column": 45
+      },
+      "code": "public function process(): ProcessResult;",
+      "name": "process"
+    },
+    {
+      "type": "method_declaration",
+      "start_point": {
+        "row": 22,
+        "column": 4
+      },
+      "end_point": {
+        "row": 25,
+        "column": 5
+      },
+      "code": "public function __construct(string $name, int $age) {\n        $this->name = $name;\n        $this->age = $age;\n    }",
+      "name": "__construct"
+    },
+    {
+      "type": "method_declaration",
+      "start_point": {
+        "row": 28,
+        "column": 4
+      },
+      "end_point": {
+        "row": 30,
+        "column": 5
+      },
+      "code": "public function getName(): string {\n        return $this->name;\n    }",
+      "name": "getName"
+    },
+    {
+      "type": "method_declaration",
+      "start_point": {
+        "row": 32,
+        "column": 4
+      },
+      "end_point": {
+        "row": 34,
+        "column": 5
+      },
+      "code": "public function getAge(): int {\n        return $this->age;\n    }",
+      "name": "getAge"
+    },
+    {
+      "type": "method_declaration",
+      "start_point": {
+        "row": 37,
+        "column": 4
+      },
+      "end_point": {
+        "row": 42,
+        "column": 5
+      },
+      "code": "public function process(): ProcessResult {\n        return shape(\n            'success' => $this->age >= 18,\n            'message' => $this->age >= 18 ? 'Adult user' : 'Minor user'\n        );\n    }",
+      "name": "process"
+    },
+    {
+      "type": "method_declaration",
+      "start_point": {
+        "row": 45,
+        "column": 4
+      },
+      "end_point": {
+        "row": 49,
+        "column": 5
+      },
+      "code": "public function format(bool $verbose = false): string {\n        return $verbose\n            ? sprintf(\"%s is %d years old\", $this->name, $this->age)\n            : sprintf(\"%s (%d)\", $this->name, $this->age);\n    }",
+      "name": "format"
+    },
+    {
+      "type": "method_declaration",
+      "start_point": {
+        "row": 56,
+        "column": 4
+      },
+      "end_point": {
+        "row": 58,
+        "column": 5
+      },
+      "code": "public function __construct() {\n        $this->users = new Vector();\n    }",
+      "name": "__construct"
+    },
+    {
+      "type": "method_declaration",
+      "start_point": {
+        "row": 60,
+        "column": 4
+      },
+      "end_point": {
+        "row": 62,
+        "column": 5
+      },
+      "code": "public function add(T $user): void {\n        $this->users->add($user);\n    }",
+      "name": "add"
+    },
+    {
+      "type": "method_declaration",
+      "start_point": {
+        "row": 64,
+        "column": 4
+      },
+      "end_point": {
+        "row": 66,
+        "column": 5
+      },
+      "code": "public function getUsers(): Vector<T> {\n        return $this->users;\n    }",
+      "name": "getUsers"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 70,
+        "column": 0
+      },
+      "end_point": {
+        "row": 72,
+        "column": 1
+      },
+      "code": "function processUsers<T as User>(Vector<T> $users): Vector<ProcessResult> {\n    return $users->map($user ==> $user->process());\n}",
+      "name": "processUsers"
+    },
+    {
+      "type": "lambda_expression",
+      "start_point": {
+        "row": 71,
+        "column": 23
+      },
+      "end_point": {
+        "row": 71,
+        "column": 49
+      },
+      "code": "$user ==> $user->process()",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 75,
+        "column": 0
+      },
+      "end_point": {
+        "row": 77,
+        "column": 1
+      },
+      "code": "function findUser(UserMap $users, string $name): ?User {\n    return $users->get($name);\n}",
+      "name": "findUser"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 80,
+        "column": 0
+      },
+      "end_point": {
+        "row": 83,
+        "column": 1
+      },
+      "code": "async function processUserAsync(User $user): Awaitable<ProcessResult> {\n    await async_sleep(1);\n    return $user->process();\n}",
+      "name": "processUserAsync"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 86,
+        "column": 0
+      },
+      "end_point": {
+        "row": 99,
+        "column": 1
+      },
+      "code": "function getUserStats(Vector<User> $users): (int, float) {\n    $total = $users->count();\n    if ($total === 0) {\n        return tuple(0, 0.0);\n    }\n    \n    $adultCount = $users->filter($user ==> $user->getAge() >= 18)->count();\n    $averageAge = $users->map($user ==> $user->getAge())->reduce(\n        ($acc, $age) ==> $acc + $age,\n        0\n    ) / $total;\n    \n    return tuple($adultCount, $averageAge);\n}",
+      "name": "getUserStats"
+    },
+    {
+      "type": "lambda_expression",
+      "start_point": {
+        "row": 92,
+        "column": 33
+      },
+      "end_point": {
+        "row": 92,
+        "column": 64
+      },
+      "code": "$user ==> $user->getAge() >= 18",
+      "name": "Anonymous"
+    },
+    {
+      "type": "lambda_expression",
+      "start_point": {
+        "row": 93,
+        "column": 30
+      },
+      "end_point": {
+        "row": 93,
+        "column": 55
+      },
+      "code": "$user ==> $user->getAge()",
+      "name": "Anonymous"
+    },
+    {
+      "type": "lambda_expression",
+      "start_point": {
+        "row": 94,
+        "column": 8
+      },
+      "end_point": {
+        "row": 94,
+        "column": 36
+      },
+      "code": "($acc, $age) ==> $acc + $age",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 102,
+        "column": 0
+      },
+      "end_point": {
+        "row": 152,
+        "column": 1
+      },
+      "code": "async function run(): Awaitable<void> {\n    // Create users\n    $user1 = new User(\"John\", 25);\n    $user2 = new User(\"Alice\", 17);\n    \n    $users = new Vector([$user1, $user2]);\n    $userMap = Map {\n        \"John\" => $user1,\n        \"Alice\" => $user2\n    };\n    \n    // Test basic functions\n    echo \"Users:\\n\";\n    foreach ($users as $user) {\n        echo $user->format() . \"\\n\";\n    }\n    \n    // Test processing\n    echo \"\\nProcessing results:\\n\";\n    $results = processUsers($users);\n    foreach ($results as $result) {\n        echo $result['message'] . \"\\n\";\n    }\n    \n    // Test async processing\n    echo \"\\nAsync processing:\\n\";\n    $asyncResult = await processUserAsync($user1);\n    echo \"Async result: \" . $asyncResult['message'] . \"\\n\";\n    \n    // Test user finding\n    echo \"\\nFinding user:\\n\";\n    $foundUser = findUser($userMap, \"John\");\n    if ($foundUser !== null) {\n        echo \"Found: \" . $foundUser->format() . \"\\n\";\n    }\n    \n    // Test statistics\n    list($adultCount, $averageAge) = getUserStats($users);\n    echo \"\\nStats:\\n\";\n    echo \"Adult count: $adultCount\\n\";\n    echo \"Average age: $averageAge\\n\";\n    \n    // Test generic collection\n    echo \"\\nGeneric collection:\\n\";\n    $collection = new UserCollection();\n    $collection->add($user1);\n    $collection->add($user2);\n    foreach ($collection->getUsers() as $user) {\n        echo $user->format(true) . \"\\n\";\n    }\n}",
+      "name": "run"
+    }
+  ]
+}

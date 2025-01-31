@@ -1,0 +1,735 @@
+{
+  "language": "haxe",
+  "pattern": "\n            (function_declaration) @function\n            (identifier) @function\n        ",
+  "total_functions": 56,
+  "functions": [
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 0,
+        "column": 7
+      },
+      "end_point": {
+        "row": 0,
+        "column": 7
+      },
+      "code": "",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 3,
+        "column": 8
+      },
+      "end_point": {
+        "row": 3,
+        "column": 21
+      },
+      "code": "ProcessResult",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 4,
+        "column": 8
+      },
+      "end_point": {
+        "row": 4,
+        "column": 15
+      },
+      "code": "success",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 4,
+        "column": 16
+      },
+      "end_point": {
+        "row": 4,
+        "column": 20
+      },
+      "code": "Bool",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 5,
+        "column": 8
+      },
+      "end_point": {
+        "row": 5,
+        "column": 15
+      },
+      "code": "message",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 5,
+        "column": 16
+      },
+      "end_point": {
+        "row": 5,
+        "column": 22
+      },
+      "code": "String",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 9,
+        "column": 10
+      },
+      "end_point": {
+        "row": 9,
+        "column": 21
+      },
+      "code": "Processable",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 10,
+        "column": 4
+      },
+      "end_point": {
+        "row": 10,
+        "column": 43
+      },
+      "code": "public function process():ProcessResult",
+      "name": "process"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 10,
+        "column": 20
+      },
+      "end_point": {
+        "row": 10,
+        "column": 27
+      },
+      "code": "process",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 10,
+        "column": 30
+      },
+      "end_point": {
+        "row": 10,
+        "column": 43
+      },
+      "code": "ProcessResult",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 14,
+        "column": 6
+      },
+      "end_point": {
+        "row": 14,
+        "column": 10
+      },
+      "code": "User",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 14,
+        "column": 22
+      },
+      "end_point": {
+        "row": 14,
+        "column": 33
+      },
+      "code": "Processable",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 15,
+        "column": 15
+      },
+      "end_point": {
+        "row": 15,
+        "column": 19
+      },
+      "code": "name",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 15,
+        "column": 35
+      },
+      "end_point": {
+        "row": 15,
+        "column": 41
+      },
+      "code": "String",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 16,
+        "column": 15
+      },
+      "end_point": {
+        "row": 16,
+        "column": 18
+      },
+      "code": "age",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 16,
+        "column": 34
+      },
+      "end_point": {
+        "row": 16,
+        "column": 37
+      },
+      "code": "Int",
+      "name": "Anonymous"
+    },
+    {
+      "type": "function_declaration",
+      "start_point": {
+        "row": 19,
+        "column": 4
+      },
+      "end_point": {
+        "row": 19,
+        "column": 45
+      },
+      "code": "public function new(name:String, age:Int)",
+      "name": "new"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 19,
+        "column": 20
+      },
+      "end_point": {
+        "row": 19,
+        "column": 23
+      },
+      "code": "new",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 19,
+        "column": 24
+      },
+      "end_point": {
+        "row": 19,
+        "column": 28
+      },
+      "code": "name",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 19,
+        "column": 29
+      },
+      "end_point": {
+        "row": 19,
+        "column": 35
+      },
+      "code": "String",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 19,
+        "column": 37
+      },
+      "end_point": {
+        "row": 19,
+        "column": 40
+      },
+      "code": "age",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 19,
+        "column": 41
+      },
+      "end_point": {
+        "row": 19,
+        "column": 44
+      },
+      "code": "Int",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 20,
+        "column": 13
+      },
+      "end_point": {
+        "row": 20,
+        "column": 17
+      },
+      "code": "name",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 20,
+        "column": 20
+      },
+      "end_point": {
+        "row": 20,
+        "column": 24
+      },
+      "code": "name",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 21,
+        "column": 13
+      },
+      "end_point": {
+        "row": 21,
+        "column": 16
+      },
+      "code": "age",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 21,
+        "column": 19
+      },
+      "end_point": {
+        "row": 21,
+        "column": 22
+      },
+      "code": "age",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 25,
+        "column": 20
+      },
+      "end_point": {
+        "row": 25,
+        "column": 27
+      },
+      "code": "process",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 25,
+        "column": 30
+      },
+      "end_point": {
+        "row": 25,
+        "column": 43
+      },
+      "code": "ProcessResult",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 27,
+        "column": 12
+      },
+      "end_point": {
+        "row": 27,
+        "column": 19
+      },
+      "code": "success",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 27,
+        "column": 21
+      },
+      "end_point": {
+        "row": 27,
+        "column": 24
+      },
+      "code": "age",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 28,
+        "column": 12
+      },
+      "end_point": {
+        "row": 28,
+        "column": 19
+      },
+      "code": "message",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 28,
+        "column": 21
+      },
+      "end_point": {
+        "row": 28,
+        "column": 23
+      },
+      "code": "if",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 28,
+        "column": 25
+      },
+      "end_point": {
+        "row": 28,
+        "column": 28
+      },
+      "code": "age",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 28,
+        "column": 55
+      },
+      "end_point": {
+        "row": 28,
+        "column": 60
+      },
+      "code": "Minor",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 28,
+        "column": 61
+      },
+      "end_point": {
+        "row": 28,
+        "column": 65
+      },
+      "code": "user",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 71,
+        "column": 28
+      },
+      "end_point": {
+        "row": 71,
+        "column": 31
+      },
+      "code": "Age",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 71,
+        "column": 32
+      },
+      "end_point": {
+        "row": 71,
+        "column": 38
+      },
+      "code": "cannot",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 71,
+        "column": 39
+      },
+      "end_point": {
+        "row": 71,
+        "column": 41
+      },
+      "code": "be",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 71,
+        "column": 42
+      },
+      "end_point": {
+        "row": 71,
+        "column": 50
+      },
+      "code": "negative",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 97,
+        "column": 53
+      },
+      "end_point": {
+        "row": 97,
+        "column": 58
+      },
+      "code": "Hello",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 123,
+        "column": 30
+      },
+      "end_point": {
+        "row": 123,
+        "column": 34
+      },
+      "code": "John",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 124,
+        "column": 30
+      },
+      "end_point": {
+        "row": 124,
+        "column": 35
+      },
+      "code": "Alice",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 128,
+        "column": 15
+      },
+      "end_point": {
+        "row": 128,
+        "column": 20
+      },
+      "code": "Users",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 135,
+        "column": 17
+      },
+      "end_point": {
+        "row": 135,
+        "column": 27
+      },
+      "code": "Processing",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 135,
+        "column": 28
+      },
+      "end_point": {
+        "row": 135,
+        "column": 35
+      },
+      "code": "results",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 142,
+        "column": 17
+      },
+      "end_point": {
+        "row": 142,
+        "column": 24
+      },
+      "code": "Finding",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 142,
+        "column": 25
+      },
+      "end_point": {
+        "row": 142,
+        "column": 29
+      },
+      "code": "user",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 143,
+        "column": 41
+      },
+      "end_point": {
+        "row": 143,
+        "column": 45
+      },
+      "code": "John",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 149,
+        "column": 17
+      },
+      "end_point": {
+        "row": 149,
+        "column": 20
+      },
+      "code": "Age",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 149,
+        "column": 21
+      },
+      "end_point": {
+        "row": 149,
+        "column": 31
+      },
+      "code": "validation",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 154,
+        "column": 17
+      },
+      "end_point": {
+        "row": 154,
+        "column": 24
+      },
+      "code": "Generic",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 154,
+        "column": 25
+      },
+      "end_point": {
+        "row": 154,
+        "column": 35
+      },
+      "code": "collection",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 168,
+        "column": 17
+      },
+      "end_point": {
+        "row": 168,
+        "column": 26
+      },
+      "code": "Greetings",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 169,
+        "column": 37
+      },
+      "end_point": {
+        "row": 169,
+        "column": 40
+      },
+      "code": "Bob",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 170,
+        "column": 30
+      },
+      "end_point": {
+        "row": 170,
+        "column": 32
+      },
+      "code": "Hi",
+      "name": "Anonymous"
+    },
+    {
+      "type": "identifier",
+      "start_point": {
+        "row": 170,
+        "column": 36
+      },
+      "end_point": {
+        "row": 170,
+        "column": 43
+      },
+      "code": "Charlie",
+      "name": "Anonymous"
+    }
+  ]
+}

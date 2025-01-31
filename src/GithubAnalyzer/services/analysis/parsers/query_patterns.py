@@ -772,23 +772,129 @@ MARKDOWN_PATTERNS = {
     """
 }
 
-# Add patterns for additional languages that don't have tree-sitter grammars yet
-ADDITIONAL_LANGUAGE_PATTERNS = {
-    "julia": {
+# Query patterns by language with assertions and settings
+QUERY_PATTERNS = {
+    "python": {
         "function": """
             [
               (function_definition)
-              (short_function_definition)
-              (function_expression)
+              (lambda)
             ] @function
         """
     },
-    "perl": {
+    **JS_VARIANT_PATTERNS,  # Add JavaScript variants
+    "c": {
         "function": """
             [
-              (subroutine_declaration_statement)
-              (anonymous_subroutine_expression)
+              (function_definition)
             ] @function
+        """
+    },
+    "yaml": YAML_PATTERNS,
+    "toml": TOML_PATTERNS,
+    "dockerfile": DOCKERFILE_PATTERNS,
+    "markdown": MARKDOWN_PATTERNS,
+    "java": {
+        "function": """
+            [
+              (method_declaration)
+              (constructor_declaration)
+            ] @function
+        """
+    },
+    "go": {
+        "function": """
+            [
+              (function_declaration)
+              (method_declaration)
+            ] @function
+        """
+    },
+    "rust": {
+        "function": """
+            [
+              (function_item)
+              (closure_expression)
+            ] @function
+        """
+    },
+    "cpp": {
+        "function": """
+            [
+              (function_definition)
+              (method_definition)
+            ] @function
+        """
+    },
+    "scala": {
+        "function": """
+            [
+              (function_definition)
+              (class_definition)
+            ] @function
+        """
+    },
+    "ruby": {
+        "function": """
+            [
+              (method)
+              (singleton_method)
+            ] @function
+        """
+    },
+    "swift": {
+        "function": """
+            [
+              (function_declaration)
+              (protocol_function_declaration)
+              (lambda_function_type)
+            ] @function
+        """
+    },
+    "kotlin": {
+        "function": """
+            [
+              (function_declaration)
+              (lambda_literal)
+            ] @function
+        """
+    },
+    "lua": {
+        "function": """
+            [
+              (function_definition)
+              (function_declaration)
+            ] @function
+        """
+    },
+    "r": {
+        "function": """
+            [
+              (function_definition)
+            ] @function
+        """
+    },
+    "hack": {
+        "function": """
+            [
+              (method_declaration)
+              (function_declaration)
+              (lambda_expression)
+            ] @function
+        """
+    },
+    "gleam": {
+        "function": """
+            [
+              (function)
+              (anonymous_function)
+            ] @function
+        """
+    },
+    "haxe": {
+        "function": """
+            (function_declaration) @function
+            (identifier) @function
         """
     },
     "pascal": {
@@ -913,38 +1019,6 @@ ADDITIONAL_LANGUAGE_PATTERNS = {
             ] @function
         """
     },
-    "hack": {
-        "function": """
-            [
-              (function_declaration)
-              (method_declaration)
-              (constructor_declaration)
-              (lambda_expression)
-              (async_function_declaration)
-            ] @function
-        """
-    },
-    "gleam": {
-        "function": """
-            [
-              (function_definition)
-              (pub_function)
-              (lambda_expression)
-              (fn_expression)
-            ] @function
-        """
-    },
-    "haxe": {
-        "function": """
-            [
-              (function_definition)
-              (method_definition)
-              (constructor_definition)
-              (arrow_expression)
-              (abstract_definition)
-            ] @function
-        """
-    },
     "ocaml": {
         "function": """
             [
@@ -953,265 +1027,6 @@ ADDITIONAL_LANGUAGE_PATTERNS = {
               (value_binding)
               (method_binding)
               (fun_binding)
-            ] @function
-        """
-    }
-}
-
-# Query patterns by language with assertions and settings
-QUERY_PATTERNS = {
-    "python": {
-        "function": """
-            [
-              (function_definition)
-              (lambda)
-            ] @function
-        """
-    },
-    **JS_VARIANT_PATTERNS,  # Add JavaScript variants
-    "c": {
-        "function": """
-            [
-              (function_definition)
-            ] @function
-        """
-    },
-    "yaml": YAML_PATTERNS,
-    "toml": TOML_PATTERNS,
-    "dockerfile": DOCKERFILE_PATTERNS,
-    "markdown": MARKDOWN_PATTERNS,
-    "java": {
-        "function": """
-            [
-              (method_declaration)
-              (constructor_declaration)
-            ] @function
-        """
-    },
-    "go": {
-        "function": """
-            [
-              (function_declaration)
-              (method_declaration)
-            ] @function
-        """
-    },
-    "rust": {
-        "function": """
-            [
-              (function_item)
-              (closure_expression)
-            ] @function
-        """
-    },
-    "cpp": {
-        "function": """
-            [
-              (function_definition)
-              (method_definition)
-            ] @function
-        """
-    },
-    "scala": {
-        "function": """
-            [
-              (function_definition)
-              (class_definition)
-            ] @function
-        """
-    },
-    "ruby": {
-        "function": """
-            [
-              (method)
-              (singleton_method)
-            ] @function
-        """
-    },
-    "swift": {
-        "function": """
-            [
-              (function_declaration)
-              (protocol_function_declaration)
-              (lambda_function_type)
-            ] @function
-        """
-    },
-    "kotlin": {
-        "function": """
-            [
-              (function_declaration)
-              (lambda_literal)
-            ] @function
-        """
-    },
-    "lua": {
-        "function": """
-            [
-              (function_definition)
-              (function_declaration)
-            ] @function
-        """
-    },
-    "r": {
-        "function": """
-            [
-              (function_definition)
-            ] @function
-        """
-    },
-    "tcl": {
-        "function": """
-            [
-              (command)
-            ] @function
-        """
-    },
-    "verilog": {
-        "function": """
-            [
-              (function_declaration)
-              (task_declaration)
-            ] @function
-        """
-    },
-    "ada": {
-        "function": """
-            [
-              (subprogram_declaration)
-              (subprogram_body)
-              (package_body)
-            ] @function
-        """
-    },
-    "bash": {
-        "function": """
-            [
-              (function_definition)
-            ] @function
-        """
-    },
-    "zig": {
-        "function": """
-            [
-              (FnProto)
-              (FieldOrFnCall)
-            ] @function
-        """
-    },
-    "commonlisp": {
-        "function": """
-            [
-              (defun)
-              (defun_header)
-              (defun_keyword)
-            ] @function
-        """
-    },
-    "erlang": {
-        "function": """
-            [
-              (fun_decl)
-              (anonymous_fun)
-              (fun_clause)
-              (function_clause)
-            ] @function
-        """
-    },
-    "groovy": {
-        "function": """
-            (func) @function
-        """
-    },
-    "racket": {
-        "function": """
-            (list
-                (symbol) @def_type
-                (#match? @def_type "^(define|define-syntax|λ|lambda|define/contract)$")
-            ) @function
-        """
-    },
-    "clojure": {
-        "function": """
-            (list_lit
-                (sym_lit) @def_type
-                (#match? @def_type "^(defn|defn-|defmacro|defmethod|fn)$")
-            ) @function
-        """
-    },
-    "elixir": {
-        "function": """
-            [
-                ; Module, protocol, and implementation definitions
-                (call
-                    target: (identifier) @def_type
-                    (#match? @def_type "^(defmodule|defprotocol|defimpl)$")
-                ) @module
-
-                ; Function definitions (including macros and guards)
-                (call
-                    target: (identifier) @def_type
-                    (#match? @def_type "^(def|defp|defmacro|defguard)$")
-                    args: (arguments
-                        .  ; Ensure this is the first argument
-                        [
-                            ; Simple function head
-                            (identifier) @name
-                            ; Function head with parameters
-                            (call
-                                target: (identifier) @name
-                                args: (_)* @params
-                            )
-                        ]
-                        .  ; Ensure this is followed by
-                        [
-                            ; Block body
-                            (do_block) @body
-                            ; Single expression body with do:
-                            (keywords
-                                .
-                                (pair
-                                    key: (identifier) @keyword
-                                    (#eq? @keyword "do")
-                                    value: (_) @body
-                                )
-                            )
-                        ]
-                    )
-                ) @function.def
-
-                ; Anonymous functions
-                (anonymous_function
-                    args: (arguments) @params
-                    body: (_) @body
-                ) @function.anon
-            ]
-        """
-    },
-    "haskell": {
-        "function": """
-            [
-              (function)
-              (lambda)
-            ] @function
-        """
-    },
-    "purescript": {
-        "function": """
-            [
-              (function)
-              (exp_lambda)
-            ] @function
-        """
-    },
-    "dart": {
-        "function": """
-            [
-              (function_signature)
-              (method_signature)
-              (constructor_signature)
-              (function_expression)
-              (function_body)
             ] @function
         """
     }
@@ -1423,6 +1238,3 @@ def get_base_language(language: Optional[str]) -> str:
     elif language in {'hpp', 'cc', 'hh'}:
         return 'cpp'
     return language 
-
-# Update QUERY_PATTERNS to include additional languages that don't have tree-sitter grammars
-QUERY_PATTERNS.update(ADDITIONAL_LANGUAGE_PATTERNS) 
