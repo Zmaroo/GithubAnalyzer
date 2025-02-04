@@ -18,7 +18,7 @@ from GithubAnalyzer.services.analysis.parsers.custom_parsers import (
 )
 
 # Initialize logger
-logger = get_logger("core.file")
+logger = get_logger(__name__)
 
 # Git-related files and directories to exclude
 GIT_EXCLUDES: Set[str] = {

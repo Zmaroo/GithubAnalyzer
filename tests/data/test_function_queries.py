@@ -17,8 +17,8 @@ logger = get_logger("test_function_queries")
 ts_logger = get_tree_sitter_logger()
 
 # Set log levels to reduce noise
-ts_logger.setLevel(logging.ERROR)  # Only show ERROR level for tree-sitter
-logger.setLevel(logging.ERROR)     # Only show ERROR level for main logger
+ts_logger.setLevel(logging.INFO)  # Show INFO level for tree-sitter
+logger.setLevel(logging.INFO)     # Show INFO level for main logger
 
 # Sample files for each language
 SAMPLE_FILES = {
@@ -30,6 +30,7 @@ SAMPLE_FILES = {
     "java": "Service.java",
     "c": "sample.c",
     "cpp": "sample.cpp",
+    "cs": "sample.cs",
     "rust": "sample.rs",
     "scala": "sample.scala",
     "ruby": "sample.rb",
@@ -37,12 +38,13 @@ SAMPLE_FILES = {
     "kotlin": "sample.kt",
     "lua": "sample.lua",
     "r": "sample.r",
+    "dart": "sample.dart",
     
     # Newly added languages
     "groovy": "sample.groovy",
     "racket": "sample.rkt",
     "tcl": "sample.tcl",
-    "verilog": "sample.v",
+    "verilog": "sample.sv",
     "zig": "sample.zig",
     "gleam": "sample.gleam",
     "hack": "sample.hack",
@@ -54,189 +56,215 @@ SAMPLE_FILES = {
     "elixir": "sample.ex",
     "erlang": "sample.erl",
     "haskell": "sample.hs",
-    "purescript": "sample.purs"
+    "purescript": "sample.purs",
+    "julia": "sample.jl",
+    "elm": "sample.elm",
+    "gdscript": "sample.gd",
+    "squirrel": "sample.nut",
+    "solidity": "sample.sol",
+    "php": "sample.php",
+    "html": "sample.html",
+    "powershell": "sample.ps1",
+    "fish": "sample.fish"
 }
 
-def process_language(language_name: str, query_pattern: str, sample_file: Path):
-    """Process a single language and output its function query results."""
-    if not sample_file.exists():
-        logger.error(f"Sample file for {language_name} not found: {sample_file}")
-        return
-        
-    print(f"\nActual pattern being used for {language_name}:")
-    print(query_pattern)
+def check_language_support(language_name: str) -> bool:
+    """Check if a language has the required tree-sitter-language-pack support."""
+    logger.info(f"Starting language support check for {language_name}")
     
-    # Initialize parser
-    parser = get_parser(language_name)
-    language = get_language(language_name)
-    
-    # Set up logging callback
-    def logger_callback(log_type: int, msg: str) -> None:
-        if log_type == 1:  # Only log errors
-            ts_logger.error(msg, extra={
+    try:
+        # Check binding
+        logger.info(f"Checking binding for {language_name}")
+        try:
+            binding = get_binding(language_name)
+            logger.info(f"Got binding for {language_name}")
+        except Exception as e:
+            logger.error(f"Failed to get binding for {language_name}: {str(e)}", extra={
                 'context': {
-                    'source': 'tree-sitter',
-                    'type': 'parser',
                     'language': language_name,
-                    'log_type': 'error'
+                    'error': str(e),
+                    'error_type': type(e).__name__,
+                    'stage': 'binding'
                 }
             })
-    
-    # Set the logger on the parser
-    parser.logger = logger_callback
-    
-    # Read file content
-    with open(sample_file, 'rb') as f:
-        code = f.read()
-    
-    logger.info(f"Parsing {language_name} file", extra={
-        'context': {
-            'file': str(sample_file),
-            'language': language_name,
-            'content_size': len(code)
-        }
-    })
-    
-    # Parse content
-    tree = parser.parse(code)
-    
-    if tree is None:
-        logger.error(f"Failed to parse {language_name} file", extra={
+            print(f"Binding error for {language_name}: {str(e)}")
+            return False
+        
+        # Check language
+        logger.info(f"Checking language for {language_name}")
+        try:
+            lang = get_language(language_name)
+            logger.info(f"Got language for {language_name}")
+        except Exception as e:
+            logger.error(f"Failed to get language for {language_name}: {str(e)}", extra={
+                'context': {
+                    'language': language_name,
+                    'error': str(e),
+                    'error_type': type(e).__name__,
+                    'stage': 'language'
+                }
+            })
+            print(f"Language error for {language_name}: {str(e)}")
+            return False
+        
+        # Check parser
+        logger.info(f"Checking parser for {language_name}")
+        try:
+            parser = get_parser(language_name)
+            logger.info(f"Got parser for {language_name}")
+        except Exception as e:
+            logger.error(f"Failed to get parser for {language_name}: {str(e)}", extra={
+                'context': {
+                    'language': language_name,
+                    'error': str(e),
+                    'error_type': type(e).__name__,
+                    'stage': 'parser'
+                }
+            })
+            print(f"Parser error for {language_name}: {str(e)}")
+            return False
+        
+        logger.info(f"Successfully completed language support check for {language_name}")
+        return True
+    except Exception as e:
+        logger.error(f"Language support check failed for {language_name}: {str(e)}", extra={
             'context': {
-                'file': str(sample_file),
-                'language': language_name
+                'language': language_name,
+                'error': str(e),
+                'error_type': type(e).__name__,
+                'stage': 'unknown'
             }
         })
-        return
-        
-    logger.info(f"Successfully parsed {language_name} file", extra={
-        'context': {
-            'file': str(sample_file),
-            'language': language_name,
-            'has_error': tree.root_node.has_error
-        }
-    })
+        print(f"General error checking {language_name}: {str(e)}")
+        return False
+
+def process_language(language: str, pattern: str, file_path: Path):
+    """Process a language file with a given pattern."""
+    # Get the parser and language for the language
+    parser = get_parser(language)
+    lang = get_language(language)
+    
+    # Read and parse the file
+    with open(file_path, 'r') as f:
+        source = f.read()
+    tree = parser.parse(bytes(source, 'utf8'))
+    
+    # Log successful parse
+    logger.info(f"Successfully parsed {language} file")
+    print(f"Successfully parsed {language} file")
+    print(f"Root node type: {tree.root_node.type}")
+    print(f"Number of child nodes: {len(tree.root_node.children)}")
     
     # Create and execute query
+    logger.info(f"Creating query for {language}")
+    print(f"Creating query for {language} with pattern:\n{pattern}\n")
+    
     try:
-        # Get the pattern from query_patterns.py
-        if language_name in QUERY_PATTERNS and "function" in QUERY_PATTERNS[language_name]:
-            query_pattern = QUERY_PATTERNS[language_name]["function"]
-        
-        query = language.query(query_pattern)
+        query = lang.query(pattern)  # Use language object to create query
+        logger.info(f"Executing query for {language}")
+        print(f"Executing query for {language}")
         matches = query.matches(tree.root_node)
         
-        logger.info(f"Query executed for {language_name}", extra={
-            'context': {
-                'language': language_name,
-                'matches': len(matches),
-                'pattern': query_pattern
-            }
+        # Log query execution
+        logger.info(f"Query executed for {language}", extra={
+            'language': language,
+            'pattern': pattern,
+            'matches': len(matches)
         })
-    except Exception as e:
-        logger.error(f"Query failed for {language_name}: {str(e)}", extra={
-            'context': {
-                'language': language_name,
-                'pattern': query_pattern,
-                'error': str(e)
-            }
-        })
-        raise
-    
-    # Process matches
-    functions = []
-    
-    for pattern_index, capture_dict in matches:
-        for capture_name, nodes in capture_dict.items():
-            for node in nodes:
-                # Get function text
-                function_text = code[node.start_byte:node.end_byte].decode('utf8')
-                
-                # Get function details
-                function_info = {
-                    "type": node.type,
-                    "start_point": {"row": node.start_point[0], "column": node.start_point[1]},
-                    "end_point": {"row": node.end_point[0], "column": node.end_point[1]},
-                    "code": function_text,
-                    "name": "Anonymous"  # Default name
-                }
-                
-                # Try to get function name if available
-                name_node = node.child_by_field_name("name")
-                if name_node:
-                    function_info["name"] = code[name_node.start_byte:name_node.end_byte].decode('utf8')
-                
-                functions.append(function_info)
-    
-    # Write results to file
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    output_file = OUTPUT_DIR / f"{language_name}_functions.json"
-    logger.info(f"Writing results for {language_name}", extra={
-        'context': {
-            'language': language_name,
+        print(f"Query execution completed for {language}. Found {len(matches)} matches.")
+        
+        # Process matches
+        results = []
+        for match in matches:
+            match_info = {}
+            for capture_name, node in match[1].items():
+                # Handle both single nodes and lists of nodes
+                if isinstance(node, list):
+                    texts = [n.text.decode('utf8') for n in node]
+                    match_info[str(capture_name)] = texts
+                else:
+                    text = node.text.decode('utf8')
+                    match_info[str(capture_name)] = text
+            results.append(match_info)
+        
+        # Write results to file
+        output_dir = Path('@query_function_results')
+        output_dir.mkdir(exist_ok=True)
+        
+        # For HTML, include the pattern name in the output file
+        if language == "html":
+            pattern_name = next((name for name, pat in QUERY_PATTERNS[language].items() if pat == pattern), "unknown")
+            output_file = output_dir / f'{language}_{pattern_name}.json'
+        else:
+            output_file = output_dir / f'{language}_functions.json'
+        
+        with open(output_file, 'w') as f:
+            json.dump(results, f, indent=2)
+            
+        logger.info(f"Writing results for {language}", extra={
+            'language': language,
             'output_file': str(output_file),
-            'function_count': len(functions)
-        }
-    })
-    
-    with open(output_file, 'w') as f:
-        json.dump({
-            "language": language_name,
-            "pattern": query_pattern,
-            "total_functions": len(functions),
-            "functions": functions
-        }, f, indent=2)
-    
-    print(f"Found {len(functions)} functions in {language_name}")
-    for func in functions:
-        name = func.get("name", "anonymous")
-        print(f"  - {name} ({func['type']})")
-        print(f"    Code: {func['code'][:100]}...")  # Print first 100 chars of code
+            'function_count': len(results)
+        })
+        print(f"Found {len(results)} matches in {language}")
+        
+        # Print sample of results
+        for i, result in enumerate(results[:5]):
+            print(f"\nMatch {i + 1}:")
+            for capture_name, text in result.items():
+                if isinstance(text, list):
+                    print(f"  {capture_name}:")
+                    for t in text[:3]:  # Show first 3 items if it's a list
+                        print(f"    - {t[:100]}...")
+                    if len(text) > 3:
+                        print(f"    ... and {len(text) - 3} more")
+                else:
+                    print(f"  {capture_name}: {text[:100]}...")
+            
+    except Exception as e:
+        logger.error(f"Query failed for {language}: {str(e)}", extra={
+            'language': language,
+            'pattern': pattern,
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'stage': 'query_execution'
+        })
+        print(f"Query failed for {language}: {str(e)}")
 
 def main():
-    
-    
-    # First, print debug information about available languages and patterns
-    print("\n=== Language Support Analysis ===")
-    print("\nLanguages in QUERY_PATTERNS:")
-    for lang in sorted(QUERY_PATTERNS.keys()):
-        has_pattern = 'function' in QUERY_PATTERNS[lang]
-        has_sample = lang in SAMPLE_FILES
-        print(f"  - {lang:<15} {'✓' if has_pattern else '✗'} pattern {'✓' if has_sample else '✗'} sample")
-    
-    # Filter languages that have both patterns and sample files
+    # Process all languages that have patterns and sample files
     languages_to_test = {
         lang: SAMPLE_FILES[lang]
         for lang in QUERY_PATTERNS.keys()
-        if "function" in QUERY_PATTERNS[lang] and lang in SAMPLE_FILES
+        if lang in SAMPLE_FILES
     }
-
-    print(f"\nFound {len(languages_to_test)} languages with both patterns and sample files")
-    print("\nWill test the following languages:")
+    
+    print("\n=== Processing Languages ===\n")
+    
+    # Get the directory where this script is located
+    current_dir = Path(__file__).parent
+    
+    print(f"Found {len(languages_to_test)} languages to process")
+    print("\nWill process the following languages:")
     for lang in sorted(languages_to_test.keys()):
         print(f"  - {lang}")
     
     print("\n=== Beginning Analysis ===\n")
     
-    # Create output directory if it doesn't exist
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    print(f"Output directory: {OUTPUT_DIR}")
-    
-    # Process each language
-    for language_name, patterns in {**QUERY_PATTERNS, **JS_VARIANT_PATTERNS}.items():
-        if "function" not in patterns:
-            print(f"Skipping {language_name}: no function pattern defined")
-            continue
-            
-        sample_file = Path("tests/data") / SAMPLE_FILES.get(language_name, f"sample.{language_name}")
-        if sample_file.exists():
-            print(f"\nProcessing {language_name}...")
-            try:
-                process_language(language_name, patterns["function"], sample_file)
-            except Exception as e:
-                print(f"Error processing {language_name}: {str(e)}")
-        else:
-            print(f"Skipping {language_name}: sample file not found at {sample_file}")
+    for language_name, sample_file in sorted(languages_to_test.items()):
+        sample_file = current_dir / sample_file
+        print(f"\nProcessing {language_name} from {sample_file}...")
+        try:
+            # For HTML, process all patterns
+            if language_name == "html":
+                for pattern_name, pattern in QUERY_PATTERNS[language_name].items():
+                    print(f"\nTesting pattern: {pattern_name}")
+                    process_language(language_name, pattern, sample_file)
+            # For other languages, just process the function pattern
+            elif "function" in QUERY_PATTERNS[language_name]:
+                process_language(language_name, QUERY_PATTERNS[language_name]["function"], sample_file)
+        except Exception as e:
+            print(f"Error processing {language_name}: {str(e)}")
 
 def analyze_ast_nodes(lang: str, sample_file: str):
     """Analyze AST nodes using advanced Tree-sitter features."""
@@ -574,11 +602,11 @@ def test_gleam_function_pattern():
     assert function_types.intersection(expected_types), f"Did not find expected function types. Found: {function_types}"
 
 if __name__ == "__main__":
-    # Process all languages that have both patterns and sample files
+    # Process all languages that have patterns and sample files
     languages_to_test = {
         lang: SAMPLE_FILES[lang]
         for lang in QUERY_PATTERNS.keys()
-        if "function" in QUERY_PATTERNS[lang] and lang in SAMPLE_FILES
+        if lang in SAMPLE_FILES
     }
     
     print("\n=== Processing Languages ===\n")
@@ -597,6 +625,13 @@ if __name__ == "__main__":
         sample_file = current_dir / sample_file
         print(f"\nProcessing {language_name} from {sample_file}...")
         try:
-            process_language(language_name, QUERY_PATTERNS[language_name]["function"], sample_file)
+            # For HTML, process all patterns
+            if language_name == "html":
+                for pattern_name, pattern in QUERY_PATTERNS[language_name].items():
+                    print(f"\nTesting pattern: {pattern_name}")
+                    process_language(language_name, pattern, sample_file)
+            # For other languages, just process the function pattern
+            elif "function" in QUERY_PATTERNS[language_name]:
+                process_language(language_name, QUERY_PATTERNS[language_name]["function"], sample_file)
         except Exception as e:
             print(f"Error processing {language_name}: {str(e)}") 

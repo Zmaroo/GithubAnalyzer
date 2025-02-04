@@ -30,7 +30,7 @@ from GithubAnalyzer.services.analysis.parsers.utils import (
 
 load_dotenv()
 # Initialize logger
-logger = get_logger("core.repo_processor")
+logger = get_logger(__name__)
 
 @dataclass
 class RepoProcessor:

@@ -1,280 +1,107 @@
-{
-  "language": "kotlin",
-  "pattern": "\n            [\n              (function_declaration)\n              (lambda_literal)\n            ] @function\n        ",
-  "total_functions": 21,
-  "functions": [
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 1,
-        "column": 0
-      },
-      "end_point": {
-        "row": 1,
-        "column": 36
-      },
-      "code": "fun add(a: Int, b: Int): Int = a + b",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 4,
-        "column": 0
-      },
-      "end_point": {
-        "row": 4,
-        "column": 51
-      },
-      "code": "fun greet(name: String = \"World\") = \"Hello, $name!\"",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 7,
-        "column": 0
-      },
-      "end_point": {
-        "row": 8,
-        "column": 57
-      },
-      "code": "fun createUser(name: String, age: Int, email: String? = null) =\n    mapOf(\"name\" to name, \"age\" to age, \"email\" to email)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 11,
-        "column": 0
-      },
-      "end_point": {
-        "row": 11,
-        "column": 38
-      },
-      "code": "fun String.addExclamation() = \"$this!\"",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 14,
-        "column": 0
-      },
-      "end_point": {
-        "row": 14,
-        "column": 51
-      },
-      "code": "infix fun Int.times(str: String) = str.repeat(this)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 17,
-        "column": 0
-      },
-      "end_point": {
-        "row": 17,
-        "column": 48
-      },
-      "code": "operator fun Int.plus(other: Int) = this + other",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 20,
-        "column": 0
-      },
-      "end_point": {
-        "row": 20,
-        "column": 68
-      },
-      "code": "fun operation(x: Int, y: Int, op: (Int, Int) -> Int): Int = op(x, y)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "lambda_literal",
-      "start_point": {
-        "row": 23,
-        "column": 15
-      },
-      "end_point": {
-        "row": 23,
-        "column": 42
-      },
-      "code": "{ x: Int, y: Int -> x * y }",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 26,
-        "column": 0
-      },
-      "end_point": {
-        "row": 28,
-        "column": 1
-      },
-      "code": "suspend fun fetchData(): String {\n    return \"Data\"\n}",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 35,
-        "column": 4
-      },
-      "end_point": {
-        "row": 37,
-        "column": 5
-      },
-      "code": "fun add(x: Int) {\n        value += x\n    }",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 45,
-        "column": 8
-      },
-      "end_point": {
-        "row": 45,
-        "column": 44
-      },
-      "code": "fun multiply(x: Int, y: Int) = x * y",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 51,
-        "column": 4
-      },
-      "end_point": {
-        "row": 51,
-        "column": 27
-      },
-      "code": "fun makeSound(): String",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 52,
-        "column": 4
-      },
-      "end_point": {
-        "row": 54,
-        "column": 5
-      },
-      "code": "fun move() {\n        println(\"Moving...\")\n    }",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 59,
-        "column": 4
-      },
-      "end_point": {
-        "row": 59,
-        "column": 38
-      },
-      "code": "override fun makeSound() = \"Woof!\"",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 64,
-        "column": 4
-      },
-      "end_point": {
-        "row": 66,
-        "column": 5
-      },
-      "code": "fun birthday() {\n        age++\n    }",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 70,
-        "column": 0
-      },
-      "end_point": {
-        "row": 72,
-        "column": 1
-      },
-      "code": "fun <T> printArray(array: Array<T>) {\n    array.forEach { println(it) }\n}",
-      "name": "Anonymous"
-    },
-    {
-      "type": "lambda_literal",
-      "start_point": {
-        "row": 71,
-        "column": 18
-      },
-      "end_point": {
-        "row": 71,
-        "column": 33
-      },
-      "code": "{ println(it) }",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 75,
-        "column": 0
-      },
-      "end_point": {
-        "row": 75,
-        "column": 36
-      },
-      "code": "fun Int.squared(): Int = this * this",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 78,
-        "column": 0
-      },
-      "end_point": {
-        "row": 83,
-        "column": 1
-      },
-      "code": "fun processPerson(person: Person) {\n    person.apply {\n        age += 1\n        println(\"Happy birthday, $name!\")\n    }\n}",
-      "name": "Anonymous"
-    },
-    {
-      "type": "lambda_literal",
-      "start_point": {
-        "row": 79,
-        "column": 17
-      },
-      "end_point": {
-        "row": 82,
-        "column": 5
-      },
-      "code": "{\n        age += 1\n        println(\"Happy birthday, $name!\")\n    }",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 86,
-        "column": 0
-      },
-      "end_point": {
-        "row": 92,
-        "column": 1
-      },
-      "code": "fun main() {\n    val result = add(5, 3)\n    println(\"Result: $result\")\n\n    val person = Person(\"Alice\", 30)\n    processPerson(person)\n}",
-      "name": "Anonymous"
-    }
-  ]
-}
+[
+  {
+    "function": [
+      "fun add(a: Int, b: Int): Int = a + b"
+    ]
+  },
+  {
+    "function": [
+      "fun greet(name: String = \"World\") = \"Hello, $name!\""
+    ]
+  },
+  {
+    "function": [
+      "fun createUser(name: String, age: Int, email: String? = null) =\n    mapOf(\"name\" to name, \"age\" to age, \"email\" to email)"
+    ]
+  },
+  {
+    "function": [
+      "fun String.addExclamation() = \"$this!\""
+    ]
+  },
+  {
+    "function": [
+      "infix fun Int.times(str: String) = str.repeat(this)"
+    ]
+  },
+  {
+    "function": [
+      "operator fun Int.plus(other: Int) = this + other"
+    ]
+  },
+  {
+    "function": [
+      "fun operation(x: Int, y: Int, op: (Int, Int) -> Int): Int = op(x, y)"
+    ]
+  },
+  {
+    "function": [
+      "{ x: Int, y: Int -> x * y }"
+    ]
+  },
+  {
+    "function": [
+      "suspend fun fetchData(): String {\n    return \"Data\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "fun add(x: Int) {\n        value += x\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fun multiply(x: Int, y: Int) = x * y"
+    ]
+  },
+  {
+    "function": [
+      "fun makeSound(): String"
+    ]
+  },
+  {
+    "function": [
+      "fun move() {\n        println(\"Moving...\")\n    }"
+    ]
+  },
+  {
+    "function": [
+      "override fun makeSound() = \"Woof!\""
+    ]
+  },
+  {
+    "function": [
+      "fun birthday() {\n        age++\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fun <T> printArray(array: Array<T>) {\n    array.forEach { println(it) }\n}"
+    ]
+  },
+  {
+    "function": [
+      "{ println(it) }"
+    ]
+  },
+  {
+    "function": [
+      "fun Int.squared(): Int = this * this"
+    ]
+  },
+  {
+    "function": [
+      "fun processPerson(person: Person) {\n    person.apply {\n        age += 1\n        println(\"Happy birthday, $name!\")\n    }\n}"
+    ]
+  },
+  {
+    "function": [
+      "{\n        age += 1\n        println(\"Happy birthday, $name!\")\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fun main() {\n    val result = add(5, 3)\n    println(\"Result: $result\")\n\n    val person = Person(\"Alice\", 30)\n    processPerson(person)\n}"
+    ]
+  }
+]

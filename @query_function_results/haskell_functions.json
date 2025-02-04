@@ -1,423 +1,162 @@
-{
-  "language": "haskell",
-  "pattern": "\n            [\n              (function)\n              (lambda)\n            ] @function\n        ",
-  "total_functions": 32,
-  "functions": [
-    {
-      "type": "function",
-      "start_point": {
-        "row": 19,
-        "column": 15
-      },
-      "end_point": {
-        "row": 19,
-        "column": 28
-      },
-      "code": "a -> Result a",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 23,
-        "column": 4
-      },
-      "end_point": {
-        "row": 25,
-        "column": 46
-      },
-      "code": "process user@(User _ age)\n        | age >= 18 = Success user\n        | otherwise = Error \"User is underage\"",
-      "name": "process"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 28,
-        "column": 14
-      },
-      "end_point": {
-        "row": 28,
-        "column": 35
-      },
-      "code": "String -> Int -> User",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 28,
-        "column": 24
-      },
-      "end_point": {
-        "row": 28,
-        "column": 35
-      },
-      "code": "Int -> User",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 29,
-        "column": 0
-      },
-      "end_point": {
-        "row": 29,
-        "column": 35
-      },
-      "code": "createUser name age = User name age",
-      "name": "createUser"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 32,
-        "column": 15
-      },
-      "end_point": {
-        "row": 32,
-        "column": 29
-      },
-      "code": "User -> String",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 33,
-        "column": 0
-      },
-      "end_point": {
-        "row": 33,
-        "column": 32
-      },
-      "code": "getUserName (User name _) = name",
-      "name": "getUserName"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 36,
-        "column": 12
-      },
-      "end_point": {
-        "row": 36,
-        "column": 25
-      },
-      "code": "Int -> String",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 37,
-        "column": 0
-      },
-      "end_point": {
-        "row": 41,
-        "column": 26
-      },
-      "code": "checkAge age\n    | age < 0 = \"Invalid age\"\n    | age < 18 = \"Minor\"\n    | age < 65 = \"Adult\"\n    | otherwise = \"Senior\"",
-      "name": "checkAge"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 44,
-        "column": 18
-      },
-      "end_point": {
-        "row": 44,
-        "column": 39
-      },
-      "code": "User -> (Int, String)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 45,
-        "column": 0
-      },
-      "end_point": {
-        "row": 49,
-        "column": 29
-      },
-      "code": "calculateStats user = (ageCategory, status)\n    where\n        age = userAge user\n        ageCategory = age `div` 10 * 10\n        status = checkAge age",
-      "name": "calculateStats"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 52,
-        "column": 14
-      },
-      "end_point": {
-        "row": 52,
-        "column": 28
-      },
-      "code": "User -> String",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 53,
-        "column": 0
-      },
-      "end_point": {
-        "row": 56,
-        "column": 48
-      },
-      "code": "formatUser user =\n    let name = userName user\n        age = userAge user\n    in name ++ \" (\" ++ show age ++ \" years old)\"",
-      "name": "formatUser"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 59,
-        "column": 16
-      },
-      "end_point": {
-        "row": 59,
-        "column": 64
-      },
-      "code": "(User -> Result User) -> [User] -> [Result User]",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 59,
-        "column": 17
-      },
-      "end_point": {
-        "row": 59,
-        "column": 36
-      },
-      "code": "User -> Result User",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 59,
-        "column": 41
-      },
-      "end_point": {
-        "row": 59,
-        "column": 64
-      },
-      "code": "[User] -> [Result User]",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 60,
-        "column": 0
-      },
-      "end_point": {
-        "row": 60,
-        "column": 22
-      },
-      "code": "processUsers f = map f",
-      "name": "processUsers"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 63,
-        "column": 20
-      },
-      "end_point": {
-        "row": 63,
-        "column": 34
-      },
-      "code": "User -> String",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 68,
-        "column": 10
-      },
-      "end_point": {
-        "row": 68,
-        "column": 29
-      },
-      "code": "Int -> User -> User",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 68,
-        "column": 17
-      },
-      "end_point": {
-        "row": 68,
-        "column": 29
-      },
-      "code": "User -> User",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 69,
-        "column": 0
-      },
-      "end_point": {
-        "row": 69,
-        "column": 59
-      },
-      "code": "addAge years user = user { userAge = userAge user + years }",
-      "name": "addAge"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 72,
-        "column": 12
-      },
-      "end_point": {
-        "row": 72,
-        "column": 42
-      },
-      "code": "String -> [User] -> Maybe User",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 72,
-        "column": 22
-      },
-      "end_point": {
-        "row": 72,
-        "column": 42
-      },
-      "code": "[User] -> Maybe User",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 73,
-        "column": 0
-      },
-      "end_point": {
-        "row": 76,
-        "column": 29
-      },
-      "code": "findUser name = foldr check Nothing\n    where check user acc\n            | userName user == name = Just user\n            | otherwise = acc",
-      "name": "findUser"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 74,
-        "column": 10
-      },
-      "end_point": {
-        "row": 76,
-        "column": 29
-      },
-      "code": "check user acc\n            | userName user == name = Just user\n            | otherwise = acc",
-      "name": "check"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 79,
-        "column": 17
-      },
-      "end_point": {
-        "row": 79,
-        "column": 33
-      },
-      "code": "[User] -> [User]",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 80,
-        "column": 0
-      },
-      "end_point": {
-        "row": 80,
-        "column": 64
-      },
-      "code": "getAdultUsers users = [user | user <- users, userAge user >= 18]",
-      "name": "getAdultUsers"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 83,
-        "column": 19
-      },
-      "end_point": {
-        "row": 83,
-        "column": 38
-      },
-      "code": "User -> Result User",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 84,
-        "column": 0
-      },
-      "end_point": {
-        "row": 87,
-        "column": 35
-      },
-      "code": "processUserCase user = case userAge user of\n    age | age < 0 -> Error \"Invalid age\"\n        | age < 18 -> Error \"Underage\"\n        | otherwise -> Success user",
-      "name": "processUserCase"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 90,
-        "column": 16
-      },
-      "end_point": {
-        "row": 90,
-        "column": 28
-      },
-      "code": "User -> User",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function",
-      "start_point": {
-        "row": 94,
-        "column": 18
-      },
-      "end_point": {
-        "row": 94,
-        "column": 31
-      },
-      "code": "User -> IO ()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "lambda",
-      "start_point": {
-        "row": 95,
-        "column": 17
-      },
-      "end_point": {
-        "row": 97,
-        "column": 24
-      },
-      "code": "\\user -> do\n    putStrLn $ \"Processing user: \" ++ userName user\n    print $ process user",
-      "name": "Anonymous"
-    }
-  ]
-}
+[
+  {
+    "function": [
+      "a -> Result a"
+    ]
+  },
+  {
+    "function": [
+      "process user@(User _ age)\n        | age >= 18 = Success user\n        | otherwise = Error \"User is underage\""
+    ]
+  },
+  {
+    "function": [
+      "String -> Int -> User"
+    ]
+  },
+  {
+    "function": [
+      "Int -> User"
+    ]
+  },
+  {
+    "function": [
+      "createUser name age = User name age"
+    ]
+  },
+  {
+    "function": [
+      "User -> String"
+    ]
+  },
+  {
+    "function": [
+      "getUserName (User name _) = name"
+    ]
+  },
+  {
+    "function": [
+      "Int -> String"
+    ]
+  },
+  {
+    "function": [
+      "checkAge age\n    | age < 0 = \"Invalid age\"\n    | age < 18 = \"Minor\"\n    | age < 65 = \"Adult\"\n    | otherwise = \"Senior\""
+    ]
+  },
+  {
+    "function": [
+      "User -> (Int, String)"
+    ]
+  },
+  {
+    "function": [
+      "calculateStats user = (ageCategory, status)\n    where\n        age = userAge user\n        ageCategory = age `div` 10 * 10\n        status = checkAge age"
+    ]
+  },
+  {
+    "function": [
+      "User -> String"
+    ]
+  },
+  {
+    "function": [
+      "formatUser user =\n    let name = userName user\n        age = userAge user\n    in name ++ \" (\" ++ show age ++ \" years old)\""
+    ]
+  },
+  {
+    "function": [
+      "(User -> Result User) -> [User] -> [Result User]"
+    ]
+  },
+  {
+    "function": [
+      "User -> Result User"
+    ]
+  },
+  {
+    "function": [
+      "[User] -> [Result User]"
+    ]
+  },
+  {
+    "function": [
+      "processUsers f = map f"
+    ]
+  },
+  {
+    "function": [
+      "User -> String"
+    ]
+  },
+  {
+    "function": [
+      "Int -> User -> User"
+    ]
+  },
+  {
+    "function": [
+      "User -> User"
+    ]
+  },
+  {
+    "function": [
+      "addAge years user = user { userAge = userAge user + years }"
+    ]
+  },
+  {
+    "function": [
+      "String -> [User] -> Maybe User"
+    ]
+  },
+  {
+    "function": [
+      "[User] -> Maybe User"
+    ]
+  },
+  {
+    "function": [
+      "findUser name = foldr check Nothing\n    where check user acc\n            | userName user == name = Just user\n            | otherwise = acc"
+    ]
+  },
+  {
+    "function": [
+      "check user acc\n            | userName user == name = Just user\n            | otherwise = acc"
+    ]
+  },
+  {
+    "function": [
+      "[User] -> [User]"
+    ]
+  },
+  {
+    "function": [
+      "getAdultUsers users = [user | user <- users, userAge user >= 18]"
+    ]
+  },
+  {
+    "function": [
+      "User -> Result User"
+    ]
+  },
+  {
+    "function": [
+      "processUserCase user = case userAge user of\n    age | age < 0 -> Error \"Invalid age\"\n        | age < 18 -> Error \"Underage\"\n        | otherwise -> Success user"
+    ]
+  },
+  {
+    "function": [
+      "User -> User"
+    ]
+  },
+  {
+    "function": [
+      "User -> IO ()"
+    ]
+  },
+  {
+    "function": [
+      "\\user -> do\n    putStrLn $ \"Processing user: \" ++ userName user\n    print $ process user"
+    ]
+  }
+]

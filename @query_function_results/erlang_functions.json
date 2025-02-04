@@ -1,0 +1,158 @@
+[
+  {
+    "function.name": [
+      "create_user"
+    ],
+    "function.args": [
+      "(Name, Age)"
+    ],
+    "function.body": [
+      "->\n    #user{name = Name, age = Age}"
+    ]
+  },
+  {
+    "function.name": [
+      "process_user"
+    ],
+    "function.args": [
+      "(#user{name = Name, age = Age})"
+    ],
+    "function.body": [
+      "->\n    io:format(\"Processing adult user: ~s~n\", [Name]),\n    {ok, #user{name = Name, age = Age}}"
+    ]
+  },
+  {
+    "function.name": [
+      "process_user"
+    ],
+    "function.args": [
+      "(#user{name = Name})"
+    ],
+    "function.body": [
+      "->\n    io:format(\"Processing minor user: ~s~n\", [Name]),\n    {error, underage}"
+    ]
+  },
+  {
+    "function.name": [
+      "handle_users"
+    ],
+    "function.args": [
+      "(Users)"
+    ],
+    "function.body": [
+      "->\n    [process_user(User) || User <- Users]"
+    ]
+  },
+  {
+    "function.name": [
+      "validate_age"
+    ],
+    "function.args": [
+      "(Age)"
+    ],
+    "function.body": [
+      "->\n    case Age of\n        A when is_integer(A), A >= 0 -> {ok, A};\n        _ -> {error, invalid_age}\n    end"
+    ]
+  },
+  {
+    "function.name": [
+      "format_user"
+    ],
+    "function.args": [
+      "(#user{name = Name, age = Age})"
+    ],
+    "function.body": [
+      "->\n    lists:flatten(io_lib:format(\"~s (~p years old)\", [Name, Age]))"
+    ]
+  },
+  {
+    "function.name": [
+      "safe_process_user"
+    ],
+    "function.args": [
+      "(User)"
+    ],
+    "function.body": [
+      "->\n    try process_user(User) of\n        Result -> Result\n    catch\n        error:Error -> {error, Error};\n        _:_ -> {error, unknown_error}\n    end"
+    ]
+  },
+  {
+    "function.name": [
+      "process_names"
+    ],
+    "function.args": [
+      "(Names)"
+    ],
+    "function.body": [
+      "->\n    lists:map(fun(Name) -> string:uppercase(Name) end, Names)"
+    ]
+  },
+  {
+    "function.args": [
+      "(Name)"
+    ],
+    "function.body": [
+      "-> string:uppercase(Name)"
+    ]
+  },
+  {
+    "function.name": [
+      "create_greeter"
+    ],
+    "function.args": [
+      "(Greeting)"
+    ],
+    "function.body": [
+      "->\n    fun(Name) -> Greeting ++ \", \" ++ Name ++ \"!\" end"
+    ]
+  },
+  {
+    "function.args": [
+      "(Name)"
+    ],
+    "function.body": [
+      "-> Greeting ++ \", \" ++ Name ++ \"!\""
+    ]
+  },
+  {
+    "function.name": [
+      "start_user_processor"
+    ],
+    "function.args": [
+      "()"
+    ],
+    "function.body": [
+      "->\n    spawn(fun() -> user_processor_loop() end)"
+    ]
+  },
+  {
+    "function.args": [
+      "()"
+    ],
+    "function.body": [
+      "-> user_processor_loop()"
+    ]
+  },
+  {
+    "function.name": [
+      "user_processor_loop"
+    ],
+    "function.args": [
+      "()"
+    ],
+    "function.body": [
+      "->\n    receive\n        {process, User} ->\n            process_user(User),\n            user_processor_loop();\n        stop ->\n            ok\n    end"
+    ]
+  },
+  {
+    "function.name": [
+      "start"
+    ],
+    "function.args": [
+      "()"
+    ],
+    "function.body": [
+      "->\n    % Create some users\n    User1 = create_user(\"John\", 25),\n    User2 = create_user(\"Alice\", 17),\n    \n    % Process individual users\n    process_user(User1),\n    process_user(User2),\n    \n    % Process list of users\n    Users = [User1, User2],\n    Results = handle_users(Users),\n    io:format(\"Processing results: ~p~n\", [Results]),\n    \n    % Try higher-order functions\n    Names = [\"bob\", \"alice\", \"charlie\"],\n    UpperNames = process_names(Names),\n    io:format(\"Uppercase names: ~p~n\", [UpperNames]),\n    \n    % Try function generator\n    Greeter = create_greeter(\"Hello\"),\n    Greeting = Greeter(\"Dave\"),\n    io:format(\"~s~n\", [Greeting]),\n    \n    % Try message passing\n    Pid = start_user_processor(),\n    Pid ! {process, User1},\n    Pid ! stop,\n    \n    ok"
+    ]
+  }
+]

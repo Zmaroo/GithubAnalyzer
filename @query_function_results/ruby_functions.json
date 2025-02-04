@@ -1,163 +1,62 @@
-{
-  "language": "ruby",
-  "pattern": "\n            [\n              (method)\n              (singleton_method)\n            ] @function\n        ",
-  "total_functions": 12,
-  "functions": [
-    {
-      "type": "method",
-      "start_point": {
-        "row": 1,
-        "column": 0
-      },
-      "end_point": {
-        "row": 3,
-        "column": 3
-      },
-      "code": "def add(a, b)\n  a + b\nend",
-      "name": "add"
-    },
-    {
-      "type": "method",
-      "start_point": {
-        "row": 6,
-        "column": 0
-      },
-      "end_point": {
-        "row": 8,
-        "column": 3
-      },
-      "code": "def greet(name = \"World\")\n  puts \"Hello, #{name}!\"\nend",
-      "name": "greet"
-    },
-    {
-      "type": "method",
-      "start_point": {
-        "row": 11,
-        "column": 0
-      },
-      "end_point": {
-        "row": 13,
-        "column": 3
-      },
-      "code": "def create_user(name:, age:, email: nil)\n  { name: name, age: age, email: email }\nend",
-      "name": "create_user"
-    },
-    {
-      "type": "method",
-      "start_point": {
-        "row": 16,
-        "column": 0
-      },
-      "end_point": {
-        "row": 18,
-        "column": 3
-      },
-      "code": "def execute_block\n  yield if block_given?\nend",
-      "name": "execute_block"
-    },
-    {
-      "type": "singleton_method",
-      "start_point": {
-        "row": 22,
-        "column": 2
-      },
-      "end_point": {
-        "row": 24,
-        "column": 5
-      },
-      "code": "def self.add(a, b)\n    a + b\n  end",
-      "name": "add"
-    },
-    {
-      "type": "method",
-      "start_point": {
-        "row": 27,
-        "column": 2
-      },
-      "end_point": {
-        "row": 29,
-        "column": 5
-      },
-      "code": "def multiply(a, b)\n    a * b\n  end",
-      "name": "multiply"
-    },
-    {
-      "type": "method",
-      "start_point": {
-        "row": 34,
-        "column": 2
-      },
-      "end_point": {
-        "row": 36,
-        "column": 5
-      },
-      "code": "def validate(num)\n    num.is_a?(Numeric)\n  end",
-      "name": "validate"
-    },
-    {
-      "type": "method",
-      "start_point": {
-        "row": 41,
-        "column": 2
-      },
-      "end_point": {
-        "row": 43,
-        "column": 5
-      },
-      "code": "def say_hello\n    \"Hello!\"\n  end",
-      "name": "say_hello"
-    },
-    {
-      "type": "method",
-      "start_point": {
-        "row": 47,
-        "column": 2
-      },
-      "end_point": {
-        "row": 49,
-        "column": 5
-      },
-      "code": "def say_goodbye\n    \"Goodbye!\"\n  end",
-      "name": "say_goodbye"
-    },
-    {
-      "type": "method",
-      "start_point": {
-        "row": 56,
-        "column": 2
-      },
-      "end_point": {
-        "row": 58,
-        "column": 5
-      },
-      "code": "def initialize(name)\n    @name = name\n  end",
-      "name": "initialize"
-    },
-    {
-      "type": "method",
-      "start_point": {
-        "row": 64,
-        "column": 2
-      },
-      "end_point": {
-        "row": 66,
-        "column": 5
-      },
-      "code": "def do_something\n    yield(@name) if block_given?\n  end",
-      "name": "do_something"
-    },
-    {
-      "type": "method",
-      "start_point": {
-        "row": 76,
-        "column": 0
-      },
-      "end_point": {
-        "row": 78,
-        "column": 3
-      },
-      "code": "def sum(*numbers)\n  numbers.reduce(0, :+)\nend",
-      "name": "sum"
-    }
-  ]
-}
+[
+  {
+    "function": [
+      "def add(a, b)\n  a + b\nend"
+    ]
+  },
+  {
+    "function": [
+      "def greet(name = \"World\")\n  puts \"Hello, #{name}!\"\nend"
+    ]
+  },
+  {
+    "function": [
+      "def create_user(name:, age:, email: nil)\n  { name: name, age: age, email: email }\nend"
+    ]
+  },
+  {
+    "function": [
+      "def execute_block\n  yield if block_given?\nend"
+    ]
+  },
+  {
+    "function": [
+      "def self.add(a, b)\n    a + b\n  end"
+    ]
+  },
+  {
+    "function": [
+      "def multiply(a, b)\n    a * b\n  end"
+    ]
+  },
+  {
+    "function": [
+      "def validate(num)\n    num.is_a?(Numeric)\n  end"
+    ]
+  },
+  {
+    "function": [
+      "def say_hello\n    \"Hello!\"\n  end"
+    ]
+  },
+  {
+    "function": [
+      "def say_goodbye\n    \"Goodbye!\"\n  end"
+    ]
+  },
+  {
+    "function": [
+      "def initialize(name)\n    @name = name\n  end"
+    ]
+  },
+  {
+    "function": [
+      "def do_something\n    yield(@name) if block_given?\n  end"
+    ]
+  },
+  {
+    "function": [
+      "def sum(*numbers)\n  numbers.reduce(0, :+)\nend"
+    ]
+  }
+]

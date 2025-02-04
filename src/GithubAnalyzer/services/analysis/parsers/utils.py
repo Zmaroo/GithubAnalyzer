@@ -20,6 +20,8 @@ NodeDict = Dict[str, Any]
 NodeList = List[Node]
 QueryResult = Dict[str, NodeList]
 
+logger = get_logger(__name__)
+
 @dataclass
 class TreeSitterServiceBase:
     """Base class for tree-sitter services with common functionality."""

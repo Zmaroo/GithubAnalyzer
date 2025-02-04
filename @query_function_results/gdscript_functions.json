@@ -1,0 +1,22 @@
+[
+  {
+    "function.def": [
+      "func _on_button_pressed() -> void:\n    print(\"Button was pressed!\")"
+    ],
+    "function": [
+      "func _on_button_pressed() -> void:\n    print(\"Button was pressed!\")"
+    ],
+    "function.name": [
+      "_on_button_pressed"
+    ],
+    "function.params": [
+      "()"
+    ],
+    "function.return_type": [
+      "void"
+    ],
+    "function.body": [
+      "\n    print(\"Button was pressed!\")"
+    ]
+  }
+]

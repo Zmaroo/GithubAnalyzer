@@ -1,98 +1,37 @@
-{
-  "language": "c",
-  "pattern": "\n            [\n              (function_definition)\n            ] @function\n        ",
-  "total_functions": 7,
-  "functions": [
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 7,
-        "column": 0
-      },
-      "end_point": {
-        "row": 9,
-        "column": 1
-      },
-      "code": "int add(int a, int b) {\n    return a + b;\n}",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 12,
-        "column": 0
-      },
-      "end_point": {
-        "row": 16,
-        "column": 1
-      },
-      "code": "void swap(int* a, int* b) {\n    int temp = *a;\n    *a = *b;\n    *b = temp;\n}",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 19,
-        "column": 0
-      },
-      "end_point": {
-        "row": 21,
-        "column": 1
-      },
-      "code": "int* create_array(int size) {\n    return (int*)malloc(size * sizeof(int));\n}",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 24,
-        "column": 0
-      },
-      "end_point": {
-        "row": 31,
-        "column": 1
-      },
-      "code": "void print_numbers(int count, ...) {\n    va_list args;\n    va_start(args, count);\n    for(int i = 0; i < count; i++) {\n        printf(\"%d \", va_arg(args, int));\n    }\n    va_end(args);\n}",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 39,
-        "column": 0
-      },
-      "end_point": {
-        "row": 41,
-        "column": 1
-      },
-      "code": "void print_point(struct Point p) {\n    printf(\"(%d, %d)\\n\", p.x, p.y);\n}",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 44,
-        "column": 0
-      },
-      "end_point": {
-        "row": 46,
-        "column": 1
-      },
-      "code": "void print_hello(void) {\n    printf(\"Hello, World!\\n\");\n}",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 49,
-        "column": 0
-      },
-      "end_point": {
-        "row": 52,
-        "column": 1
-      },
-      "code": "int main(int argc, char *argv[]) {\n    print_hello();\n    return 0;\n}",
-      "name": "Anonymous"
-    }
-  ]
-}
+[
+  {
+    "function": [
+      "int add(int a, int b) {\n    return a + b;\n}"
+    ]
+  },
+  {
+    "function": [
+      "void swap(int* a, int* b) {\n    int temp = *a;\n    *a = *b;\n    *b = temp;\n}"
+    ]
+  },
+  {
+    "function": [
+      "int* create_array(int size) {\n    return (int*)malloc(size * sizeof(int));\n}"
+    ]
+  },
+  {
+    "function": [
+      "void print_numbers(int count, ...) {\n    va_list args;\n    va_start(args, count);\n    for(int i = 0; i < count; i++) {\n        printf(\"%d \", va_arg(args, int));\n    }\n    va_end(args);\n}"
+    ]
+  },
+  {
+    "function": [
+      "void print_point(struct Point p) {\n    printf(\"(%d, %d)\\n\", p.x, p.y);\n}"
+    ]
+  },
+  {
+    "function": [
+      "void print_hello(void) {\n    printf(\"Hello, World!\\n\");\n}"
+    ]
+  },
+  {
+    "function": [
+      "int main(int argc, char *argv[]) {\n    print_hello();\n    return 0;\n}"
+    ]
+  }
+]

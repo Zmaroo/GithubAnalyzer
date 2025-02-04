@@ -1,0 +1,2702 @@
+{
+  "type": "program",
+  "text": "# Basic function\nfunction greet\n    echo \"Hello, World!\"\nend\n\n# Function with arguments\nfunction greet_user -a name -d \"Greet a user by name\"\n    echo \"Hello, $name!\"\nend\n\n# Function with switches\nfunction process_file -a filename -s force -d \"Process a file\"\n    if test -f $filename\n        echo \"Processing $filename...\"\n        if set -q _flag_force\n            echo \"Force mode enabled\"\n        end\n    else\n        echo \"File not found: $filename\"\n        return 1\n    end\nend\n\n# Function with variable arguments\nfunction sum\n    set total 0\n    for num in $argv\n        set total (math $total + $num)\n    end\n    echo $total\nend\n\n# Function with conditional logic\nfunction is_valid_user -a username\n    if test -z \"$username\"\n        return 1\n    end\n    \n    if grep -q \"^$username:\" /etc/passwd\n        return 0\n    else\n        return 1\n    end\nend ",
+  "start_point": [
+    0,
+    0
+  ],
+  "end_point": [
+    43,
+    4
+  ],
+  "children": [
+    {
+      "type": "comment",
+      "text": "# Basic function",
+      "start_point": [
+        0,
+        0
+      ],
+      "end_point": [
+        0,
+        16
+      ],
+      "children": []
+    },
+    {
+      "type": "\n",
+      "text": "\n",
+      "start_point": [
+        0,
+        16
+      ],
+      "end_point": [
+        1,
+        0
+      ],
+      "children": []
+    },
+    {
+      "type": "function_definition",
+      "text": "function greet\n    echo \"Hello, World!\"\nend",
+      "start_point": [
+        1,
+        0
+      ],
+      "end_point": [
+        3,
+        3
+      ],
+      "children": [
+        {
+          "type": "function",
+          "text": "function",
+          "start_point": [
+            1,
+            0
+          ],
+          "end_point": [
+            1,
+            8
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "greet",
+          "start_point": [
+            1,
+            9
+          ],
+          "end_point": [
+            1,
+            14
+          ],
+          "children": []
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            1,
+            14
+          ],
+          "end_point": [
+            2,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "command",
+          "text": "echo \"Hello, World!\"",
+          "start_point": [
+            2,
+            4
+          ],
+          "end_point": [
+            2,
+            24
+          ],
+          "children": [
+            {
+              "type": "word",
+              "text": "echo",
+              "start_point": [
+                2,
+                4
+              ],
+              "end_point": [
+                2,
+                8
+              ],
+              "children": []
+            },
+            {
+              "type": "double_quote_string",
+              "text": "\"Hello, World!\"",
+              "start_point": [
+                2,
+                9
+              ],
+              "end_point": [
+                2,
+                24
+              ],
+              "children": [
+                {
+                  "type": "\"",
+                  "text": "\"",
+                  "start_point": [
+                    2,
+                    9
+                  ],
+                  "end_point": [
+                    2,
+                    10
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "\"",
+                  "text": "\"",
+                  "start_point": [
+                    2,
+                    23
+                  ],
+                  "end_point": [
+                    2,
+                    24
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            2,
+            24
+          ],
+          "end_point": [
+            3,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "end",
+          "text": "end",
+          "start_point": [
+            3,
+            0
+          ],
+          "end_point": [
+            3,
+            3
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "\n",
+      "text": "\n\n",
+      "start_point": [
+        3,
+        3
+      ],
+      "end_point": [
+        5,
+        0
+      ],
+      "children": []
+    },
+    {
+      "type": "comment",
+      "text": "# Function with arguments",
+      "start_point": [
+        5,
+        0
+      ],
+      "end_point": [
+        5,
+        25
+      ],
+      "children": []
+    },
+    {
+      "type": "\n",
+      "text": "\n",
+      "start_point": [
+        5,
+        25
+      ],
+      "end_point": [
+        6,
+        0
+      ],
+      "children": []
+    },
+    {
+      "type": "function_definition",
+      "text": "function greet_user -a name -d \"Greet a user by name\"\n    echo \"Hello, $name!\"\nend",
+      "start_point": [
+        6,
+        0
+      ],
+      "end_point": [
+        8,
+        3
+      ],
+      "children": [
+        {
+          "type": "function",
+          "text": "function",
+          "start_point": [
+            6,
+            0
+          ],
+          "end_point": [
+            6,
+            8
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "greet_user",
+          "start_point": [
+            6,
+            9
+          ],
+          "end_point": [
+            6,
+            19
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "-a",
+          "start_point": [
+            6,
+            20
+          ],
+          "end_point": [
+            6,
+            22
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "name",
+          "start_point": [
+            6,
+            23
+          ],
+          "end_point": [
+            6,
+            27
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "-d",
+          "start_point": [
+            6,
+            28
+          ],
+          "end_point": [
+            6,
+            30
+          ],
+          "children": []
+        },
+        {
+          "type": "double_quote_string",
+          "text": "\"Greet a user by name\"",
+          "start_point": [
+            6,
+            31
+          ],
+          "end_point": [
+            6,
+            53
+          ],
+          "children": [
+            {
+              "type": "\"",
+              "text": "\"",
+              "start_point": [
+                6,
+                31
+              ],
+              "end_point": [
+                6,
+                32
+              ],
+              "children": []
+            },
+            {
+              "type": "\"",
+              "text": "\"",
+              "start_point": [
+                6,
+                52
+              ],
+              "end_point": [
+                6,
+                53
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            6,
+            53
+          ],
+          "end_point": [
+            7,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "command",
+          "text": "echo \"Hello, $name!\"",
+          "start_point": [
+            7,
+            4
+          ],
+          "end_point": [
+            7,
+            24
+          ],
+          "children": [
+            {
+              "type": "word",
+              "text": "echo",
+              "start_point": [
+                7,
+                4
+              ],
+              "end_point": [
+                7,
+                8
+              ],
+              "children": []
+            },
+            {
+              "type": "double_quote_string",
+              "text": "\"Hello, $name!\"",
+              "start_point": [
+                7,
+                9
+              ],
+              "end_point": [
+                7,
+                24
+              ],
+              "children": [
+                {
+                  "type": "\"",
+                  "text": "\"",
+                  "start_point": [
+                    7,
+                    9
+                  ],
+                  "end_point": [
+                    7,
+                    10
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "variable_expansion",
+                  "text": "$name",
+                  "start_point": [
+                    7,
+                    17
+                  ],
+                  "end_point": [
+                    7,
+                    22
+                  ],
+                  "children": [
+                    {
+                      "type": "$",
+                      "text": "$",
+                      "start_point": [
+                        7,
+                        17
+                      ],
+                      "end_point": [
+                        7,
+                        18
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "variable_name",
+                      "text": "name",
+                      "start_point": [
+                        7,
+                        18
+                      ],
+                      "end_point": [
+                        7,
+                        22
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "\"",
+                  "text": "\"",
+                  "start_point": [
+                    7,
+                    23
+                  ],
+                  "end_point": [
+                    7,
+                    24
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            7,
+            24
+          ],
+          "end_point": [
+            8,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "end",
+          "text": "end",
+          "start_point": [
+            8,
+            0
+          ],
+          "end_point": [
+            8,
+            3
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "\n",
+      "text": "\n\n",
+      "start_point": [
+        8,
+        3
+      ],
+      "end_point": [
+        10,
+        0
+      ],
+      "children": []
+    },
+    {
+      "type": "comment",
+      "text": "# Function with switches",
+      "start_point": [
+        10,
+        0
+      ],
+      "end_point": [
+        10,
+        24
+      ],
+      "children": []
+    },
+    {
+      "type": "\n",
+      "text": "\n",
+      "start_point": [
+        10,
+        24
+      ],
+      "end_point": [
+        11,
+        0
+      ],
+      "children": []
+    },
+    {
+      "type": "function_definition",
+      "text": "function process_file -a filename -s force -d \"Process a file\"\n    if test -f $filename\n        echo \"Processing $filename...\"\n        if set -q _flag_force\n            echo \"Force mode enabled\"\n        end\n    else\n        echo \"File not found: $filename\"\n        return 1\n    end\nend",
+      "start_point": [
+        11,
+        0
+      ],
+      "end_point": [
+        21,
+        3
+      ],
+      "children": [
+        {
+          "type": "function",
+          "text": "function",
+          "start_point": [
+            11,
+            0
+          ],
+          "end_point": [
+            11,
+            8
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "process_file",
+          "start_point": [
+            11,
+            9
+          ],
+          "end_point": [
+            11,
+            21
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "-a",
+          "start_point": [
+            11,
+            22
+          ],
+          "end_point": [
+            11,
+            24
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "filename",
+          "start_point": [
+            11,
+            25
+          ],
+          "end_point": [
+            11,
+            33
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "-s",
+          "start_point": [
+            11,
+            34
+          ],
+          "end_point": [
+            11,
+            36
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "force",
+          "start_point": [
+            11,
+            37
+          ],
+          "end_point": [
+            11,
+            42
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "-d",
+          "start_point": [
+            11,
+            43
+          ],
+          "end_point": [
+            11,
+            45
+          ],
+          "children": []
+        },
+        {
+          "type": "double_quote_string",
+          "text": "\"Process a file\"",
+          "start_point": [
+            11,
+            46
+          ],
+          "end_point": [
+            11,
+            62
+          ],
+          "children": [
+            {
+              "type": "\"",
+              "text": "\"",
+              "start_point": [
+                11,
+                46
+              ],
+              "end_point": [
+                11,
+                47
+              ],
+              "children": []
+            },
+            {
+              "type": "\"",
+              "text": "\"",
+              "start_point": [
+                11,
+                61
+              ],
+              "end_point": [
+                11,
+                62
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            11,
+            62
+          ],
+          "end_point": [
+            12,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "if_statement",
+          "text": "if test -f $filename\n        echo \"Processing $filename...\"\n        if set -q _flag_force\n            echo \"Force mode enabled\"\n        end\n    else\n        echo \"File not found: $filename\"\n        return 1\n    end",
+          "start_point": [
+            12,
+            4
+          ],
+          "end_point": [
+            20,
+            7
+          ],
+          "children": [
+            {
+              "type": "if",
+              "text": "if",
+              "start_point": [
+                12,
+                4
+              ],
+              "end_point": [
+                12,
+                6
+              ],
+              "children": []
+            },
+            {
+              "type": "command",
+              "text": "test -f $filename",
+              "start_point": [
+                12,
+                7
+              ],
+              "end_point": [
+                12,
+                24
+              ],
+              "children": [
+                {
+                  "type": "word",
+                  "text": "test",
+                  "start_point": [
+                    12,
+                    7
+                  ],
+                  "end_point": [
+                    12,
+                    11
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "word",
+                  "text": "-f",
+                  "start_point": [
+                    12,
+                    12
+                  ],
+                  "end_point": [
+                    12,
+                    14
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "variable_expansion",
+                  "text": "$filename",
+                  "start_point": [
+                    12,
+                    15
+                  ],
+                  "end_point": [
+                    12,
+                    24
+                  ],
+                  "children": [
+                    {
+                      "type": "$",
+                      "text": "$",
+                      "start_point": [
+                        12,
+                        15
+                      ],
+                      "end_point": [
+                        12,
+                        16
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "variable_name",
+                      "text": "filename",
+                      "start_point": [
+                        12,
+                        16
+                      ],
+                      "end_point": [
+                        12,
+                        24
+                      ],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "\n",
+              "text": "\n",
+              "start_point": [
+                12,
+                24
+              ],
+              "end_point": [
+                13,
+                0
+              ],
+              "children": []
+            },
+            {
+              "type": "command",
+              "text": "echo \"Processing $filename...\"",
+              "start_point": [
+                13,
+                8
+              ],
+              "end_point": [
+                13,
+                38
+              ],
+              "children": [
+                {
+                  "type": "word",
+                  "text": "echo",
+                  "start_point": [
+                    13,
+                    8
+                  ],
+                  "end_point": [
+                    13,
+                    12
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "double_quote_string",
+                  "text": "\"Processing $filename...\"",
+                  "start_point": [
+                    13,
+                    13
+                  ],
+                  "end_point": [
+                    13,
+                    38
+                  ],
+                  "children": [
+                    {
+                      "type": "\"",
+                      "text": "\"",
+                      "start_point": [
+                        13,
+                        13
+                      ],
+                      "end_point": [
+                        13,
+                        14
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "variable_expansion",
+                      "text": "$filename",
+                      "start_point": [
+                        13,
+                        25
+                      ],
+                      "end_point": [
+                        13,
+                        34
+                      ],
+                      "children": [
+                        {
+                          "type": "$",
+                          "text": "$",
+                          "start_point": [
+                            13,
+                            25
+                          ],
+                          "end_point": [
+                            13,
+                            26
+                          ],
+                          "children": []
+                        },
+                        {
+                          "type": "variable_name",
+                          "text": "filename",
+                          "start_point": [
+                            13,
+                            26
+                          ],
+                          "end_point": [
+                            13,
+                            34
+                          ],
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "type": "\"",
+                      "text": "\"",
+                      "start_point": [
+                        13,
+                        37
+                      ],
+                      "end_point": [
+                        13,
+                        38
+                      ],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "\n",
+              "text": "\n",
+              "start_point": [
+                13,
+                38
+              ],
+              "end_point": [
+                14,
+                0
+              ],
+              "children": []
+            },
+            {
+              "type": "if_statement",
+              "text": "if set -q _flag_force\n            echo \"Force mode enabled\"\n        end",
+              "start_point": [
+                14,
+                8
+              ],
+              "end_point": [
+                16,
+                11
+              ],
+              "children": [
+                {
+                  "type": "if",
+                  "text": "if",
+                  "start_point": [
+                    14,
+                    8
+                  ],
+                  "end_point": [
+                    14,
+                    10
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "command",
+                  "text": "set -q _flag_force",
+                  "start_point": [
+                    14,
+                    11
+                  ],
+                  "end_point": [
+                    14,
+                    29
+                  ],
+                  "children": [
+                    {
+                      "type": "word",
+                      "text": "set",
+                      "start_point": [
+                        14,
+                        11
+                      ],
+                      "end_point": [
+                        14,
+                        14
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "word",
+                      "text": "-q",
+                      "start_point": [
+                        14,
+                        15
+                      ],
+                      "end_point": [
+                        14,
+                        17
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "word",
+                      "text": "_flag_force",
+                      "start_point": [
+                        14,
+                        18
+                      ],
+                      "end_point": [
+                        14,
+                        29
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "\n",
+                  "text": "\n",
+                  "start_point": [
+                    14,
+                    29
+                  ],
+                  "end_point": [
+                    15,
+                    0
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "command",
+                  "text": "echo \"Force mode enabled\"",
+                  "start_point": [
+                    15,
+                    12
+                  ],
+                  "end_point": [
+                    15,
+                    37
+                  ],
+                  "children": [
+                    {
+                      "type": "word",
+                      "text": "echo",
+                      "start_point": [
+                        15,
+                        12
+                      ],
+                      "end_point": [
+                        15,
+                        16
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "double_quote_string",
+                      "text": "\"Force mode enabled\"",
+                      "start_point": [
+                        15,
+                        17
+                      ],
+                      "end_point": [
+                        15,
+                        37
+                      ],
+                      "children": [
+                        {
+                          "type": "\"",
+                          "text": "\"",
+                          "start_point": [
+                            15,
+                            17
+                          ],
+                          "end_point": [
+                            15,
+                            18
+                          ],
+                          "children": []
+                        },
+                        {
+                          "type": "\"",
+                          "text": "\"",
+                          "start_point": [
+                            15,
+                            36
+                          ],
+                          "end_point": [
+                            15,
+                            37
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "\n",
+                  "text": "\n",
+                  "start_point": [
+                    15,
+                    37
+                  ],
+                  "end_point": [
+                    16,
+                    0
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "end",
+                  "text": "end",
+                  "start_point": [
+                    16,
+                    8
+                  ],
+                  "end_point": [
+                    16,
+                    11
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "\n",
+              "text": "\n",
+              "start_point": [
+                16,
+                11
+              ],
+              "end_point": [
+                17,
+                0
+              ],
+              "children": []
+            },
+            {
+              "type": "else_clause",
+              "text": "else\n        echo \"File not found: $filename\"\n        return 1\n",
+              "start_point": [
+                17,
+                4
+              ],
+              "end_point": [
+                20,
+                0
+              ],
+              "children": [
+                {
+                  "type": "else",
+                  "text": "else",
+                  "start_point": [
+                    17,
+                    4
+                  ],
+                  "end_point": [
+                    17,
+                    8
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "\n",
+                  "text": "\n",
+                  "start_point": [
+                    17,
+                    8
+                  ],
+                  "end_point": [
+                    18,
+                    0
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "command",
+                  "text": "echo \"File not found: $filename\"",
+                  "start_point": [
+                    18,
+                    8
+                  ],
+                  "end_point": [
+                    18,
+                    40
+                  ],
+                  "children": [
+                    {
+                      "type": "word",
+                      "text": "echo",
+                      "start_point": [
+                        18,
+                        8
+                      ],
+                      "end_point": [
+                        18,
+                        12
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "double_quote_string",
+                      "text": "\"File not found: $filename\"",
+                      "start_point": [
+                        18,
+                        13
+                      ],
+                      "end_point": [
+                        18,
+                        40
+                      ],
+                      "children": [
+                        {
+                          "type": "\"",
+                          "text": "\"",
+                          "start_point": [
+                            18,
+                            13
+                          ],
+                          "end_point": [
+                            18,
+                            14
+                          ],
+                          "children": []
+                        },
+                        {
+                          "type": "variable_expansion",
+                          "text": "$filename",
+                          "start_point": [
+                            18,
+                            30
+                          ],
+                          "end_point": [
+                            18,
+                            39
+                          ],
+                          "children": [
+                            {
+                              "type": "$",
+                              "text": "$",
+                              "start_point": [
+                                18,
+                                30
+                              ],
+                              "end_point": [
+                                18,
+                                31
+                              ],
+                              "children": []
+                            },
+                            {
+                              "type": "variable_name",
+                              "text": "filename",
+                              "start_point": [
+                                18,
+                                31
+                              ],
+                              "end_point": [
+                                18,
+                                39
+                              ],
+                              "children": []
+                            }
+                          ]
+                        },
+                        {
+                          "type": "\"",
+                          "text": "\"",
+                          "start_point": [
+                            18,
+                            39
+                          ],
+                          "end_point": [
+                            18,
+                            40
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "\n",
+                  "text": "\n",
+                  "start_point": [
+                    18,
+                    40
+                  ],
+                  "end_point": [
+                    19,
+                    0
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "return",
+                  "text": "return 1",
+                  "start_point": [
+                    19,
+                    8
+                  ],
+                  "end_point": [
+                    19,
+                    16
+                  ],
+                  "children": [
+                    {
+                      "type": "return",
+                      "text": "return",
+                      "start_point": [
+                        19,
+                        8
+                      ],
+                      "end_point": [
+                        19,
+                        14
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "integer",
+                      "text": "1",
+                      "start_point": [
+                        19,
+                        15
+                      ],
+                      "end_point": [
+                        19,
+                        16
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "\n",
+                  "text": "\n",
+                  "start_point": [
+                    19,
+                    16
+                  ],
+                  "end_point": [
+                    20,
+                    0
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "end",
+              "text": "end",
+              "start_point": [
+                20,
+                4
+              ],
+              "end_point": [
+                20,
+                7
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            20,
+            7
+          ],
+          "end_point": [
+            21,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "end",
+          "text": "end",
+          "start_point": [
+            21,
+            0
+          ],
+          "end_point": [
+            21,
+            3
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "\n",
+      "text": "\n\n",
+      "start_point": [
+        21,
+        3
+      ],
+      "end_point": [
+        23,
+        0
+      ],
+      "children": []
+    },
+    {
+      "type": "comment",
+      "text": "# Function with variable arguments",
+      "start_point": [
+        23,
+        0
+      ],
+      "end_point": [
+        23,
+        34
+      ],
+      "children": []
+    },
+    {
+      "type": "\n",
+      "text": "\n",
+      "start_point": [
+        23,
+        34
+      ],
+      "end_point": [
+        24,
+        0
+      ],
+      "children": []
+    },
+    {
+      "type": "function_definition",
+      "text": "function sum\n    set total 0\n    for num in $argv\n        set total (math $total + $num)\n    end\n    echo $total\nend",
+      "start_point": [
+        24,
+        0
+      ],
+      "end_point": [
+        30,
+        3
+      ],
+      "children": [
+        {
+          "type": "function",
+          "text": "function",
+          "start_point": [
+            24,
+            0
+          ],
+          "end_point": [
+            24,
+            8
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "sum",
+          "start_point": [
+            24,
+            9
+          ],
+          "end_point": [
+            24,
+            12
+          ],
+          "children": []
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            24,
+            12
+          ],
+          "end_point": [
+            25,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "command",
+          "text": "set total 0",
+          "start_point": [
+            25,
+            4
+          ],
+          "end_point": [
+            25,
+            15
+          ],
+          "children": [
+            {
+              "type": "word",
+              "text": "set",
+              "start_point": [
+                25,
+                4
+              ],
+              "end_point": [
+                25,
+                7
+              ],
+              "children": []
+            },
+            {
+              "type": "word",
+              "text": "total",
+              "start_point": [
+                25,
+                8
+              ],
+              "end_point": [
+                25,
+                13
+              ],
+              "children": []
+            },
+            {
+              "type": "integer",
+              "text": "0",
+              "start_point": [
+                25,
+                14
+              ],
+              "end_point": [
+                25,
+                15
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            25,
+            15
+          ],
+          "end_point": [
+            26,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "for_statement",
+          "text": "for num in $argv\n        set total (math $total + $num)\n    end",
+          "start_point": [
+            26,
+            4
+          ],
+          "end_point": [
+            28,
+            7
+          ],
+          "children": [
+            {
+              "type": "for",
+              "text": "for",
+              "start_point": [
+                26,
+                4
+              ],
+              "end_point": [
+                26,
+                7
+              ],
+              "children": []
+            },
+            {
+              "type": "variable_name",
+              "text": "num",
+              "start_point": [
+                26,
+                8
+              ],
+              "end_point": [
+                26,
+                11
+              ],
+              "children": []
+            },
+            {
+              "type": "in",
+              "text": "in",
+              "start_point": [
+                26,
+                12
+              ],
+              "end_point": [
+                26,
+                14
+              ],
+              "children": []
+            },
+            {
+              "type": "variable_expansion",
+              "text": "$argv",
+              "start_point": [
+                26,
+                15
+              ],
+              "end_point": [
+                26,
+                20
+              ],
+              "children": [
+                {
+                  "type": "$",
+                  "text": "$",
+                  "start_point": [
+                    26,
+                    15
+                  ],
+                  "end_point": [
+                    26,
+                    16
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "variable_name",
+                  "text": "argv",
+                  "start_point": [
+                    26,
+                    16
+                  ],
+                  "end_point": [
+                    26,
+                    20
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "\n",
+              "text": "\n",
+              "start_point": [
+                26,
+                20
+              ],
+              "end_point": [
+                27,
+                0
+              ],
+              "children": []
+            },
+            {
+              "type": "command",
+              "text": "set total (math $total + $num)",
+              "start_point": [
+                27,
+                8
+              ],
+              "end_point": [
+                27,
+                38
+              ],
+              "children": [
+                {
+                  "type": "word",
+                  "text": "set",
+                  "start_point": [
+                    27,
+                    8
+                  ],
+                  "end_point": [
+                    27,
+                    11
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "word",
+                  "text": "total",
+                  "start_point": [
+                    27,
+                    12
+                  ],
+                  "end_point": [
+                    27,
+                    17
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "command_substitution",
+                  "text": "(math $total + $num)",
+                  "start_point": [
+                    27,
+                    18
+                  ],
+                  "end_point": [
+                    27,
+                    38
+                  ],
+                  "children": [
+                    {
+                      "type": "(",
+                      "text": "(",
+                      "start_point": [
+                        27,
+                        18
+                      ],
+                      "end_point": [
+                        27,
+                        19
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "command",
+                      "text": "math $total + $num",
+                      "start_point": [
+                        27,
+                        19
+                      ],
+                      "end_point": [
+                        27,
+                        37
+                      ],
+                      "children": [
+                        {
+                          "type": "word",
+                          "text": "math",
+                          "start_point": [
+                            27,
+                            19
+                          ],
+                          "end_point": [
+                            27,
+                            23
+                          ],
+                          "children": []
+                        },
+                        {
+                          "type": "variable_expansion",
+                          "text": "$total",
+                          "start_point": [
+                            27,
+                            24
+                          ],
+                          "end_point": [
+                            27,
+                            30
+                          ],
+                          "children": [
+                            {
+                              "type": "$",
+                              "text": "$",
+                              "start_point": [
+                                27,
+                                24
+                              ],
+                              "end_point": [
+                                27,
+                                25
+                              ],
+                              "children": []
+                            },
+                            {
+                              "type": "variable_name",
+                              "text": "total",
+                              "start_point": [
+                                27,
+                                25
+                              ],
+                              "end_point": [
+                                27,
+                                30
+                              ],
+                              "children": []
+                            }
+                          ]
+                        },
+                        {
+                          "type": "word",
+                          "text": "+",
+                          "start_point": [
+                            27,
+                            31
+                          ],
+                          "end_point": [
+                            27,
+                            32
+                          ],
+                          "children": []
+                        },
+                        {
+                          "type": "variable_expansion",
+                          "text": "$num",
+                          "start_point": [
+                            27,
+                            33
+                          ],
+                          "end_point": [
+                            27,
+                            37
+                          ],
+                          "children": [
+                            {
+                              "type": "$",
+                              "text": "$",
+                              "start_point": [
+                                27,
+                                33
+                              ],
+                              "end_point": [
+                                27,
+                                34
+                              ],
+                              "children": []
+                            },
+                            {
+                              "type": "variable_name",
+                              "text": "num",
+                              "start_point": [
+                                27,
+                                34
+                              ],
+                              "end_point": [
+                                27,
+                                37
+                              ],
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": ")",
+                      "text": ")",
+                      "start_point": [
+                        27,
+                        37
+                      ],
+                      "end_point": [
+                        27,
+                        38
+                      ],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "\n",
+              "text": "\n",
+              "start_point": [
+                27,
+                38
+              ],
+              "end_point": [
+                28,
+                0
+              ],
+              "children": []
+            },
+            {
+              "type": "end",
+              "text": "end",
+              "start_point": [
+                28,
+                4
+              ],
+              "end_point": [
+                28,
+                7
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            28,
+            7
+          ],
+          "end_point": [
+            29,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "command",
+          "text": "echo $total",
+          "start_point": [
+            29,
+            4
+          ],
+          "end_point": [
+            29,
+            15
+          ],
+          "children": [
+            {
+              "type": "word",
+              "text": "echo",
+              "start_point": [
+                29,
+                4
+              ],
+              "end_point": [
+                29,
+                8
+              ],
+              "children": []
+            },
+            {
+              "type": "variable_expansion",
+              "text": "$total",
+              "start_point": [
+                29,
+                9
+              ],
+              "end_point": [
+                29,
+                15
+              ],
+              "children": [
+                {
+                  "type": "$",
+                  "text": "$",
+                  "start_point": [
+                    29,
+                    9
+                  ],
+                  "end_point": [
+                    29,
+                    10
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "variable_name",
+                  "text": "total",
+                  "start_point": [
+                    29,
+                    10
+                  ],
+                  "end_point": [
+                    29,
+                    15
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            29,
+            15
+          ],
+          "end_point": [
+            30,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "end",
+          "text": "end",
+          "start_point": [
+            30,
+            0
+          ],
+          "end_point": [
+            30,
+            3
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "\n",
+      "text": "\n\n",
+      "start_point": [
+        30,
+        3
+      ],
+      "end_point": [
+        32,
+        0
+      ],
+      "children": []
+    },
+    {
+      "type": "comment",
+      "text": "# Function with conditional logic",
+      "start_point": [
+        32,
+        0
+      ],
+      "end_point": [
+        32,
+        33
+      ],
+      "children": []
+    },
+    {
+      "type": "\n",
+      "text": "\n",
+      "start_point": [
+        32,
+        33
+      ],
+      "end_point": [
+        33,
+        0
+      ],
+      "children": []
+    },
+    {
+      "type": "function_definition",
+      "text": "function is_valid_user -a username\n    if test -z \"$username\"\n        return 1\n    end\n    \n    if grep -q \"^$username:\" /etc/passwd\n        return 0\n    else\n        return 1\n    end\nend",
+      "start_point": [
+        33,
+        0
+      ],
+      "end_point": [
+        43,
+        3
+      ],
+      "children": [
+        {
+          "type": "function",
+          "text": "function",
+          "start_point": [
+            33,
+            0
+          ],
+          "end_point": [
+            33,
+            8
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "is_valid_user",
+          "start_point": [
+            33,
+            9
+          ],
+          "end_point": [
+            33,
+            22
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "-a",
+          "start_point": [
+            33,
+            23
+          ],
+          "end_point": [
+            33,
+            25
+          ],
+          "children": []
+        },
+        {
+          "type": "word",
+          "text": "username",
+          "start_point": [
+            33,
+            26
+          ],
+          "end_point": [
+            33,
+            34
+          ],
+          "children": []
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            33,
+            34
+          ],
+          "end_point": [
+            34,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "if_statement",
+          "text": "if test -z \"$username\"\n        return 1\n    end",
+          "start_point": [
+            34,
+            4
+          ],
+          "end_point": [
+            36,
+            7
+          ],
+          "children": [
+            {
+              "type": "if",
+              "text": "if",
+              "start_point": [
+                34,
+                4
+              ],
+              "end_point": [
+                34,
+                6
+              ],
+              "children": []
+            },
+            {
+              "type": "command",
+              "text": "test -z \"$username\"",
+              "start_point": [
+                34,
+                7
+              ],
+              "end_point": [
+                34,
+                26
+              ],
+              "children": [
+                {
+                  "type": "word",
+                  "text": "test",
+                  "start_point": [
+                    34,
+                    7
+                  ],
+                  "end_point": [
+                    34,
+                    11
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "word",
+                  "text": "-z",
+                  "start_point": [
+                    34,
+                    12
+                  ],
+                  "end_point": [
+                    34,
+                    14
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "double_quote_string",
+                  "text": "\"$username\"",
+                  "start_point": [
+                    34,
+                    15
+                  ],
+                  "end_point": [
+                    34,
+                    26
+                  ],
+                  "children": [
+                    {
+                      "type": "\"",
+                      "text": "\"",
+                      "start_point": [
+                        34,
+                        15
+                      ],
+                      "end_point": [
+                        34,
+                        16
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "variable_expansion",
+                      "text": "$username",
+                      "start_point": [
+                        34,
+                        16
+                      ],
+                      "end_point": [
+                        34,
+                        25
+                      ],
+                      "children": [
+                        {
+                          "type": "$",
+                          "text": "$",
+                          "start_point": [
+                            34,
+                            16
+                          ],
+                          "end_point": [
+                            34,
+                            17
+                          ],
+                          "children": []
+                        },
+                        {
+                          "type": "variable_name",
+                          "text": "username",
+                          "start_point": [
+                            34,
+                            17
+                          ],
+                          "end_point": [
+                            34,
+                            25
+                          ],
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "type": "\"",
+                      "text": "\"",
+                      "start_point": [
+                        34,
+                        25
+                      ],
+                      "end_point": [
+                        34,
+                        26
+                      ],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "\n",
+              "text": "\n",
+              "start_point": [
+                34,
+                26
+              ],
+              "end_point": [
+                35,
+                0
+              ],
+              "children": []
+            },
+            {
+              "type": "return",
+              "text": "return 1",
+              "start_point": [
+                35,
+                8
+              ],
+              "end_point": [
+                35,
+                16
+              ],
+              "children": [
+                {
+                  "type": "return",
+                  "text": "return",
+                  "start_point": [
+                    35,
+                    8
+                  ],
+                  "end_point": [
+                    35,
+                    14
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "integer",
+                  "text": "1",
+                  "start_point": [
+                    35,
+                    15
+                  ],
+                  "end_point": [
+                    35,
+                    16
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "\n",
+              "text": "\n",
+              "start_point": [
+                35,
+                16
+              ],
+              "end_point": [
+                36,
+                0
+              ],
+              "children": []
+            },
+            {
+              "type": "end",
+              "text": "end",
+              "start_point": [
+                36,
+                4
+              ],
+              "end_point": [
+                36,
+                7
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            36,
+            7
+          ],
+          "end_point": [
+            37,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "if_statement",
+          "text": "if grep -q \"^$username:\" /etc/passwd\n        return 0\n    else\n        return 1\n    end",
+          "start_point": [
+            38,
+            4
+          ],
+          "end_point": [
+            42,
+            7
+          ],
+          "children": [
+            {
+              "type": "if",
+              "text": "if",
+              "start_point": [
+                38,
+                4
+              ],
+              "end_point": [
+                38,
+                6
+              ],
+              "children": []
+            },
+            {
+              "type": "command",
+              "text": "grep -q \"^$username:\" /etc/passwd",
+              "start_point": [
+                38,
+                7
+              ],
+              "end_point": [
+                38,
+                40
+              ],
+              "children": [
+                {
+                  "type": "word",
+                  "text": "grep",
+                  "start_point": [
+                    38,
+                    7
+                  ],
+                  "end_point": [
+                    38,
+                    11
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "word",
+                  "text": "-q",
+                  "start_point": [
+                    38,
+                    12
+                  ],
+                  "end_point": [
+                    38,
+                    14
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "double_quote_string",
+                  "text": "\"^$username:\"",
+                  "start_point": [
+                    38,
+                    15
+                  ],
+                  "end_point": [
+                    38,
+                    28
+                  ],
+                  "children": [
+                    {
+                      "type": "\"",
+                      "text": "\"",
+                      "start_point": [
+                        38,
+                        15
+                      ],
+                      "end_point": [
+                        38,
+                        16
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "variable_expansion",
+                      "text": "$username",
+                      "start_point": [
+                        38,
+                        17
+                      ],
+                      "end_point": [
+                        38,
+                        26
+                      ],
+                      "children": [
+                        {
+                          "type": "$",
+                          "text": "$",
+                          "start_point": [
+                            38,
+                            17
+                          ],
+                          "end_point": [
+                            38,
+                            18
+                          ],
+                          "children": []
+                        },
+                        {
+                          "type": "variable_name",
+                          "text": "username",
+                          "start_point": [
+                            38,
+                            18
+                          ],
+                          "end_point": [
+                            38,
+                            26
+                          ],
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "type": "\"",
+                      "text": "\"",
+                      "start_point": [
+                        38,
+                        27
+                      ],
+                      "end_point": [
+                        38,
+                        28
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "word",
+                  "text": "/etc/passwd",
+                  "start_point": [
+                    38,
+                    29
+                  ],
+                  "end_point": [
+                    38,
+                    40
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "\n",
+              "text": "\n",
+              "start_point": [
+                38,
+                40
+              ],
+              "end_point": [
+                39,
+                0
+              ],
+              "children": []
+            },
+            {
+              "type": "return",
+              "text": "return 0",
+              "start_point": [
+                39,
+                8
+              ],
+              "end_point": [
+                39,
+                16
+              ],
+              "children": [
+                {
+                  "type": "return",
+                  "text": "return",
+                  "start_point": [
+                    39,
+                    8
+                  ],
+                  "end_point": [
+                    39,
+                    14
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "integer",
+                  "text": "0",
+                  "start_point": [
+                    39,
+                    15
+                  ],
+                  "end_point": [
+                    39,
+                    16
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "\n",
+              "text": "\n",
+              "start_point": [
+                39,
+                16
+              ],
+              "end_point": [
+                40,
+                0
+              ],
+              "children": []
+            },
+            {
+              "type": "else_clause",
+              "text": "else\n        return 1\n",
+              "start_point": [
+                40,
+                4
+              ],
+              "end_point": [
+                42,
+                0
+              ],
+              "children": [
+                {
+                  "type": "else",
+                  "text": "else",
+                  "start_point": [
+                    40,
+                    4
+                  ],
+                  "end_point": [
+                    40,
+                    8
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "\n",
+                  "text": "\n",
+                  "start_point": [
+                    40,
+                    8
+                  ],
+                  "end_point": [
+                    41,
+                    0
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "return",
+                  "text": "return 1",
+                  "start_point": [
+                    41,
+                    8
+                  ],
+                  "end_point": [
+                    41,
+                    16
+                  ],
+                  "children": [
+                    {
+                      "type": "return",
+                      "text": "return",
+                      "start_point": [
+                        41,
+                        8
+                      ],
+                      "end_point": [
+                        41,
+                        14
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "integer",
+                      "text": "1",
+                      "start_point": [
+                        41,
+                        15
+                      ],
+                      "end_point": [
+                        41,
+                        16
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "\n",
+                  "text": "\n",
+                  "start_point": [
+                    41,
+                    16
+                  ],
+                  "end_point": [
+                    42,
+                    0
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "end",
+              "text": "end",
+              "start_point": [
+                42,
+                4
+              ],
+              "end_point": [
+                42,
+                7
+              ],
+              "children": []
+            }
+          ]
+        },
+        {
+          "type": "\n",
+          "text": "\n",
+          "start_point": [
+            42,
+            7
+          ],
+          "end_point": [
+            43,
+            0
+          ],
+          "children": []
+        },
+        {
+          "type": "end",
+          "text": "end",
+          "start_point": [
+            43,
+            0
+          ],
+          "end_point": [
+            43,
+            3
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": ";",
+      "text": "",
+      "start_point": [
+        43,
+        3
+      ],
+      "end_point": [
+        43,
+        3
+      ],
+      "children": []
+    }
+  ]
+}

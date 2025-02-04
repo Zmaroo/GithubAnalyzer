@@ -1,14 +1,12 @@
-"""Custom parsers for file types not supported by tree-sitter."""
+"""Custom parsers for specialized language support."""
+from GithubAnalyzer.utils.logging import get_logger
+logger = get_logger(__name__)
 
 from pathlib import Path
 from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod
 import time
 import threading
-from GithubAnalyzer.utils.logging import get_logger
-
-# Initialize logger
-logger = get_logger("parsers.custom")
 
 class CustomParser(ABC):
     """Base class for custom file parsers."""

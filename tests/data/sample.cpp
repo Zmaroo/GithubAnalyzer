@@ -20,30 +20,39 @@ auto multiply = [](int x, int y) { return x * y; };
 class Calculator {
 public:
     // Constructor
-    Calculator() : value(0) {}
-
-    // Member function
-    void add(int x) {
-        value += x;
+    Calculator() = default;
+    
+    // Destructor
+    ~Calculator() {}
+    
+    // Regular method
+    int subtract(int a, int b) const {
+        return a - b;
     }
-
-    // Const member function
-    int getValue() const {
-        return value;
+    
+    // Static method
+    static double divide(double a, double b) {
+        return a / b;
     }
-
-    // Static member function
-    static int multiply(int x, int y) {
-        return x * y;
+    
+    // Operator overload
+    Calculator operator+(const Calculator& other) {
+        return *this;
     }
-
-    // Virtual function
-    virtual void display() {
-        std::cout << "Value: " << value << std::endl;
+    
+    // Template method
+    template<typename T>
+    T power(T base, int exp) {
+        T result = 1;
+        for(int i = 0; i < exp; ++i) {
+            result *= base;
+        }
+        return result;
     }
 
 private:
-    int value;
+    // Virtual method
+    virtual void update() {}
 };
 
 // Derived class with override
@@ -81,6 +90,51 @@ namespace Math {
             return x * x * x;
         }
     }
+}
+
+// Function with lambda
+void process(int x) {
+    // Lambda expression
+    auto square = [](int n) -> int { 
+        return n * n; 
+    };
+    
+    // Lambda with capture
+    int multiplier = 2;
+    auto multiply = [multiplier](int n) {
+        return n * multiplier;
+    };
+}
+
+// Function with noexcept
+void safeOperation() noexcept {
+    // Implementation
+}
+
+// Function with constexpr
+constexpr int factorial(int n) {
+    return n <= 1 ? 1 : n * factorial(n - 1);
+}
+
+// Function with trailing return type
+auto getSum(int a, int b) -> int {
+    return a + b;
+}
+
+// Variadic template function
+template<typename... Args>
+int sum(Args... args) {
+    return (... + args);
+}
+
+// Friend function
+class Box {
+    friend void printBox(const Box& b);
+    int width = 0;
+};
+
+void printBox(const Box& b) {
+    std::cout << b.width;
 }
 
 // Main function

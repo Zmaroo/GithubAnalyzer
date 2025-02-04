@@ -1,0 +1,44 @@
+[
+  {
+    "function.def": [
+      "function isValid() {\n        return typeof this.name == \"string\" && \n               typeof this.age == \"integer\" && \n               this.age >= 0;\n    }"
+    ],
+    "function": [
+      "function isValid() {\n        return typeof this.name == \"string\" && \n               typeof this.age == \"integer\" && \n               this.age >= 0;\n    }"
+    ],
+    "function.name": [
+      "isValid"
+    ],
+    "function.body": [
+      "{\n        return typeof this.name == \"string\" && \n               typeof this.age == \"integer\" && \n               this.age >= 0;\n    }"
+    ]
+  },
+  {
+    "function.def": [
+      "function isAdult() {\n        return this.age >= 18;\n    }"
+    ],
+    "function": [
+      "function isAdult() {\n        return this.age >= 18;\n    }"
+    ],
+    "function.name": [
+      "isAdult"
+    ],
+    "function.body": [
+      "{\n        return this.age >= 18;\n    }"
+    ]
+  },
+  {
+    "function.def": [
+      "function toString() {\n        return format(\"%s (%d years old)\", this.name, this.age);\n    }"
+    ],
+    "function": [
+      "function toString() {\n        return format(\"%s (%d years old)\", this.name, this.age);\n    }"
+    ],
+    "function.name": [
+      "toString"
+    ],
+    "function.body": [
+      "{\n        return format(\"%s (%d years old)\", this.name, this.age);\n    }"
+    ]
+  }
+]

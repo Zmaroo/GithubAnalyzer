@@ -1,0 +1,77 @@
+[
+  {
+    "function": [
+      "function transfer(address to, uint256 amount) external returns (bool);"
+    ]
+  },
+  {
+    "function": [
+      "function balanceOf(address account) external view returns (uint256);"
+    ]
+  },
+  {
+    "function": [
+      "constructor() {\n        _owner = msg.sender;\n    }"
+    ]
+  },
+  {
+    "function": [
+      "modifier onlyOwner() {\n        require(msg.sender == _owner, \"Not owner\");\n        _;\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function transferOwnership(address newOwner) public virtual onlyOwner {\n        require(newOwner != address(0), \"Invalid address\");\n        _owner = newOwner;\n    }"
+    ]
+  },
+  {
+    "function": [
+      "constructor(address tokenAddress) {\n        require(tokenAddress != address(0), \"Invalid token address\");\n        token = IERC20(tokenAddress);\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function deposit(uint256 amount) external {\n        require(amount > 0, \"Amount must be positive\");\n        require(token.transfer(address(this), amount), \"Transfer failed\");\n        \n        deposits[msg.sender] += amount;\n        emit Deposited(msg.sender, amount);\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function withdraw(uint256 amount) public {\n        require(amount > 0, \"Amount must be positive\");\n        require(deposits[msg.sender] >= amount, \"Insufficient balance\");\n        \n        deposits[msg.sender] -= amount;\n        require(token.transfer(msg.sender, amount), \"Transfer failed\");\n        \n        emit Withdrawn(msg.sender, amount);\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function _validateAmount(uint256 amount) internal pure returns (bool) {\n        return amount > 0 && amount <= type(uint256).max;\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function _calculateFee(uint256 amount) private pure returns (uint256) {\n        return (amount * 3) / 1000; // 0.3% fee\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function getBalance(address user) public view returns (uint256) {\n        return deposits[user];\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function calculateTotal(uint256 amount, uint256 fee) \n        public \n        pure \n        returns (uint256) \n    {\n        return amount + fee;\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function depositETH() public payable {\n        require(msg.value > 0, \"Must send ETH\");\n        // Handle ETH deposit\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function getDepositInfo(address user) \n        public \n        view \n        returns (uint256 balance, uint256 fee) \n    {\n        balance = deposits[user];\n        fee = _calculateFee(balance);\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function transferOwnership(address newOwner) \n        public \n        virtual \n        override \n        onlyOwner \n    {\n        super.transferOwnership(newOwner);\n        // Additional logic\n    }"
+    ]
+  }
+]

@@ -25,7 +25,6 @@ from GithubAnalyzer.models.analysis.types import (
     NodeList,
     QueryResult
 )
-from GithubAnalyzer.utils.logging import get_logger
 from .utils import (
     get_node_text,
     node_to_dict,

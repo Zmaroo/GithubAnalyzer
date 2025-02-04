@@ -7,6 +7,7 @@ from tree_sitter import Language, Parser, Node
 import time
 import threading
 from dataclasses import dataclass
+import tree_sitter_c_sharp as tscsharp
 
 from tree_sitter_language_pack import get_binding, get_language, get_parser
 
@@ -34,7 +35,7 @@ from .query_patterns import (
 )
 
 # Initialize logger
-logger = get_logger("tree_sitter.language")
+logger = get_logger(__name__)
 
 @dataclass
 class LanguageService(TreeSitterServiceBase):
@@ -159,6 +160,13 @@ class LanguageService(TreeSitterServiceBase):
         except:
             return False
         
+    def get_tree_sitter_language(self, language: str) -> Language:
+        """Return a tree_sitter.Language instance for the given language."""
+        if language.lower() in ['c_sharp', 'c#', 'csharp']:
+            return Language(tscsharp.language())
+        else:
+            return Language('build/my-languages.so', language)
+
     def get_parser(self, language: str) -> Parser:
         """Get a parser for a language.
         
@@ -176,7 +184,8 @@ class LanguageService(TreeSitterServiceBase):
             if not self.is_language_supported(language):
                 raise LanguageError(f"Language not supported: {language}")
                 
-            parser = get_parser(language)
+            lang_obj = self.get_tree_sitter_language(language)
+            parser = Parser(lang_obj)
             if not parser:
                 raise LanguageError(f"Failed to create parser for language: {language}")
             return parser
@@ -202,7 +211,7 @@ class LanguageService(TreeSitterServiceBase):
             if not self.is_language_supported(language):
                 raise LanguageError(f"Language not supported: {language}")
                 
-            lang_obj = get_language(language)
+            lang_obj = self.get_tree_sitter_language(language)
             if not lang_obj:
                 raise LanguageError(f"Failed to get language object for: {language}")
             return lang_obj

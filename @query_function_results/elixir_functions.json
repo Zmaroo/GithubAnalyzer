@@ -1,0 +1,289 @@
+[
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "process_user(%{name: name, age: age} = user) when age >= @default_age"
+    ],
+    "function.body": [
+      "do\n    IO.puts(\"Processing adult user: #{name}\")\n    {:ok, user}\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "do\n    IO.puts(\"Processing adult user: #{name}\")\n    {:ok, user}\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "process_user(%{name: name})"
+    ],
+    "function.body": [
+      "do\n    IO.puts(\"Processing minor user: #{name}\")\n    {:error, :underage}\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "do\n    IO.puts(\"Processing minor user: #{name}\")\n    {:error, :underage}\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "defp"
+    ],
+    "function.name": [
+      "validate_age(age) when is_integer(age) and age > 0"
+    ],
+    "function.body": [
+      "do\n    {:ok, age}\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "defp"
+    ],
+    "function.name": [
+      "do\n    {:ok, age}\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "defp"
+    ],
+    "function.name": [
+      "validate_age(_), do: {:error, :invalid_age}"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "create_user(name, age \\\\ @default_age)"
+    ],
+    "function.body": [
+      "do\n    case validate_age(age) do\n      {:ok, valid_age} -> %{name: name, age: valid_age}\n      error -> error\n    end\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "do\n    case validate_age(age) do\n      {:ok, valid_age} -> %{name: name, age: valid_age}\n      error -> error\n    end\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "process_list(list)"
+    ],
+    "function.body": [
+      "do\n    Enum.map(list, fn item ->\n      String.upcase(item)\n    end)\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "do\n    Enum.map(list, fn item ->\n      String.upcase(item)\n    end)\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "create_greeter(greeting)"
+    ],
+    "function.body": [
+      "do\n    fn name -> \"#{greeting}, #{name}!\" end\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "do\n    fn name -> \"#{greeting}, #{name}!\" end\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "check_age(age) when is_integer(age) and age >= @default_age"
+    ],
+    "function.body": [
+      "do\n    :adult\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "do\n    :adult\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "check_age(age) when is_integer(age)"
+    ],
+    "function.body": [
+      "do\n    :minor\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "do\n    :minor\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "check_age(_)"
+    ],
+    "function.body": [
+      "do\n    :invalid\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "do\n    :invalid\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "process_name(name)"
+    ],
+    "function.body": [
+      "do\n    name\n    |> String.trim()\n    |> String.capitalize()\n    |> String.replace(\" \", \"_\")\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "do\n    name\n    |> String.trim()\n    |> String.capitalize()\n    |> String.replace(\" \", \"_\")\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "handle_result({:ok, value}), do: \"Success: #{value}\""
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "handle_result({:error, reason}), do: \"Error: #{reason}\""
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "handle_result(_), do: \"Unknown result\""
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "process_users(users)"
+    ],
+    "function.body": [
+      "do\n    for user <- users,\n        Map.has_key?(user, :name),\n        do: process_user(user)\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "do\n    for user <- users,\n        Map.has_key?(user, :name),\n        do: process_user(user)\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "format(value)"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "format(map)"
+    ],
+    "function.body": [
+      "do\n    map\n    |> Map.to_list()\n    |> Enum.map(fn {k, v} -> \"#{k}: #{v}\" end)\n    |> Enum.join(\", \")\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "do\n    map\n    |> Map.to_list()\n    |> Enum.map(fn {k, v} -> \"#{k}: #{v}\" end)\n    |> Enum.join(\", \")\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "run"
+    ],
+    "function.body": [
+      "do\n    user = UserManager.create_user(\"John\", 25)\n    UserManager.process_user(user)\n\n    greeter = UserManager.create_greeter(\"Hello\")\n    IO.puts(greeter.(\"Alice\"))\n\n    users = [\n      %{name: \"Bob\", age: 30},\n      %{name: \"Alice\", age: 25},\n      %{name: \"Charlie\", age: 15}\n    ]\n    UserManager.process_users(users)\n  end"
+    ]
+  },
+  {
+    "def.keyword": [
+      "def"
+    ],
+    "function.name": [
+      "do\n    user = UserManager.create_user(\"John\", 25)\n    UserManager.process_user(user)\n\n    greeter = UserManager.create_greeter(\"Hello\")\n    IO.puts(greeter.(\"Alice\"))\n\n    users = [\n      %{name: \"Bob\", age: 30},\n      %{name: \"Alice\", age: 25},\n      %{name: \"Charlie\", age: 15}\n    ]\n    UserManager.process_users(users)\n  end"
+    ]
+  }
+]

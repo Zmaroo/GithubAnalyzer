@@ -1,0 +1,402 @@
+[
+  {
+    "function": [
+      "fn init(allocator: *Allocator, name: []const u8, age: u32) !User"
+    ],
+    "function.name": [
+      "init"
+    ],
+    "function.params": [
+      "(allocator: *Allocator, name: []const u8, age: u32)"
+    ]
+  },
+  {
+    "function": [
+      "fn init(allocator: *Allocator, name: []const u8, age: u32) !User {\n        if (age > 150) {\n            return UserError.InvalidAge;\n        }\n        const name_copy = try allocator.dupe(u8, name);\n        return User{\n            .name = name_copy,\n            .age = age,\n        };\n    }"
+    ],
+    "function.name": [
+      "init"
+    ],
+    "function.params": [
+      "(allocator: *Allocator, name: []const u8, age: u32)"
+    ],
+    "function.body": [
+      "{\n        if (age > 150) {\n            return UserError.InvalidAge;\n        }\n        const name_copy = try allocator.dupe(u8, name);\n        return User{\n            .name = name_copy,\n            .age = age,\n        };\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn isAdult(self: User) bool"
+    ],
+    "function.name": [
+      "isAdult"
+    ],
+    "function.params": [
+      "(self: User)"
+    ]
+  },
+  {
+    "function": [
+      "fn isAdult(self: User) bool {\n        return self.age >= 18;\n    }"
+    ],
+    "function.name": [
+      "isAdult"
+    ],
+    "function.params": [
+      "(self: User)"
+    ],
+    "function.body": [
+      "{\n        return self.age >= 18;\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn format(self: User, writer: anytype) !void"
+    ],
+    "function.name": [
+      "format"
+    ],
+    "function.params": [
+      "(self: User, writer: anytype)"
+    ]
+  },
+  {
+    "function": [
+      "fn format(self: User, writer: anytype) !void {\n        try writer.print(\"{s} ({d} years old)\", .{ self.name, self.age });\n    }"
+    ],
+    "function.name": [
+      "format"
+    ],
+    "function.params": [
+      "(self: User, writer: anytype)"
+    ],
+    "function.body": [
+      "{\n        try writer.print(\"{s} ({d} years old)\", .{ self.name, self.age });\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn validate(self: User) !void"
+    ],
+    "function.name": [
+      "validate"
+    ],
+    "function.params": [
+      "(self: User)"
+    ]
+  },
+  {
+    "function": [
+      "fn validate(self: User) !void {\n        if (self.name.len == 0) {\n            return UserError.InvalidName;\n        }\n        if (self.age > 150) {\n            return UserError.InvalidAge;\n        }\n    }"
+    ],
+    "function.name": [
+      "validate"
+    ],
+    "function.params": [
+      "(self: User)"
+    ],
+    "function.body": [
+      "{\n        if (self.name.len == 0) {\n            return UserError.InvalidName;\n        }\n        if (self.age > 150) {\n            return UserError.InvalidAge;\n        }\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn init(allocator: *Allocator) UserRegistry"
+    ],
+    "function.name": [
+      "init"
+    ],
+    "function.params": [
+      "(allocator: *Allocator)"
+    ]
+  },
+  {
+    "function": [
+      "fn init(allocator: *Allocator) UserRegistry {\n        return UserRegistry{\n            .users = StringHashMap(User).init(allocator),\n            .allocator = allocator,\n        };\n    }"
+    ],
+    "function.name": [
+      "init"
+    ],
+    "function.params": [
+      "(allocator: *Allocator)"
+    ],
+    "function.body": [
+      "{\n        return UserRegistry{\n            .users = StringHashMap(User).init(allocator),\n            .allocator = allocator,\n        };\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn addUser(self: *UserRegistry, user: User) !void"
+    ],
+    "function.name": [
+      "addUser"
+    ],
+    "function.params": [
+      "(self: *UserRegistry, user: User)"
+    ]
+  },
+  {
+    "function": [
+      "fn addUser(self: *UserRegistry, user: User) !void {\n        try self.users.put(user.name, user);\n    }"
+    ],
+    "function.name": [
+      "addUser"
+    ],
+    "function.params": [
+      "(self: *UserRegistry, user: User)"
+    ],
+    "function.body": [
+      "{\n        try self.users.put(user.name, user);\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn getUser(self: UserRegistry, name: []const u8) ?User"
+    ],
+    "function.name": [
+      "getUser"
+    ],
+    "function.params": [
+      "(self: UserRegistry, name: []const u8)"
+    ]
+  },
+  {
+    "function": [
+      "fn getUser(self: UserRegistry, name: []const u8) ?User {\n        return self.users.get(name);\n    }"
+    ],
+    "function.name": [
+      "getUser"
+    ],
+    "function.params": [
+      "(self: UserRegistry, name: []const u8)"
+    ],
+    "function.body": [
+      "{\n        return self.users.get(name);\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn removeUser(self: *UserRegistry, name: []const u8) bool"
+    ],
+    "function.name": [
+      "removeUser"
+    ],
+    "function.params": [
+      "(self: *UserRegistry, name: []const u8)"
+    ]
+  },
+  {
+    "function": [
+      "fn removeUser(self: *UserRegistry, name: []const u8) bool {\n        return self.users.remove(name);\n    }"
+    ],
+    "function.name": [
+      "removeUser"
+    ],
+    "function.params": [
+      "(self: *UserRegistry, name: []const u8)"
+    ],
+    "function.body": [
+      "{\n        return self.users.remove(name);\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn getAllUsers(self: UserRegistry) []User"
+    ],
+    "function.name": [
+      "getAllUsers"
+    ],
+    "function.params": [
+      "(self: UserRegistry)"
+    ]
+  },
+  {
+    "function": [
+      "fn getAllUsers(self: UserRegistry) []User {\n        var users = ArrayList(User).init(self.allocator);\n        var it = self.users.iterator();\n        while (it.next()) |entry| {\n            users.append(entry.value_ptr.*) catch continue;\n        }\n        return users.toOwnedSlice();\n    }"
+    ],
+    "function.name": [
+      "getAllUsers"
+    ],
+    "function.params": [
+      "(self: UserRegistry)"
+    ],
+    "function.body": [
+      "{\n        var users = ArrayList(User).init(self.allocator);\n        var it = self.users.iterator();\n        while (it.next()) |entry| {\n            users.append(entry.value_ptr.*) catch continue;\n        }\n        return users.toOwnedSlice();\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn deinit(self: *UserRegistry) void"
+    ],
+    "function.name": [
+      "deinit"
+    ],
+    "function.params": [
+      "(self: *UserRegistry)"
+    ]
+  },
+  {
+    "function": [
+      "fn deinit(self: *UserRegistry) void {\n        self.users.deinit();\n    }"
+    ],
+    "function.name": [
+      "deinit"
+    ],
+    "function.params": [
+      "(self: *UserRegistry)"
+    ],
+    "function.body": [
+      "{\n        self.users.deinit();\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn findUser(comptime T: type, users: []const T, name: []const u8) ?T"
+    ],
+    "function.name": [
+      "findUser"
+    ],
+    "function.params": [
+      "(comptime T: type, users: []const T, name: []const u8)"
+    ]
+  },
+  {
+    "function": [
+      "fn findUser(comptime T: type, users: []const T, name: []const u8) ?T {\n    for (users) |user| {\n        if (std.mem.eql(u8, user.name, name)) {\n            return user;\n        }\n    }\n    return null;\n}"
+    ],
+    "function.name": [
+      "findUser"
+    ],
+    "function.params": [
+      "(comptime T: type, users: []const T, name: []const u8)"
+    ],
+    "function.body": [
+      "{\n    for (users) |user| {\n        if (std.mem.eql(u8, user.name, name)) {\n            return user;\n        }\n    }\n    return null;\n}"
+    ]
+  },
+  {
+    "function": [
+      "fn createUser(allocator: *Allocator, name: []const u8, age: u32) !User"
+    ],
+    "function.name": [
+      "createUser"
+    ],
+    "function.params": [
+      "(allocator: *Allocator, name: []const u8, age: u32)"
+    ]
+  },
+  {
+    "function": [
+      "fn createUser(allocator: *Allocator, name: []const u8, age: u32) !User {\n    if (age > 150) {\n        return UserError.InvalidAge;\n    }\n    return User.init(allocator, name, age);\n}"
+    ],
+    "function.name": [
+      "createUser"
+    ],
+    "function.params": [
+      "(allocator: *Allocator, name: []const u8, age: u32)"
+    ],
+    "function.body": [
+      "{\n    if (age > 150) {\n        return UserError.InvalidAge;\n    }\n    return User.init(allocator, name, age);\n}"
+    ]
+  },
+  {
+    "function": [
+      "fn createGreeting(name: []const u8, prefix: ?[]const u8) []const u8"
+    ],
+    "function.name": [
+      "createGreeting"
+    ],
+    "function.params": [
+      "(name: []const u8, prefix: ?[]const u8)"
+    ]
+  },
+  {
+    "function": [
+      "fn createGreeting(name: []const u8, prefix: ?[]const u8) []const u8 {\n    const default_prefix = \"Hello\";\n    const actual_prefix = prefix orelse default_prefix;\n    return std.fmt.allocPrint(\n        allocator,\n        \"{s}, {s}!\",\n        .{ actual_prefix, name },\n    ) catch return \"Error creating greeting\";\n}"
+    ],
+    "function.name": [
+      "createGreeting"
+    ],
+    "function.params": [
+      "(name: []const u8, prefix: ?[]const u8)"
+    ],
+    "function.body": [
+      "{\n    const default_prefix = \"Hello\";\n    const actual_prefix = prefix orelse default_prefix;\n    return std.fmt.allocPrint(\n        allocator,\n        \"{s}, {s}!\",\n        .{ actual_prefix, name },\n    ) catch return \"Error creating greeting\";\n}"
+    ]
+  },
+  {
+    "function": [
+      "fn getUserStats(users: []const User) struct { total: usize, adults: usize }"
+    ],
+    "function.name": [
+      "getUserStats"
+    ],
+    "function.params": [
+      "(users: []const User)"
+    ]
+  },
+  {
+    "function": [
+      "fn getUserStats(users: []const User) struct { total: usize, adults: usize } {\n    var adult_count: usize = 0;\n    for (users) |user| {\n        if (user.isAdult()) {\n            adult_count += 1;\n        }\n    }\n    return .{\n        .total = users.len,\n        .adults = adult_count,\n    };\n}"
+    ],
+    "function.name": [
+      "getUserStats"
+    ],
+    "function.params": [
+      "(users: []const User)"
+    ],
+    "function.body": [
+      "{\n    var adult_count: usize = 0;\n    for (users) |user| {\n        if (user.isAdult()) {\n            adult_count += 1;\n        }\n    }\n    return .{\n        .total = users.len,\n        .adults = adult_count,\n    };\n}"
+    ]
+  },
+  {
+    "function": [
+      "fn processUserAsync(user: User) !void"
+    ],
+    "function.name": [
+      "processUserAsync"
+    ],
+    "function.params": [
+      "(user: User)"
+    ]
+  },
+  {
+    "function": [
+      "fn processUserAsync(user: User) !void {\n    const stdout = std.io.getStdOut().writer();\n    try stdout.print(\"Processing user: \", .{});\n    try user.format(stdout);\n    try stdout.print(\"\\n\", .{});\n}"
+    ],
+    "function.name": [
+      "processUserAsync"
+    ],
+    "function.params": [
+      "(user: User)"
+    ],
+    "function.body": [
+      "{\n    const stdout = std.io.getStdOut().writer();\n    try stdout.print(\"Processing user: \", .{});\n    try user.format(stdout);\n    try stdout.print(\"\\n\", .{});\n}"
+    ]
+  },
+  {
+    "function": [
+      "fn main() !void"
+    ],
+    "function.name": [
+      "main"
+    ],
+    "function.params": [
+      "()"
+    ]
+  },
+  {
+    "function": [
+      "fn main() !void {\n    // Initialize allocator\n    var gpa = std.heap.GeneralPurposeAllocator(.{}){};\n    defer _ = gpa.deinit();\n    const allocator = &gpa.allocator();\n\n    // Create stdout writer\n    const stdout = std.io.getStdOut().writer();\n\n    // Create users\n    const user1 = try createUser(allocator, \"John\", 25);\n    const user2 = try createUser(allocator, \"Alice\", 17);\n    var users = [_]User{ user1, user2 };\n\n    // Test basic functions\n    try stdout.print(\"Users:\\n\", .{});\n    for (users) |user| {\n        try user.format(stdout);\n        try stdout.print(\"\\n\", .{});\n    }\n\n    // Test user registry\n    var registry = UserRegistry.init(allocator);\n    defer registry.deinit();\n\n    try registry.addUser(user1);\n    try registry.addUser(user2);\n\n    // Test user finding\n    try stdout.print(\"\\nFinding user:\\n\", .{});\n    if (findUser(User, &users, \"John\")) |user| {\n        try user.format(stdout);\n        try stdout.print(\"\\n\", .{});\n    }\n\n    // Test user stats\n    const stats = getUserStats(&users);\n    try stdout.print(\"\\nStats:\\n\", .{});\n    try stdout.print(\"Total users: {d}\\n\", .{stats.total});\n    try stdout.print(\"Adult users: {d}\\n\", .{stats.adults});\n\n    // Test greeting\n    const greeting = createGreeting(\"Bob\", null);\n    try stdout.print(\"\\nGreeting: {s}\\n\", .{greeting});\n\n    // Test async processing\n    try stdout.print(\"\\nAsync processing:\\n\", .{});\n    try processUserAsync(user1);\n    try processUserAsync(user2);\n\n    // Test validation\n    try stdout.print(\"\\nValidation:\\n\", .{});\n    user1.validate() catch |err| {\n        try stdout.print(\"Validation error: {}\\n\", .{err});\n    };\n}"
+    ],
+    "function.name": [
+      "main"
+    ],
+    "function.params": [
+      "()"
+    ],
+    "function.body": [
+      "{\n    // Initialize allocator\n    var gpa = std.heap.GeneralPurposeAllocator(.{}){};\n    defer _ = gpa.deinit();\n    const allocator = &gpa.allocator();\n\n    // Create stdout writer\n    const stdout = std.io.getStdOut().writer();\n\n    // Create users\n    const user1 = try createUser(allocator, \"John\", 25);\n    const user2 = try createUser(allocator, \"Alice\", 17);\n    var users = [_]User{ user1, user2 };\n\n    // Test basic functions\n    try stdout.print(\"Users:\\n\", .{});\n    for (users) |user| {\n        try user.format(stdout);\n        try stdout.print(\"\\n\", .{});\n    }\n\n    // Test user registry\n    var registry = UserRegistry.init(allocator);\n    defer registry.deinit();\n\n    try registry.addUser(user1);\n    try registry.addUser(user2);\n\n    // Test user finding\n    try stdout.print(\"\\nFinding user:\\n\", .{});\n    if (findUser(User, &users, \"John\")) |user| {\n        try user.format(stdout);\n        try stdout.print(\"\\n\", .{});\n    }\n\n    // Test user stats\n    const stats = getUserStats(&users);\n    try stdout.print(\"\\nStats:\\n\", .{});\n    try stdout.print(\"Total users: {d}\\n\", .{stats.total});\n    try stdout.print(\"Adult users: {d}\\n\", .{stats.adults});\n\n    // Test greeting\n    const greeting = createGreeting(\"Bob\", null);\n    try stdout.print(\"\\nGreeting: {s}\\n\", .{greeting});\n\n    // Test async processing\n    try stdout.print(\"\\nAsync processing:\\n\", .{});\n    try processUserAsync(user1);\n    try processUserAsync(user2);\n\n    // Test validation\n    try stdout.print(\"\\nValidation:\\n\", .{});\n    user1.validate() catch |err| {\n        try stdout.print(\"Validation error: {}\\n\", .{err});\n    };\n}"
+    ]
+  }
+]

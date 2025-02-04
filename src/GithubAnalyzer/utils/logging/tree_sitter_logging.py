@@ -10,6 +10,7 @@ from typing import Optional, Union, Dict, Any, List
 import sys
 from datetime import datetime
 import threading
+from GithubAnalyzer.utils.logging.config import TREE_SITTER_LOGGING_ENABLED
 
 from . import StructuredFormatter
 """Tree-sitter logging handler for GithubAnalyzer."""
@@ -346,3 +347,9 @@ class TreeSitterLogHandler(logging.Handler):
         if self.name:
             logger = logging.getLogger(self.name)
             logger.critical(msg) 
+
+def get_tree_sitter_logger():
+    """Return a logger for tree-sitter if logging is enabled, otherwise return None."""
+    if TREE_SITTER_LOGGING_ENABLED:
+        return logging.getLogger('tree_sitter')
+    return None 

@@ -1,0 +1,46 @@
+[
+  {
+    "function": [
+      "function Get-User {\n    param(\n        [string]$Name,\n        [int]$Age = 0\n    )\n    return @{\n        Name = $Name\n        Age = $Age\n    }\n}"
+    ],
+    "function.name": [
+      "Get-User"
+    ],
+    "function.body": [
+      "param(\n        [string]$Name,\n        [int]$Age = 0\n    )\n    return @{\n        Name = $Name\n        Age = $Age\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function New-User {\n    [CmdletBinding()]\n    param(\n        [Parameter(Mandatory=$true)]\n        [string]$Name,\n        \n        [Parameter()]\n        [ValidateRange(0, 150)]\n        [int]$Age = 0,\n        \n        [Parameter()]\n        [string]$Email\n    )\n    \n    process {\n        $user = @{\n            Name = $Name\n            Age = $Age\n            Email = $Email\n        }\n        return $user\n    }\n}"
+    ],
+    "function.name": [
+      "New-User"
+    ],
+    "function.body": [
+      "[CmdletBinding()]\n    param(\n        [Parameter(Mandatory=$true)]\n        [string]$Name,\n        \n        [Parameter()]\n        [ValidateRange(0, 150)]\n        [int]$Age = 0,\n        \n        [Parameter()]\n        [string]$Email\n    )\n    \n    process {\n        $user = @{\n            Name = $Name\n            Age = $Age\n            Email = $Email\n        }\n        return $user\n    }"
+    ]
+  },
+  {
+    "function": [
+      "filter Format-User {\n    @{\n        DisplayName = $_.Name.ToUpper()\n        IsAdult = $_.Age -ge 18\n    }\n}"
+    ],
+    "function.name": [
+      "Format-User"
+    ],
+    "function.body": [
+      "@{\n        DisplayName = $_.Name.ToUpper()\n        IsAdult = $_.Age -ge 18\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function Get-DynamicUser {\n    [CmdletBinding()]\n    param()\n    \n    dynamicparam {\n        $paramDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary\n        \n        $attributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]\n        $paramAttribute = New-Object System.Management.Automation.ParameterAttribute\n        $paramAttribute.Mandatory = $true\n        $attributeCollection.Add($paramAttribute)\n        \n        $dynParam = New-Object System.Management.Automation.RuntimeDefinedParameter(\n            'UserType', [string], $attributeCollection\n        )\n        \n        $paramDictionary.Add('UserType', $dynParam)\n        return $paramDictionary\n    }\n    \n    process {\n        $UserType = $PSBoundParameters['UserType']\n        return \"Processing $UserType user\"\n    }\n}"
+    ],
+    "function.name": [
+      "Get-DynamicUser"
+    ],
+    "function.body": [
+      "[CmdletBinding()]\n    param()\n    \n    dynamicparam {\n        $paramDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary\n        \n        $attributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]\n        $paramAttribute = New-Object System.Management.Automation.ParameterAttribute\n        $paramAttribute.Mandatory = $true\n        $attributeCollection.Add($paramAttribute)\n        \n        $dynParam = New-Object System.Management.Automation.RuntimeDefinedParameter(\n            'UserType', [string], $attributeCollection\n        )\n        \n        $paramDictionary.Add('UserType', $dynParam)\n        return $paramDictionary\n    }\n    \n    process {\n        $UserType = $PSBoundParameters['UserType']\n        return \"Processing $UserType user\"\n    }"
+    ]
+  }
+]

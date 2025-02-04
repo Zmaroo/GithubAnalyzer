@@ -1,150 +1,57 @@
-{
-  "language": "rust",
-  "pattern": "\n            [\n              (function_item)\n              (closure_expression)\n            ] @function\n        ",
-  "total_functions": 11,
-  "functions": [
-    {
-      "type": "function_item",
-      "start_point": {
-        "row": 1,
-        "column": 0
-      },
-      "end_point": {
-        "row": 3,
-        "column": 1
-      },
-      "code": "fn add(a: i32, b: i32) -> i32 {\n    a + b\n}",
-      "name": "add"
-    },
-    {
-      "type": "function_item",
-      "start_point": {
-        "row": 6,
-        "column": 0
-      },
-      "end_point": {
-        "row": 8,
-        "column": 1
-      },
-      "code": "fn print_value<T: std::fmt::Display>(value: T) {\n    println!(\"{}\", value);\n}",
-      "name": "print_value"
-    },
-    {
-      "type": "function_item",
-      "start_point": {
-        "row": 11,
-        "column": 0
-      },
-      "end_point": {
-        "row": 13,
-        "column": 1
-      },
-      "code": "async fn fetch_data() -> Result<String, std::io::Error> {\n    Ok(String::from(\"data\"))\n}",
-      "name": "fetch_data"
-    },
-    {
-      "type": "function_item",
-      "start_point": {
-        "row": 16,
-        "column": 0
-      },
-      "end_point": {
-        "row": 18,
-        "column": 1
-      },
-      "code": "fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {\n    if x.len() > y.len() { x } else { y }\n}",
-      "name": "longest"
-    },
-    {
-      "type": "function_item",
-      "start_point": {
-        "row": 24,
-        "column": 4
-      },
-      "end_point": {
-        "row": 26,
-        "column": 5
-      },
-      "code": "fn default_behavior(&self) -> String {\n        String::from(\"some default behavior\")\n    }",
-      "name": "default_behavior"
-    },
-    {
-      "type": "function_item",
-      "start_point": {
-        "row": 36,
-        "column": 4
-      },
-      "end_point": {
-        "row": 38,
-        "column": 5
-      },
-      "code": "fn new(name: String) -> Dog {\n        Dog { name }\n    }",
-      "name": "new"
-    },
-    {
-      "type": "function_item",
-      "start_point": {
-        "row": 41,
-        "column": 4
-      },
-      "end_point": {
-        "row": 43,
-        "column": 5
-      },
-      "code": "fn bark(&self) -> String {\n        format!(\"{} says: Woof!\", self.name)\n    }",
-      "name": "bark"
-    },
-    {
-      "type": "function_item",
-      "start_point": {
-        "row": 48,
-        "column": 4
-      },
-      "end_point": {
-        "row": 50,
-        "column": 5
-      },
-      "code": "fn make_sound(&self) -> String {\n        self.bark()\n    }",
-      "name": "make_sound"
-    },
-    {
-      "type": "closure_expression",
-      "start_point": {
-        "row": 54,
-        "column": 15
-      },
-      "end_point": {
-        "row": 54,
-        "column": 37
-      },
-      "code": "|x: i32, y: i32| x * y",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_item",
-      "start_point": {
-        "row": 57,
-        "column": 0
-      },
-      "end_point": {
-        "row": 61,
-        "column": 1
-      },
-      "code": "fn apply_operation<F>(x: i32, y: i32, operation: F) -> i32 \nwhere F: Fn(i32, i32) -> i32 \n{\n    operation(x, y)\n}",
-      "name": "apply_operation"
-    },
-    {
-      "type": "function_item",
-      "start_point": {
-        "row": 64,
-        "column": 0
-      },
-      "end_point": {
-        "row": 70,
-        "column": 1
-      },
-      "code": "fn main() {\n    let result = add(5, 3);\n    println!(\"Result: {}\", result);\n    \n    let dog = Dog::new(String::from(\"Rover\"));\n    println!(\"{}\", dog.bark());\n}",
-      "name": "main"
-    }
-  ]
-}
+[
+  {
+    "function": [
+      "fn add(a: i32, b: i32) -> i32 {\n    a + b\n}"
+    ]
+  },
+  {
+    "function": [
+      "fn print_value<T: std::fmt::Display>(value: T) {\n    println!(\"{}\", value);\n}"
+    ]
+  },
+  {
+    "function": [
+      "async fn fetch_data() -> Result<String, std::io::Error> {\n    Ok(String::from(\"data\"))\n}"
+    ]
+  },
+  {
+    "function": [
+      "fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {\n    if x.len() > y.len() { x } else { y }\n}"
+    ]
+  },
+  {
+    "function": [
+      "fn default_behavior(&self) -> String {\n        String::from(\"some default behavior\")\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn new(name: String) -> Dog {\n        Dog { name }\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn bark(&self) -> String {\n        format!(\"{} says: Woof!\", self.name)\n    }"
+    ]
+  },
+  {
+    "function": [
+      "fn make_sound(&self) -> String {\n        self.bark()\n    }"
+    ]
+  },
+  {
+    "function": [
+      "|x: i32, y: i32| x * y"
+    ]
+  },
+  {
+    "function": [
+      "fn apply_operation<F>(x: i32, y: i32, operation: F) -> i32 \nwhere F: Fn(i32, i32) -> i32 \n{\n    operation(x, y)\n}"
+    ]
+  },
+  {
+    "function": [
+      "fn main() {\n    let result = add(5, 3);\n    println!(\"Result: {}\", result);\n    \n    let dog = Dog::new(String::from(\"Rover\"));\n    println!(\"{}\", dog.bark());\n}"
+    ]
+  }
+]

@@ -1,0 +1,87 @@
+[
+  {
+    "function.def": [
+      "function circle(r)\n    return \u03c0 * r^2\nend"
+    ],
+    "function": [
+      "function circle(r)\n    return \u03c0 * r^2\nend"
+    ],
+    "function.name": [
+      "circle"
+    ],
+    "function.params": [
+      "(r)"
+    ],
+    "function.body": [
+      "return \u03c0 * r^2"
+    ]
+  },
+  {
+    "function.def": [
+      "area = r -> \u03c0 * r^2"
+    ],
+    "function": [
+      "area = r -> \u03c0 * r^2"
+    ],
+    "function.name": [
+      "area"
+    ],
+    "function.params": [
+      "r"
+    ],
+    "function.body": [
+      "\u03c0 * r^2"
+    ]
+  },
+  {
+    "function.def": [
+      "rectangle(w, h) = w * h"
+    ],
+    "function": [
+      "rectangle(w, h) = w * h"
+    ],
+    "function.name": [
+      "rectangle"
+    ],
+    "function.params": [
+      "(w, h)"
+    ],
+    "function.body": [
+      "="
+    ]
+  },
+  {
+    "function.def": [
+      "rectangle(w, h) = w * h"
+    ],
+    "function": [
+      "rectangle(w, h) = w * h"
+    ],
+    "function.name": [
+      "rectangle"
+    ],
+    "function.params": [
+      "(w, h)"
+    ],
+    "function.body": [
+      "w * h"
+    ]
+  },
+  {
+    "function.def": [
+      "macro twice(ex)\n    return :(2 * $ex)\nend"
+    ],
+    "function": [
+      "macro twice(ex)\n    return :(2 * $ex)\nend"
+    ],
+    "function.name": [
+      "twice"
+    ],
+    "function.params": [
+      "(ex)"
+    ],
+    "function.body": [
+      "return :(2 * $ex)"
+    ]
+  }
+]

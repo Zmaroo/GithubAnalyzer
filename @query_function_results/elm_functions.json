@@ -1,0 +1,422 @@
+[
+  {
+    "function.type_def": [
+      "init : Model"
+    ],
+    "function": [
+      "init : Model"
+    ],
+    "function.name": [
+      "init"
+    ],
+    "function.type": [
+      "Model"
+    ]
+  },
+  {
+    "function.def": [
+      "init =\n    { users = []\n    , newUser = User \"\" 0\n    }"
+    ],
+    "function": [
+      "init =\n    { users = []\n    , newUser = User \"\" 0\n    }"
+    ],
+    "function.params": [
+      "init"
+    ],
+    "function.body": [
+      "{ users = []\n    , newUser = User \"\" 0\n    }"
+    ]
+  },
+  {
+    "function.type_def": [
+      "update : Msg -> Model -> Model"
+    ],
+    "function": [
+      "update : Msg -> Model -> Model"
+    ],
+    "function.name": [
+      "update"
+    ],
+    "function.type": [
+      "Msg -> Model -> Model"
+    ]
+  },
+  {
+    "function.def": [
+      "update msg model =\n    case msg of\n        AddUser ->\n            { model\n                | users = model.users ++ [model.newUser]\n                , newUser = User \"\" 0\n            }\n\n        UpdateName name ->\n            { model\n                | newUser = updateName name model.newUser\n            }\n\n        UpdateAge ageStr ->\n            { model\n                | newUser = updateAge ageStr model.newUser\n            }\n\n        RemoveUser index ->\n            { model\n                | users = removeAt index model.users\n            }"
+    ],
+    "function": [
+      "update msg model =\n    case msg of\n        AddUser ->\n            { model\n                | users = model.users ++ [model.newUser]\n                , newUser = User \"\" 0\n            }\n\n        UpdateName name ->\n            { model\n                | newUser = updateName name model.newUser\n            }\n\n        UpdateAge ageStr ->\n            { model\n                | newUser = updateAge ageStr model.newUser\n            }\n\n        RemoveUser index ->\n            { model\n                | users = removeAt index model.users\n            }"
+    ],
+    "function.params": [
+      "update msg model"
+    ],
+    "function.body": [
+      "case msg of\n        AddUser ->\n            { model\n                | users = model.users ++ [model.newUser]\n                , newUser = User \"\" 0\n            }\n\n        UpdateName name ->\n            { model\n                | newUser = updateName name model.newUser\n            }\n\n        UpdateAge ageStr ->\n            { model\n                | newUser = updateAge ageStr model.newUser\n            }\n\n        RemoveUser index ->\n            { model\n                | users = removeAt index model.users\n            }"
+    ]
+  },
+  {
+    "function.type_def": [
+      "updateName : String -> User -> User"
+    ],
+    "function": [
+      "updateName : String -> User -> User"
+    ],
+    "function.name": [
+      "updateName"
+    ],
+    "function.type": [
+      "String -> User -> User"
+    ]
+  },
+  {
+    "function.def": [
+      "updateName newName user =\n    { user | name = newName }"
+    ],
+    "function": [
+      "updateName newName user =\n    { user | name = newName }"
+    ],
+    "function.params": [
+      "updateName newName user"
+    ],
+    "function.body": [
+      "{ user | name = newName }"
+    ]
+  },
+  {
+    "function.type_def": [
+      "updateAge : String -> User -> User"
+    ],
+    "function": [
+      "updateAge : String -> User -> User"
+    ],
+    "function.name": [
+      "updateAge"
+    ],
+    "function.type": [
+      "String -> User -> User"
+    ]
+  },
+  {
+    "function.def": [
+      "updateAge ageStr user =\n    { user | age = String.toInt ageStr |> Maybe.withDefault 0 }"
+    ],
+    "function": [
+      "updateAge ageStr user =\n    { user | age = String.toInt ageStr |> Maybe.withDefault 0 }"
+    ],
+    "function.params": [
+      "updateAge ageStr user"
+    ],
+    "function.body": [
+      "{ user | age = String.toInt ageStr |> Maybe.withDefault 0 }"
+    ]
+  },
+  {
+    "function.type_def": [
+      "removeAt : Int -> List a -> List a"
+    ],
+    "function": [
+      "removeAt : Int -> List a -> List a"
+    ],
+    "function.name": [
+      "removeAt"
+    ],
+    "function.type": [
+      "Int -> List a -> List a"
+    ]
+  },
+  {
+    "function.def": [
+      "removeAt index list =\n    List.take index list ++ List.drop (index + 1) list"
+    ],
+    "function": [
+      "removeAt index list =\n    List.take index list ++ List.drop (index + 1) list"
+    ],
+    "function.params": [
+      "removeAt index list"
+    ],
+    "function.body": [
+      "List.take index list ++ List.drop (index + 1) list"
+    ]
+  },
+  {
+    "function.type_def": [
+      "isAdult : User -> Bool"
+    ],
+    "function": [
+      "isAdult : User -> Bool"
+    ],
+    "function.name": [
+      "isAdult"
+    ],
+    "function.type": [
+      "User -> Bool"
+    ]
+  },
+  {
+    "function.def": [
+      "isAdult user =\n    user.age >= 18"
+    ],
+    "function": [
+      "isAdult user =\n    user.age >= 18"
+    ],
+    "function.params": [
+      "isAdult user"
+    ],
+    "function.body": [
+      "user.age >= 18"
+    ]
+  },
+  {
+    "function.type_def": [
+      "formatUser : User -> String"
+    ],
+    "function": [
+      "formatUser : User -> String"
+    ],
+    "function.name": [
+      "formatUser"
+    ],
+    "function.type": [
+      "User -> String"
+    ]
+  },
+  {
+    "function.def": [
+      "formatUser user =\n    user.name ++ \" (\" ++ String.fromInt user.age ++ \" years old)\""
+    ],
+    "function": [
+      "formatUser user =\n    user.name ++ \" (\" ++ String.fromInt user.age ++ \" years old)\""
+    ],
+    "function.params": [
+      "formatUser user"
+    ],
+    "function.body": [
+      "user.name ++ \" (\" ++ String.fromInt user.age ++ \" years old)\""
+    ]
+  },
+  {
+    "function.type_def": [
+      "filterAdults : List User -> List User"
+    ],
+    "function": [
+      "filterAdults : List User -> List User"
+    ],
+    "function.name": [
+      "filterAdults"
+    ],
+    "function.type": [
+      "List User -> List User"
+    ]
+  },
+  {
+    "function.def": [
+      "filterAdults =\n    List.filter isAdult"
+    ],
+    "function": [
+      "filterAdults =\n    List.filter isAdult"
+    ],
+    "function.params": [
+      "filterAdults"
+    ],
+    "function.body": [
+      "List.filter isAdult"
+    ]
+  },
+  {
+    "function.type_def": [
+      "mapToNames : List User -> List String"
+    ],
+    "function": [
+      "mapToNames : List User -> List String"
+    ],
+    "function.name": [
+      "mapToNames"
+    ],
+    "function.type": [
+      "List User -> List String"
+    ]
+  },
+  {
+    "function.def": [
+      "mapToNames =\n    List.map .name"
+    ],
+    "function": [
+      "mapToNames =\n    List.map .name"
+    ],
+    "function.params": [
+      "mapToNames"
+    ],
+    "function.body": [
+      "List.map .name"
+    ]
+  },
+  {
+    "function.type_def": [
+      "view : Model -> Html Msg"
+    ],
+    "function": [
+      "view : Model -> Html Msg"
+    ],
+    "function.name": [
+      "view"
+    ],
+    "function.type": [
+      "Model -> Html Msg"
+    ]
+  },
+  {
+    "function.def": [
+      "view model =\n    div [ class \"container\" ]\n        [ h1 [] [ text \"User Management\" ]\n        , div [ class \"input-group\" ]\n            [ input\n                [ type_ \"text\"\n                , placeholder \"Name\"\n                , value model.newUser.name\n                , onInput UpdateName\n                ] []\n            , input\n                [ type_ \"number\"\n                , placeholder \"Age\"\n                , value (String.fromInt model.newUser.age)\n                , onInput UpdateAge\n                ] []\n            , button [ onClick AddUser ] [ text \"Add User\" ]\n            ]\n        , div [ class \"user-list\" ]\n            (List.indexedMap viewUser model.users)\n        , viewStats model\n        ]"
+    ],
+    "function": [
+      "view model =\n    div [ class \"container\" ]\n        [ h1 [] [ text \"User Management\" ]\n        , div [ class \"input-group\" ]\n            [ input\n                [ type_ \"text\"\n                , placeholder \"Name\"\n                , value model.newUser.name\n                , onInput UpdateName\n                ] []\n            , input\n                [ type_ \"number\"\n                , placeholder \"Age\"\n                , value (String.fromInt model.newUser.age)\n                , onInput UpdateAge\n                ] []\n            , button [ onClick AddUser ] [ text \"Add User\" ]\n            ]\n        , div [ class \"user-list\" ]\n            (List.indexedMap viewUser model.users)\n        , viewStats model\n        ]"
+    ],
+    "function.params": [
+      "view model"
+    ],
+    "function.body": [
+      "div [ class \"container\" ]\n        [ h1 [] [ text \"User Management\" ]\n        , div [ class \"input-group\" ]\n            [ input\n                [ type_ \"text\"\n                , placeholder \"Name\"\n                , value model.newUser.name\n                , onInput UpdateName\n                ] []\n            , input\n                [ type_ \"number\"\n                , placeholder \"Age\"\n                , value (String.fromInt model.newUser.age)\n                , onInput UpdateAge\n                ] []\n            , button [ onClick AddUser ] [ text \"Add User\" ]\n            ]\n        , div [ class \"user-list\" ]\n            (List.indexedMap viewUser model.users)\n        , viewStats model\n        ]"
+    ]
+  },
+  {
+    "function.type_def": [
+      "viewUser : Int -> User -> Html Msg"
+    ],
+    "function": [
+      "viewUser : Int -> User -> Html Msg"
+    ],
+    "function.name": [
+      "viewUser"
+    ],
+    "function.type": [
+      "Int -> User -> Html Msg"
+    ]
+  },
+  {
+    "function.def": [
+      "viewUser index user =\n    div [ class \"user-item\" ]\n        [ text (formatUser user)\n        , button\n            [ onClick (RemoveUser index)\n            , class \"remove-button\"\n            ]\n            [ text \"Remove\" ]\n        ]"
+    ],
+    "function": [
+      "viewUser index user =\n    div [ class \"user-item\" ]\n        [ text (formatUser user)\n        , button\n            [ onClick (RemoveUser index)\n            , class \"remove-button\"\n            ]\n            [ text \"Remove\" ]\n        ]"
+    ],
+    "function.params": [
+      "viewUser index user"
+    ],
+    "function.body": [
+      "div [ class \"user-item\" ]\n        [ text (formatUser user)\n        , button\n            [ onClick (RemoveUser index)\n            , class \"remove-button\"\n            ]\n            [ text \"Remove\" ]\n        ]"
+    ]
+  },
+  {
+    "function.type_def": [
+      "viewStats : Model -> Html Msg"
+    ],
+    "function": [
+      "viewStats : Model -> Html Msg"
+    ],
+    "function.name": [
+      "viewStats"
+    ],
+    "function.type": [
+      "Model -> Html Msg"
+    ]
+  },
+  {
+    "function.def": [
+      "viewStats model =\n    let\n        adultCount =\n            List.length (filterAdults model.users)\n\n        totalCount =\n            List.length model.users\n    in\n    div [ class \"stats\" ]\n        [ h2 [] [ text \"Statistics\" ]\n        , p [] [ text (\"Total users: \" ++ String.fromInt totalCount) ]\n        , p [] [ text (\"Adult users: \" ++ String.fromInt adultCount) ]\n        ]"
+    ],
+    "function": [
+      "viewStats model =\n    let\n        adultCount =\n            List.length (filterAdults model.users)\n\n        totalCount =\n            List.length model.users\n    in\n    div [ class \"stats\" ]\n        [ h2 [] [ text \"Statistics\" ]\n        , p [] [ text (\"Total users: \" ++ String.fromInt totalCount) ]\n        , p [] [ text (\"Adult users: \" ++ String.fromInt adultCount) ]\n        ]"
+    ],
+    "function.params": [
+      "viewStats model"
+    ],
+    "function.body": [
+      "let\n        adultCount =\n            List.length (filterAdults model.users)\n\n        totalCount =\n            List.length model.users\n    in\n    div [ class \"stats\" ]\n        [ h2 [] [ text \"Statistics\" ]\n        , p [] [ text (\"Total users: \" ++ String.fromInt totalCount) ]\n        , p [] [ text (\"Adult users: \" ++ String.fromInt adultCount) ]\n        ]"
+    ]
+  },
+  {
+    "function": [
+      "let\n        adultCount =\n            List.length (filterAdults model.users)\n\n        totalCount =\n            List.length model.users\n    in\n    div [ class \"stats\" ]\n        [ h2 [] [ text \"Statistics\" ]\n        , p [] [ text (\"Total users: \" ++ String.fromInt totalCount) ]\n        , p [] [ text (\"Adult users: \" ++ String.fromInt adultCount) ]\n        ]"
+    ],
+    "function.let_def": [
+      "adultCount =\n            List.length (filterAdults model.users)"
+    ],
+    "function.params": [
+      "adultCount"
+    ],
+    "function.body": [
+      "List.length (filterAdults model.users)"
+    ]
+  },
+  {
+    "function.def": [
+      "adultCount =\n            List.length (filterAdults model.users)"
+    ],
+    "function": [
+      "adultCount =\n            List.length (filterAdults model.users)"
+    ],
+    "function.params": [
+      "adultCount"
+    ],
+    "function.body": [
+      "List.length (filterAdults model.users)"
+    ]
+  },
+  {
+    "function": [
+      "let\n        adultCount =\n            List.length (filterAdults model.users)\n\n        totalCount =\n            List.length model.users\n    in\n    div [ class \"stats\" ]\n        [ h2 [] [ text \"Statistics\" ]\n        , p [] [ text (\"Total users: \" ++ String.fromInt totalCount) ]\n        , p [] [ text (\"Adult users: \" ++ String.fromInt adultCount) ]\n        ]"
+    ],
+    "function.let_def": [
+      "totalCount =\n            List.length model.users"
+    ],
+    "function.params": [
+      "totalCount"
+    ],
+    "function.body": [
+      "List.length model.users"
+    ]
+  },
+  {
+    "function.def": [
+      "totalCount =\n            List.length model.users"
+    ],
+    "function": [
+      "totalCount =\n            List.length model.users"
+    ],
+    "function.params": [
+      "totalCount"
+    ],
+    "function.body": [
+      "List.length model.users"
+    ]
+  },
+  {
+    "function.type_def": [
+      "main : Program () Model Msg"
+    ],
+    "function": [
+      "main : Program () Model Msg"
+    ],
+    "function.name": [
+      "main"
+    ],
+    "function.type": [
+      "Program () Model Msg"
+    ]
+  },
+  {
+    "function.def": [
+      "main =\n    Browser.sandbox\n        { init = init\n        , update = update\n        , view = view\n        }"
+    ],
+    "function": [
+      "main =\n    Browser.sandbox\n        { init = init\n        , update = update\n        , view = view\n        }"
+    ],
+    "function.params": [
+      "main"
+    ],
+    "function.body": [
+      "Browser.sandbox\n        { init = init\n        , update = update\n        , view = view\n        }"
+    ]
+  }
+]

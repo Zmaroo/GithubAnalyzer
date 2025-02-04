@@ -1,293 +1,90 @@
-{
-  "language": "clojure",
-  "pattern": "\n            (list_lit\n                (sym_lit) @def_type\n                (#match? @def_type \"^(defn|defn-|defmacro|defmethod|fn)$\")\n            ) @function\n        ",
-  "total_functions": 22,
-  "functions": [
-    {
-      "type": "list_lit",
-      "start_point": {
-        "row": 24,
-        "column": 0
-      },
-      "end_point": {
-        "row": 27,
-        "column": 20
-      },
-      "code": "(defn create-user\n  \"Create a new user with the given name and age\"\n  [^String name ^Long age]\n  (->User name age))",
-      "name": "Anonymous"
-    },
-    {
-      "type": "sym_lit",
-      "start_point": {
-        "row": 24,
-        "column": 1
-      },
-      "end_point": {
-        "row": 24,
-        "column": 5
-      },
-      "code": "defn",
-      "name": "defn"
-    },
-    {
-      "type": "list_lit",
-      "start_point": {
-        "row": 30,
-        "column": 0
-      },
-      "end_point": {
-        "row": 35,
-        "column": 28
-      },
-      "code": "(defn update-age\n  \"Update user's age with validation\"\n  [user new-age]\n  {:pre [(>= new-age 0)]\n   :post [(>= (:age %) 0)]}\n  (assoc user :age new-age))",
-      "name": "Anonymous"
-    },
-    {
-      "type": "sym_lit",
-      "start_point": {
-        "row": 30,
-        "column": 1
-      },
-      "end_point": {
-        "row": 30,
-        "column": 5
-      },
-      "code": "defn",
-      "name": "defn"
-    },
-    {
-      "type": "list_lit",
-      "start_point": {
-        "row": 38,
-        "column": 0
-      },
-      "end_point": {
-        "row": 42,
-        "column": 35
-      },
-      "code": "(defn create-greeting\n  \"Create a greeting message\"\n  ([name] (create-greeting \"Hello\" name))\n  ([prefix name]\n   (format \"%s, %s!\" prefix name)))",
-      "name": "Anonymous"
-    },
-    {
-      "type": "sym_lit",
-      "start_point": {
-        "row": 38,
-        "column": 1
-      },
-      "end_point": {
-        "row": 38,
-        "column": 5
-      },
-      "code": "defn",
-      "name": "defn"
-    },
-    {
-      "type": "list_lit",
-      "start_point": {
-        "row": 45,
-        "column": 0
-      },
-      "end_point": {
-        "row": 48,
-        "column": 16
-      },
-      "code": "(defn process-users\n  \"Process a collection of users with the given function\"\n  [f users]\n  (map f users))",
-      "name": "Anonymous"
-    },
-    {
-      "type": "sym_lit",
-      "start_point": {
-        "row": 45,
-        "column": 1
-      },
-      "end_point": {
-        "row": 45,
-        "column": 5
-      },
-      "code": "defn",
-      "name": "defn"
-    },
-    {
-      "type": "list_lit",
-      "start_point": {
-        "row": 51,
-        "column": 0
-      },
-      "end_point": {
-        "row": 55,
-        "column": 30
-      },
-      "code": "(defn age-checker\n  \"Create a function that checks if a user meets the minimum age\"\n  [min-age]\n  (fn [user]\n    (>= (:age user) min-age)))",
-      "name": "Anonymous"
-    },
-    {
-      "type": "sym_lit",
-      "start_point": {
-        "row": 51,
-        "column": 1
-      },
-      "end_point": {
-        "row": 51,
-        "column": 5
-      },
-      "code": "defn",
-      "name": "defn"
-    },
-    {
-      "type": "list_lit",
-      "start_point": {
-        "row": 54,
-        "column": 2
-      },
-      "end_point": {
-        "row": 55,
-        "column": 29
-      },
-      "code": "(fn [user]\n    (>= (:age user) min-age))",
-      "name": "Anonymous"
-    },
-    {
-      "type": "sym_lit",
-      "start_point": {
-        "row": 54,
-        "column": 3
-      },
-      "end_point": {
-        "row": 54,
-        "column": 5
-      },
-      "code": "fn",
-      "name": "fn"
-    },
-    {
-      "type": "list_lit",
-      "start_point": {
-        "row": 58,
-        "column": 0
-      },
-      "end_point": {
-        "row": 64,
-        "column": 22
-      },
-      "code": "(defn process-name\n  \"Process a name using threading macro\"\n  [name]\n  (-> name\n      str/trim\n      str/lower-case\n      str/capitalize))",
-      "name": "Anonymous"
-    },
-    {
-      "type": "sym_lit",
-      "start_point": {
-        "row": 58,
-        "column": 1
-      },
-      "end_point": {
-        "row": 58,
-        "column": 5
-      },
-      "code": "defn",
-      "name": "defn"
-    },
-    {
-      "type": "list_lit",
-      "start_point": {
-        "row": 67,
-        "column": 0
-      },
-      "end_point": {
-        "row": 73,
-        "column": 52
-      },
-      "code": "(defn analyze-user\n  \"Analyze user data using destructuring\"\n  [{:keys [name age] :as user}]\n  (let [result (process-user user)]\n    (if (:ok result)\n      (format \"Valid user: %s, age %d\" name age)\n      (format \"Invalid user: %s\" (:error result)))))",
-      "name": "Anonymous"
-    },
-    {
-      "type": "sym_lit",
-      "start_point": {
-        "row": 67,
-        "column": 1
-      },
-      "end_point": {
-        "row": 67,
-        "column": 5
-      },
-      "code": "defn",
-      "name": "defn"
-    },
-    {
-      "type": "list_lit",
-      "start_point": {
-        "row": 76,
-        "column": 0
-      },
-      "end_point": {
-        "row": 84,
-        "column": 39
-      },
-      "code": "(defn find-user\n  \"Find a user by name using recursion\"\n  [name users]\n  (loop [remaining users]\n    (when (seq remaining)\n      (let [user (first remaining)]\n        (if (= (:name user) name)\n          user\n          (recur (rest remaining)))))))",
-      "name": "Anonymous"
-    },
-    {
-      "type": "sym_lit",
-      "start_point": {
-        "row": 76,
-        "column": 1
-      },
-      "end_point": {
-        "row": 76,
-        "column": 5
-      },
-      "code": "defn",
-      "name": "defn"
-    },
-    {
-      "type": "list_lit",
-      "start_point": {
-        "row": 87,
-        "column": 0
-      },
-      "end_point": {
-        "row": 93,
-        "column": 10
-      },
-      "code": "(defn average-age\n  \"Calculate average age of users\"\n  [users]\n  (let [total (count users)]\n    (if (pos? total)\n      (/ (reduce + (map :age users)) total)\n      0)))",
-      "name": "Anonymous"
-    },
-    {
-      "type": "sym_lit",
-      "start_point": {
-        "row": 87,
-        "column": 1
-      },
-      "end_point": {
-        "row": 87,
-        "column": 5
-      },
-      "code": "defn",
-      "name": "defn"
-    },
-    {
-      "type": "list_lit",
-      "start_point": {
-        "row": 106,
-        "column": 0
-      },
-      "end_point": {
-        "row": 144,
-        "column": 44
-      },
-      "code": "(defn run-examples\n  \"Run example usage of all functions\"\n  []\n  (let [user1 (create-user \"John\" 25)\n        user2 (create-user \"Alice\" 17)\n        users [user1 user2]]\n    \n    ;; Test basic functions\n    (println \"Users:\")\n    (doseq [user users]\n      (println (format-user user)))\n    \n    ;; Test processing\n    (println \"\\nProcessing results:\")\n    (doseq [result (process-users process-user users)]\n      (println result))\n    \n    ;; Test higher-order functions\n    (println \"\\nAdult users:\")\n    (doseq [user (filter adult-checker users)]\n      (println (format-user user)))\n    \n    ;; Test name processing\n    (println \"\\nProcessed names:\")\n    (doseq [user users]\n      (println (process-name (:name user))))\n    \n    ;; Test analysis\n    (println \"\\nUser analysis:\")\n    (doseq [user users]\n      (println (analyze-user user)))\n    \n    ;; Test average age\n    (println \"\\nAverage age:\" (average-age users))\n    \n    ;; Test uppercase names\n    (println \"\\nUppercase names:\")\n    (doseq [user users]\n      (println (get-uppercase-name user)))))",
-      "name": "Anonymous"
-    },
-    {
-      "type": "sym_lit",
-      "start_point": {
-        "row": 106,
-        "column": 1
-      },
-      "end_point": {
-        "row": 106,
-        "column": 5
-      },
-      "code": "defn",
-      "name": "defn"
-    }
-  ]
-}
+[
+  {
+    "function": [
+      "(defn create-user\n  \"Create a new user with the given name and age\"\n  [^String name ^Long age]\n  (->User name age))"
+    ],
+    "def_type": [
+      "defn"
+    ]
+  },
+  {
+    "function": [
+      "(defn update-age\n  \"Update user's age with validation\"\n  [user new-age]\n  {:pre [(>= new-age 0)]\n   :post [(>= (:age %) 0)]}\n  (assoc user :age new-age))"
+    ],
+    "def_type": [
+      "defn"
+    ]
+  },
+  {
+    "function": [
+      "(defn create-greeting\n  \"Create a greeting message\"\n  ([name] (create-greeting \"Hello\" name))\n  ([prefix name]\n   (format \"%s, %s!\" prefix name)))"
+    ],
+    "def_type": [
+      "defn"
+    ]
+  },
+  {
+    "function": [
+      "(defn process-users\n  \"Process a collection of users with the given function\"\n  [f users]\n  (map f users))"
+    ],
+    "def_type": [
+      "defn"
+    ]
+  },
+  {
+    "function": [
+      "(defn age-checker\n  \"Create a function that checks if a user meets the minimum age\"\n  [min-age]\n  (fn [user]\n    (>= (:age user) min-age)))"
+    ],
+    "def_type": [
+      "defn"
+    ]
+  },
+  {
+    "function": [
+      "(fn [user]\n    (>= (:age user) min-age))"
+    ],
+    "def_type": [
+      "fn"
+    ]
+  },
+  {
+    "function": [
+      "(defn process-name\n  \"Process a name using threading macro\"\n  [name]\n  (-> name\n      str/trim\n      str/lower-case\n      str/capitalize))"
+    ],
+    "def_type": [
+      "defn"
+    ]
+  },
+  {
+    "function": [
+      "(defn analyze-user\n  \"Analyze user data using destructuring\"\n  [{:keys [name age] :as user}]\n  (let [result (process-user user)]\n    (if (:ok result)\n      (format \"Valid user: %s, age %d\" name age)\n      (format \"Invalid user: %s\" (:error result)))))"
+    ],
+    "def_type": [
+      "defn"
+    ]
+  },
+  {
+    "function": [
+      "(defn find-user\n  \"Find a user by name using recursion\"\n  [name users]\n  (loop [remaining users]\n    (when (seq remaining)\n      (let [user (first remaining)]\n        (if (= (:name user) name)\n          user\n          (recur (rest remaining)))))))"
+    ],
+    "def_type": [
+      "defn"
+    ]
+  },
+  {
+    "function": [
+      "(defn average-age\n  \"Calculate average age of users\"\n  [users]\n  (let [total (count users)]\n    (if (pos? total)\n      (/ (reduce + (map :age users)) total)\n      0)))"
+    ],
+    "def_type": [
+      "defn"
+    ]
+  },
+  {
+    "function": [
+      "(defn run-examples\n  \"Run example usage of all functions\"\n  []\n  (let [user1 (create-user \"John\" 25)\n        user2 (create-user \"Alice\" 17)\n        users [user1 user2]]\n    \n    ;; Test basic functions\n    (println \"Users:\")\n    (doseq [user users]\n      (println (format-user user)))\n    \n    ;; Test processing\n    (println \"\\nProcessing results:\")\n    (doseq [result (process-users process-user users)]\n      (println result))\n    \n    ;; Test higher-order functions\n    (println \"\\nAdult users:\")\n    (doseq [user (filter adult-checker users)]\n      (println (format-user user)))\n    \n    ;; Test name processing\n    (println \"\\nProcessed names:\")\n    (doseq [user users]\n      (println (process-name (:name user))))\n    \n    ;; Test analysis\n    (println \"\\nUser analysis:\")\n    (doseq [user users]\n      (println (analyze-user user)))\n    \n    ;; Test average age\n    (println \"\\nAverage age:\" (average-age users))\n    \n    ;; Test uppercase names\n    (println \"\\nUppercase names:\")\n    (doseq [user users]\n      (println (get-uppercase-name user)))))"
+    ],
+    "def_type": [
+      "defn"
+    ]
+  }
+]

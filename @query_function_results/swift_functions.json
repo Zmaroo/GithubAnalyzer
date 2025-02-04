@@ -1,228 +1,87 @@
-{
-  "language": "swift",
-  "pattern": "\n            [\n              (function_declaration)\n              (protocol_function_declaration)\n              (lambda_function_type)\n            ] @function\n        ",
-  "total_functions": 17,
-  "functions": [
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 1,
-        "column": 0
-      },
-      "end_point": {
-        "row": 3,
-        "column": 1
-      },
-      "code": "func add(_ a: Int, _ b: Int) -> Int {\n    return a + b\n}",
-      "name": "add"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 6,
-        "column": 0
-      },
-      "end_point": {
-        "row": 8,
-        "column": 1
-      },
-      "code": "func greet(name: String = \"World\") -> String {\n    return \"Hello, \\(name)!\"\n}",
-      "name": "greet"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 11,
-        "column": 0
-      },
-      "end_point": {
-        "row": 14,
-        "column": 1
-      },
-      "code": "func minMax(array: [Int]) -> (min: Int, max: Int)? {\n    guard !array.isEmpty else { return nil }\n    return (array.min()!, array.max()!)\n}",
-      "name": "minMax"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 17,
-        "column": 0
-      },
-      "end_point": {
-        "row": 19,
-        "column": 1
-      },
-      "code": "func sum(_ numbers: Int...) -> Int {\n    return numbers.reduce(0, +)\n}",
-      "name": "sum"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 22,
-        "column": 0
-      },
-      "end_point": {
-        "row": 26,
-        "column": 1
-      },
-      "code": "func swapValues(_ a: inout Int, _ b: inout Int) {\n    let temp = a\n    a = b\n    b = temp\n}",
-      "name": "swapValues"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 29,
-        "column": 0
-      },
-      "end_point": {
-        "row": 33,
-        "column": 1
-      },
-      "code": "func swap<T>(_ a: inout T, _ b: inout T) {\n    let temp = a\n    a = b\n    b = temp\n}",
-      "name": "swap"
-    },
-    {
-      "type": "lambda_function_type",
-      "start_point": {
-        "row": 36,
-        "column": 36
-      },
-      "end_point": {
-        "row": 36,
-        "column": 42
-      },
-      "code": "(a, b)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 45,
-        "column": 4
-      },
-      "end_point": {
-        "row": 47,
-        "column": 5
-      },
-      "code": "func add(_ x: Int) {\n        value += x\n    }",
-      "name": "add"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 50,
-        "column": 4
-      },
-      "end_point": {
-        "row": 52,
-        "column": 5
-      },
-      "code": "static func multiply(_ a: Int, _ b: Int) -> Int {\n        return a * b\n    }",
-      "name": "multiply"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 55,
-        "column": 4
-      },
-      "end_point": {
-        "row": 57,
-        "column": 5
-      },
-      "code": "func reset() {\n        value = 0\n    }",
-      "name": "reset"
-    },
-    {
-      "type": "protocol_function_declaration",
-      "start_point": {
-        "row": 62,
-        "column": 4
-      },
-      "end_point": {
-        "row": 62,
-        "column": 30
-      },
-      "code": "func makeSound() -> String",
-      "name": "makeSound"
-    },
-    {
-      "type": "protocol_function_declaration",
-      "start_point": {
-        "row": 63,
-        "column": 4
-      },
-      "end_point": {
-        "row": 63,
-        "column": 15
-      },
-      "code": "func move()",
-      "name": "move"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 68,
-        "column": 4
-      },
-      "end_point": {
-        "row": 70,
-        "column": 5
-      },
-      "code": "func makeSound() -> String {\n        return \"Woof!\"\n    }",
-      "name": "makeSound"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 72,
-        "column": 4
-      },
-      "end_point": {
-        "row": 74,
-        "column": 5
-      },
-      "code": "func move() {\n        print(\"Running on four legs\")\n    }",
-      "name": "move"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 79,
-        "column": 4
-      },
-      "end_point": {
-        "row": 81,
-        "column": 5
-      },
-      "code": "func squared() -> Int {\n        return self * self\n    }",
-      "name": "squared"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 85,
-        "column": 0
-      },
-      "end_point": {
-        "row": 87,
-        "column": 1
-      },
-      "code": "func fetchData() async throws -> String {\n    return \"Data\"\n}",
-      "name": "fetchData"
-    },
-    {
-      "type": "function_declaration",
-      "start_point": {
-        "row": 92,
-        "column": 4
-      },
-      "end_point": {
-        "row": 95,
-        "column": 5
-      },
-      "code": "static func main() {\n        let result = add(5, 3)\n        print(\"Result: \\(result)\")\n    }",
-      "name": "main"
-    }
-  ]
-}
+[
+  {
+    "function": [
+      "func add(_ a: Int, _ b: Int) -> Int {\n    return a + b\n}"
+    ]
+  },
+  {
+    "function": [
+      "func greet(name: String = \"World\") -> String {\n    return \"Hello, \\(name)!\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "func minMax(array: [Int]) -> (min: Int, max: Int)? {\n    guard !array.isEmpty else { return nil }\n    return (array.min()!, array.max()!)\n}"
+    ]
+  },
+  {
+    "function": [
+      "func sum(_ numbers: Int...) -> Int {\n    return numbers.reduce(0, +)\n}"
+    ]
+  },
+  {
+    "function": [
+      "func swapValues(_ a: inout Int, _ b: inout Int) {\n    let temp = a\n    a = b\n    b = temp\n}"
+    ]
+  },
+  {
+    "function": [
+      "func swap<T>(_ a: inout T, _ b: inout T) {\n    let temp = a\n    a = b\n    b = temp\n}"
+    ]
+  },
+  {
+    "function": [
+      "(a, b)"
+    ]
+  },
+  {
+    "function": [
+      "func add(_ x: Int) {\n        value += x\n    }"
+    ]
+  },
+  {
+    "function": [
+      "static func multiply(_ a: Int, _ b: Int) -> Int {\n        return a * b\n    }"
+    ]
+  },
+  {
+    "function": [
+      "func reset() {\n        value = 0\n    }"
+    ]
+  },
+  {
+    "function": [
+      "func makeSound() -> String"
+    ]
+  },
+  {
+    "function": [
+      "func move()"
+    ]
+  },
+  {
+    "function": [
+      "func makeSound() -> String {\n        return \"Woof!\"\n    }"
+    ]
+  },
+  {
+    "function": [
+      "func move() {\n        print(\"Running on four legs\")\n    }"
+    ]
+  },
+  {
+    "function": [
+      "func squared() -> Int {\n        return self * self\n    }"
+    ]
+  },
+  {
+    "function": [
+      "func fetchData() async throws -> String {\n    return \"Data\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "static func main() {\n        let result = add(5, 3)\n        print(\"Result: \\(result)\")\n    }"
+    ]
+  }
+]

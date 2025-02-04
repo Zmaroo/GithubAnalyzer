@@ -1,0 +1,22 @@
+[
+  {
+    "function": [
+      "module counter(\n    input wire clk,\n    input wire rst,\n    output reg [3:0] count\n);\n    always @(posedge clk or posedge rst) begin\n        if (rst)\n            count <= 4'b0000;\n        else\n            count <= count + 1;\n    end\nendmodule"
+    ]
+  },
+  {
+    "function": [
+      "module test_module;\n    function automatic [7:0] add;\n        input [7:0] a, b;\n        begin\n            add = a + b;\n        end\n    endfunction\n\n    task automatic print_value;\n        input [7:0] value;\n        begin\n            $display(\"Value: %h\", value);\n        end\n    endtask\n\n    initial begin\n        reg [7:0] x, y, result;\n        x = 8'h5A;\n        y = 8'h3C;\n        result = add(x, y);\n        print_value(result);\n    end\nendmodule"
+    ]
+  },
+  {
+    "function": [
+      "function automatic [7:0] add;\n        input [7:0] a, b;\n        begin\n            add = a + b;\n        end\n    endfunction"
+    ]
+  },
+  {
+    "function": [
+      "task automatic print_value;\n        input [7:0] value;\n        begin\n            $display(\"Value: %h\", value);\n        end\n    endtask"
+    ]
+  }
+]

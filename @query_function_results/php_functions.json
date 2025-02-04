@@ -1,0 +1,150 @@
+[
+  {
+    "function": [
+      "public function __construct(string $name, int $age) {\n        $this->name = $name;\n        $this->age = $age;\n    }"
+    ],
+    "function.name": [
+      "__construct"
+    ],
+    "function.params": [
+      "(string $name, int $age)"
+    ],
+    "function.body": [
+      "{\n        $this->name = $name;\n        $this->age = $age;\n    }"
+    ]
+  },
+  {
+    "function": [
+      "public function getName(): string {\n        return $this->name;\n    }"
+    ],
+    "function.name": [
+      "getName"
+    ],
+    "function.params": [
+      "()"
+    ],
+    "function.body": [
+      "{\n        return $this->name;\n    }"
+    ]
+  },
+  {
+    "function": [
+      "public function setAge(int $age): void {\n        $this->age = $age;\n    }"
+    ],
+    "function.name": [
+      "setAge"
+    ],
+    "function.params": [
+      "(int $age)"
+    ],
+    "function.body": [
+      "{\n        $this->age = $age;\n    }"
+    ]
+  },
+  {
+    "function": [
+      "public static function fromArray(array $data): User {\n        return new self($data['name'], $data['age']);\n    }"
+    ],
+    "function.name": [
+      "fromArray"
+    ],
+    "function.params": [
+      "(array $data)"
+    ],
+    "function.body": [
+      "{\n        return new self($data['name'], $data['age']);\n    }"
+    ]
+  },
+  {
+    "function": [
+      "public function getDescription(): ?string {\n        if ($this->age < 18) {\n            return null;\n        }\n        return \"{$this->name} is {$this->age} years old\";\n    }"
+    ],
+    "function.name": [
+      "getDescription"
+    ],
+    "function.params": [
+      "()"
+    ],
+    "function.body": [
+      "{\n        if ($this->age < 18) {\n            return null;\n        }\n        return \"{$this->name} is {$this->age} years old\";\n    }"
+    ]
+  },
+  {
+    "function": [
+      "private function log(string $message): void {\n        echo \"[LOG] {$message}\\n\";\n    }"
+    ],
+    "function.name": [
+      "log"
+    ],
+    "function.params": [
+      "(string $message)"
+    ],
+    "function.body": [
+      "{\n        echo \"[LOG] {$message}\\n\";\n    }"
+    ]
+  },
+  {
+    "function": [
+      "function greet(string $name): string {\n    return \"Hello, {$name}!\";\n}"
+    ],
+    "function.name": [
+      "greet"
+    ],
+    "function.params": [
+      "(string $name)"
+    ],
+    "function.body": [
+      "{\n    return \"Hello, {$name}!\";\n}"
+    ]
+  },
+  {
+    "function": [
+      "function multiply(int $a, int $b = 2): int {\n    return $a * $b;\n}"
+    ],
+    "function.name": [
+      "multiply"
+    ],
+    "function.params": [
+      "(int $a, int $b = 2)"
+    ],
+    "function.body": [
+      "{\n    return $a * $b;\n}"
+    ]
+  },
+  {
+    "function": [
+      "function sum(...$numbers): int {\n    return array_sum($numbers);\n}"
+    ],
+    "function.name": [
+      "sum"
+    ],
+    "function.params": [
+      "(...$numbers)"
+    ],
+    "function.body": [
+      "{\n    return array_sum($numbers);\n}"
+    ]
+  },
+  {
+    "function": [
+      "function(array $items, callable $predicate) {\n    return array_filter($items, $predicate);\n}"
+    ],
+    "function.params": [
+      "(array $items, callable $predicate)"
+    ],
+    "function.body": [
+      "{\n    return array_filter($items, $predicate);\n}"
+    ]
+  },
+  {
+    "function": [
+      "function($x) use ($multiplier) {\n    return $x * $multiplier;\n}"
+    ],
+    "function.params": [
+      "($x)"
+    ],
+    "function.body": [
+      "{\n    return $x * $multiplier;\n}"
+    ]
+  }
+]

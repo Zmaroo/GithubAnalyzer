@@ -1,202 +1,77 @@
-{
-  "language": "r",
-  "pattern": "\n            [\n              (function_definition)\n            ] @function\n        ",
-  "total_functions": 15,
-  "functions": [
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 1,
-        "column": 7
-      },
-      "end_point": {
-        "row": 3,
-        "column": 1
-      },
-      "code": "function(a, b) {\n  a + b\n}",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 6,
-        "column": 9
-      },
-      "end_point": {
-        "row": 8,
-        "column": 1
-      },
-      "code": "function(name = \"World\") {\n  paste(\"Hello,\", name, \"!\")\n}",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 11,
-        "column": 13
-      },
-      "end_point": {
-        "row": 17,
-        "column": 1
-      },
-      "code": "function(x) {\n  list(\n    mean = mean(x),\n    median = median(x),\n    sd = sd(x)\n  )\n}",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 20,
-        "column": 11
-      },
-      "end_point": {
-        "row": 23,
-        "column": 1
-      },
-      "code": "function(...) {\n  args <- list(...)\n  sum(unlist(args))\n}",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 26,
-        "column": 14
-      },
-      "end_point": {
-        "row": 28,
-        "column": 1
-      },
-      "code": "function(formula, data) {\n  lm(formula, data = data)\n}",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 31,
-        "column": 12
-      },
-      "end_point": {
-        "row": 31,
-        "column": 27
-      },
-      "code": "function(x) x^2",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 34,
-        "column": 16
-      },
-      "end_point": {
-        "row": 40,
-        "column": 1
-      },
-      "code": "function() {\n  count <- 0\n  function() {\n    count <<- count + 1\n    count\n  }\n}",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 36,
-        "column": 2
-      },
-      "end_point": {
-        "row": 39,
-        "column": 3
-      },
-      "code": "function() {\n    count <<- count + 1\n    count\n  }",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 43,
-        "column": 15
-      },
-      "end_point": {
-        "row": 51,
-        "column": 1
-      },
-      "code": "function(name, age) {\n  structure(\n    list(\n      name = name,\n      age = age\n    ),\n    class = \"person\"\n  )\n}",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 53,
-        "column": 16
-      },
-      "end_point": {
-        "row": 56,
-        "column": 1
-      },
-      "code": "function(x, ...) {\n  cat(\"Person:\", x$name, \"\\n\")\n  cat(\"Age:\", x$age, \"\\n\")\n}",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 69,
-        "column": 2
-      },
-      "end_point": {
-        "row": 71,
-        "column": 3
-      },
-      "code": "function(object) {\n    cat(\"Calculator value:\", object@value, \"\\n\")\n  }",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 74,
-        "column": 24
-      },
-      "end_point": {
-        "row": 74,
-        "column": 69
-      },
-      "code": "function(obj, x) standardGeneric(\"add_value\")",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 79,
-        "column": 2
-      },
-      "end_point": {
-        "row": 82,
-        "column": 3
-      },
-      "code": "function(obj, x) {\n    obj@value <- obj@value + x\n    obj\n  }",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 86,
-        "column": 17
-      },
-      "end_point": {
-        "row": 88,
-        "column": 1
-      },
-      "code": "function(x, w) {\n  sum(x * w) / sum(w)\n}",
-      "name": "function"
-    },
-    {
-      "type": "function_definition",
-      "start_point": {
-        "row": 92,
-        "column": 8
-      },
-      "end_point": {
-        "row": 105,
-        "column": 1
-      },
-      "code": "function() {\n  # Test regular function\n  result <- add(5, 3)\n  print(result)\n  \n  # Test person class\n  person <- make_person(\"Alice\", 30)\n  print(person)\n  \n  # Test calculator\n  calc <- new(\"Calculator\", value = 0)\n  calc <- add_value(calc, 10)\n  show(calc)\n}",
-      "name": "function"
-    }
-  ]
-}
+[
+  {
+    "function": [
+      "function(a, b) {\n  a + b\n}"
+    ]
+  },
+  {
+    "function": [
+      "function(name = \"World\") {\n  paste(\"Hello,\", name, \"!\")\n}"
+    ]
+  },
+  {
+    "function": [
+      "function(x) {\n  list(\n    mean = mean(x),\n    median = median(x),\n    sd = sd(x)\n  )\n}"
+    ]
+  },
+  {
+    "function": [
+      "function(...) {\n  args <- list(...)\n  sum(unlist(args))\n}"
+    ]
+  },
+  {
+    "function": [
+      "function(formula, data) {\n  lm(formula, data = data)\n}"
+    ]
+  },
+  {
+    "function": [
+      "function(x) x^2"
+    ]
+  },
+  {
+    "function": [
+      "function() {\n  count <- 0\n  function() {\n    count <<- count + 1\n    count\n  }\n}"
+    ]
+  },
+  {
+    "function": [
+      "function() {\n    count <<- count + 1\n    count\n  }"
+    ]
+  },
+  {
+    "function": [
+      "function(name, age) {\n  structure(\n    list(\n      name = name,\n      age = age\n    ),\n    class = \"person\"\n  )\n}"
+    ]
+  },
+  {
+    "function": [
+      "function(x, ...) {\n  cat(\"Person:\", x$name, \"\\n\")\n  cat(\"Age:\", x$age, \"\\n\")\n}"
+    ]
+  },
+  {
+    "function": [
+      "function(object) {\n    cat(\"Calculator value:\", object@value, \"\\n\")\n  }"
+    ]
+  },
+  {
+    "function": [
+      "function(obj, x) standardGeneric(\"add_value\")"
+    ]
+  },
+  {
+    "function": [
+      "function(obj, x) {\n    obj@value <- obj@value + x\n    obj\n  }"
+    ]
+  },
+  {
+    "function": [
+      "function(x, w) {\n  sum(x * w) / sum(w)\n}"
+    ]
+  },
+  {
+    "function": [
+      "function() {\n  # Test regular function\n  result <- add(5, 3)\n  print(result)\n  \n  # Test person class\n  person <- make_person(\"Alice\", 30)\n  print(person)\n  \n  # Test calculator\n  calc <- new(\"Calculator\", value = 0)\n  calc <- add_value(calc, 10)\n  show(calc)\n}"
+    ]
+  }
+]

@@ -45,17 +45,23 @@ def configure_parser_logging(parser: Parser, logger_name: str = "tree_sitter") -
     
     # Create a logging callback that handles both PARSE and LEX log types
     def logger_callback(log_type: LogType, msg: str) -> None:
-        context = {
-            'source': 'tree-sitter',
-            'type': 'parser',
-            'log_type': 'parse' if log_type == LogType.PARSE else 'lex'
-        }
-        if log_type == LogType.PARSE:
-            ts_logger.debug(msg, extra={'context': context})
-        else:  # LEX
-            ts_logger.info(msg, extra={'context': context})
+        try:
+            context = {
+                'source': 'tree-sitter',
+                'type': 'parser',
+                'log_type': 'parse' if log_type == LogType.PARSE else 'lex'
+            }
+            if log_type == LogType.PARSE:
+                ts_logger.debug(msg, extra={'context': context})
+            else:  # LEX
+                ts_logger.info(msg, extra={'context': context})
+        except Exception as e:
+            ts_logger.error("Exception in logger_callback: %s", str(e))
     
     # Set the logger on the parser
     parser.set_logger_callback(logger_callback)
     
-    return ts_logger 
+    return ts_logger
+
+# Add this to the end of the file
+TREE_SITTER_LOGGING_ENABLED = False 

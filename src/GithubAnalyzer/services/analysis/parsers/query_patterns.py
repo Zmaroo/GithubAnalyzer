@@ -5,6 +5,10 @@ Contains predefined patterns for common code elements and their optimization set
 """
 from dataclasses import dataclass
 from GithubAnalyzer.services.analysis.parsers.custom_parsers import get_custom_parser
+from GithubAnalyzer.utils.logging import get_logger
+from GithubAnalyzer.services.analysis.parsers.query_patterns.language_patterns import PYTHON_PATTERNS, C_PATTERNS, YAML_PATTERNS, JS_VARIANT_PATTERNS, TS_PATTERNS, TOML_PATTERNS, DOCKERFILE_PATTERNS, MARKDOWN_PATTERNS, JAVA_PATTERNS, GO_PATTERNS, RUST_PATTERNS, CPP_PATTERNS, RUBY_PATTERNS, PHP_PATTERNS, SWIFT_PATTERNS, KOTLIN_PATTERNS, HTML_PATTERNS, BASH_PATTERNS, DART_PATTERNS, ELIXIR_PATTERNS, ADA_PATTERNS, HASKELL_PATTERNS, PERL_PATTERNS, OBJECTIVEC_PATTERNS, LUA_PATTERNS, SCALA_PATTERNS, GROOVY_PATTERNS, RACKET_PATTERNS, CLOJURE_PATTERNS, SQUIRREL_PATTERNS, POWERSHELL_PATTERNS
+
+logger = get_logger(__name__)
 
 # JavaScript/TypeScript variants
 JS_VARIANTS = {"javascript", "jsx", "typescript", "tsx"}
@@ -48,6 +52,11 @@ EXTENSION_TO_LANGUAGE = {
     'go': 'go',
     'mod': 'gomod',
     'sum': 'gosum',
+    'v': 'verilog',
+    'sv': 'verilog',
+    'vh': 'verilog',
+    'vhd': 'vhdl',
+    'vhdl': 'vhdl',
     
     # JVM Languages
     'java': 'java',
@@ -141,10 +150,6 @@ EXTENSION_TO_LANGUAGE = {
     'r': 'r',
     'rmd': 'r',
     'jl': 'julia',
-    'v': 'verilog',
-    'vh': 'verilog',
-    'vhd': 'vhdl',
-    'vhdl': 'vhdl',
     'zig': 'zig',
     
     # Query Languages
@@ -168,7 +173,9 @@ EXTENSION_TO_LANGUAGE = {
     'rules': 'udev',
     'hypr': 'hyprlang',
     'kdl': 'kdl',
-    'ron': 'ron'
+    'ron': 'ron',
+    'commonlisp': 'commonlisp',
+    'elixir': 'elixir'
 }
 
 # Special filename mappings
@@ -609,397 +616,122 @@ PATTERN_TEMPLATES = {
 
 def create_function_pattern(
     function_type: str,
-    name_type: str = "identifier",
-    params_type: str = "formal_parameters",
-    body_type: str = "statement_block"
+    config: Optional[Dict[str, str]] = None
 ) -> str:
-    """Create a function pattern from the template.
+    """Create a function pattern from the template with configurable node type identifiers.
     
     Args:
-        function_type: Type of function node
-        name_type: Type of name node
-        params_type: Type of parameters node
-        body_type: Type of body node
-        
+        function_type: Type of function node.
+        config: Optional dictionary to override default node type values for function name, parameters, and body.
+                Defaults are: name_type='identifier', params_type='formal_parameters', body_type='statement_block'.
+                
     Returns:
         Function pattern string
     """
+    defaults = {
+        'name_type': 'identifier',
+        'params_type': 'formal_parameters',
+        'body_type': 'statement_block'
+    }
+    if config:
+        defaults.update(config)
     return PATTERN_TEMPLATES["basic_function"].format(
         function_type=function_type,
-        name_type=name_type,
-        params_type=params_type,
-        body_type=body_type
+        name_type=defaults["name_type"],
+        params_type=defaults["params_type"],
+        body_type=defaults["body_type"]
     )
 
 def create_class_pattern(
     class_type: str,
-    name_type: str = "identifier",
-    body_type: str = "class_body",
-    inheritance: str = ""
+    config: Optional[Dict[str, str]] = None
 ) -> str:
-    """Create a class pattern from the template.
+    """Create a class pattern from the template with configurable node type identifiers.
     
     Args:
-        class_type: Type of class node
-        name_type: Type of name node
-        body_type: Type of body node
-        inheritance: Inheritance clause pattern
-        
+        class_type: Type of class node.
+        config: Optional dictionary to override default node type values for class name, body, and inheritance clause.
+                Defaults are: name_type='identifier', body_type='class_body', inheritance=''.
+                
     Returns:
         Class pattern string
     """
+    defaults = {
+        'name_type': 'identifier',
+        'body_type': 'class_body',
+        'inheritance': ''
+    }
+    if config:
+        defaults.update(config)
     return PATTERN_TEMPLATES["basic_class"].format(
         class_type=class_type,
-        name_type=name_type,
-        body_type=body_type,
-        inheritance=inheritance
+        name_type=defaults["name_type"],
+        body_type=defaults["body_type"],
+        inheritance=defaults["inheritance"]
     )
 
-# Python-specific patterns
-PYTHON_PATTERNS = {
-    "function": """
-        [
-          (function_definition)
-          (lambda)
-        ] @function
+def create_method_pattern(
+    method_type: str,
+    config: Optional[Dict[str, str]] = None
+) -> str:
+    """Create a query pattern for method definitions with configurable node type identifiers.
+    
+    Args:
+        method_type: The node type for the method (e.g., 'method_declaration').
+        config: Optional dictionary to override default node type values for method name, parameters, and body.
+                For example: {'name_type': 'custom_identifier', 'params_type': 'custom_params'}.
+                If not provided, defaults will be used.
+                Defaults are: name_type='identifier', params_type='formal_parameters', body_type='statement_block'.
+                
+    Returns:
+        A formatted query pattern string for method definitions.
     """
-}
-
-# Add C-specific patterns
-C_PATTERNS = {
-    "function": """
-        [
-          (function_definition)
-        ] @function
-    """
-}
-
-# Add YAML patterns
-YAML_PATTERNS = {
-    "mapping": """
-        (block_mapping_pair
-          key: (_) @mapping.key
-          value: (_) @mapping.value) @mapping
-    """,
-    "sequence": """
-        (block_sequence
-          (block_sequence_item
-            (_) @sequence.item)*) @sequence
-    """,
-    "anchor": """
-        (anchor
-          name: (anchor_name) @anchor.name) @anchor
-    """,
-    "alias": """
-        (alias
-          name: (alias_name) @alias.name) @alias
-    """
-}
-
-# Add TOML patterns
-TOML_PATTERNS = {
-    "table": """
-        (table
-          header: (table_header) @table.header
-          entries: (pair
-            key: (_) @table.key
-            value: (_) @table.value)*) @table
-    """,
-    "array": """
-        (array
-          value: (_)* @array.value) @array
-    """,
-    "inline_table": """
-        (inline_table
-          (pair
-            key: (_) @table.key
-            value: (_) @table.value)*) @inline_table
-    """
-}
-
-# Add Dockerfile patterns
-DOCKERFILE_PATTERNS = {
-    "instruction": """
-        (instruction
-          cmd: (_) @instruction.cmd
-          value: (_)* @instruction.value) @instruction
-    """,
-    "from": """
-        (from_instruction
-          image: (_) @from.image
-          tag: (_)? @from.tag
-          platform: (_)? @from.platform) @from
-    """,
-    "run": """
-        (run_instruction
-          command: (_) @run.command) @run
-    """
-}
-
-# Enhance Markdown patterns
-MARKDOWN_PATTERNS = {
-    "heading": """
-        (atx_heading
-          marker: (_) @heading.marker
-          content: (_) @heading.content) @heading
-    """,
-    "list": """
-        (list
-          item: (list_item
-            content: (_) @list.item.content)*) @list
-    """,
-    "link": """
-        [
-          (link
-            text: (_) @link.text
-            url: (_) @link.url) @link
-          (image
-            text: (_) @image.text
-            url: (_) @image.url) @image
-        ]
-    """,
-    "code_block": """
-        [
-          (fenced_code_block
-            language: (_)? @code.language
-            content: (_) @code.content) @code.block
-          (indented_code_block) @code.indented
-        ]
-    """,
-    "blockquote": """
-        (block_quote
-          content: (_) @quote.content) @quote
-    """
-}
+    defaults = {
+        'name_type': 'identifier',
+        'params_type': 'formal_parameters',
+        'body_type': 'statement_block'
+    }
+    if config:
+        defaults.update(config)
+    return PATTERN_TEMPLATES["basic_method"].format(
+        method_type=method_type,
+        name_type=defaults["name_type"],
+        params_type=defaults["params_type"],
+        body_type=defaults["body_type"]
+    )
 
 # Query patterns by language with assertions and settings
 QUERY_PATTERNS = {
-    "python": {
-        "function": """
-            [
-              (function_definition)
-              (lambda)
-            ] @function
-        """
-    },
+    "python": PYTHON_PATTERNS,
     **JS_VARIANT_PATTERNS,  # Add JavaScript variants
-    "c": {
-        "function": """
-            [
-              (function_definition)
-            ] @function
-        """
-    },
+    "c": C_PATTERNS,
     "yaml": YAML_PATTERNS,
     "toml": TOML_PATTERNS,
     "dockerfile": DOCKERFILE_PATTERNS,
     "markdown": MARKDOWN_PATTERNS,
-    "java": {
-        "function": """
-            [
-              (method_declaration)
-              (constructor_declaration)
-            ] @function
-        """
-    },
-    "go": {
-        "function": """
-            [
-              (function_declaration)
-              (method_declaration)
-            ] @function
-        """
-    },
-    "rust": {
-        "function": """
-            [
-              (function_item)
-              (closure_expression)
-            ] @function
-        """
-    },
-    "cpp": {
-        "function": """
-            [
-              (function_definition)
-              (method_definition)
-            ] @function
-        """
-    },
-    "scala": {
-        "function": """
-            [
-              (function_definition)
-              (class_definition)
-            ] @function
-        """
-    },
-    "ruby": {
-        "function": """
-            [
-              (method)
-              (singleton_method)
-            ] @function
-        """
-    },
-    "swift": {
-        "function": """
-            [
-              (function_declaration)
-              (protocol_function_declaration)
-              (lambda_function_type)
-            ] @function
-        """
-    },
-    "kotlin": {
-        "function": """
-            [
-              (function_declaration)
-              (lambda_literal)
-            ] @function
-        """
-    },
-    "lua": {
-        "function": """
-            [
-              (function_definition)
-              (function_declaration)
-            ] @function
-        """
-    },
-    "r": {
-        "function": """
-            [
-              (function_definition)
-            ] @function
-        """
-    },
-    "hack": {
-        "function": """
-            [
-              (method_declaration)
-              (function_declaration)
-              (lambda_expression)
-            ] @function
-        """
-    },
-    "gleam": {
-        "function": """
-            [
-              (function)
-              (anonymous_function)
-            ] @function
-        """
-    },
-    "haxe": {
-        "function": """
-            (function_declaration) @function
-            (identifier) @function
-        """
-    },
-    "pascal": {
-        "function": """
-            [
-              (function_declaration)
-              (procedure_declaration)
-            ] @function
-        """
-    },
-    "fortran": {
-        "function": """
-            [
-              (function_definition)
-              (subroutine_definition)
-            ] @function
-        """
-    },
-    "d": {
-        "function": """
-            [
-              (function_declaration)
-              (constructor_declaration)
-              (destructor_declaration)
-            ] @function
-        """
-    },
-    "groovy": {
-        "function": """
-            (func) @function
-        """
-    },
-    "racket": {
-        "function": """
-            (list
-                (symbol) @def_type
-                (#match? @def_type "^(define|define-syntax|λ|lambda|define/contract)$")
-            ) @function
-        """
-    },
-    "clojure": {
-        "function": """
-            (list_lit
-                (sym_lit) @def_type
-                (#match? @def_type "^(defn|defn-|defmacro|defmethod|fn)$")
-            ) @function
-        """
-    },
-    "elixir": {
-        "function": """
-            [
-                ; Module, protocol, and implementation definitions
-                (call
-                    target: (identifier) @def_type
-                    (#match? @def_type "^(defmodule|defprotocol|defimpl)$")
-                ) @module
-
-                ; Function definitions (including macros and guards)
-                (call
-                    target: (identifier) @def_type
-                    (#match? @def_type "^(def|defp|defmacro|defguard)$")
-                    args: (arguments
-                        .  ; Ensure this is the first argument
-                        [
-                            ; Simple function head
-                            (identifier) @name
-                            ; Function head with parameters
-                            (call
-                                target: (identifier) @name
-                                args: (_)* @params
-                            )
-                        ]
-                        .  ; Ensure this is followed by
-                        [
-                            ; Block body
-                            (do_block) @body
-                            ; Single expression body with do:
-                            (keywords
-                                .
-                                (pair
-                                    key: (identifier) @keyword
-                                    (#eq? @keyword "do")
-                                    value: (_) @body
-                                )
-                            )
-                        ]
-                    )
-                ) @function.def
-
-                ; Anonymous functions
-                (anonymous_function
-                    args: (arguments) @params
-                    body: (_) @body
-                ) @function.anon
-            ]
-        """
-    },
-    "haskell": {
-        "function": """
-            [
-              (function)
-              (lambda)
-            ] @function
-        """
-    },
+    "java": JAVA_PATTERNS,
+    "go": GO_PATTERNS,
+    "rust": RUST_PATTERNS,
+    "cpp": CPP_PATTERNS,
+    "ruby": RUBY_PATTERNS,
+    "php": PHP_PATTERNS,
+    "swift": SWIFT_PATTERNS,
+    "kotlin": KOTLIN_PATTERNS,
+    "html": HTML_PATTERNS,
+    "bash": BASH_PATTERNS,
+    "dart": DART_PATTERNS,
+    "elixir": ELIXIR_PATTERNS,
+    "ada": ADA_PATTERNS,
+    "haskell": HASKELL_PATTERNS,
+    "perl": PERL_PATTERNS,
+    "objective-c": OBJECTIVEC_PATTERNS,
+    "lua": LUA_PATTERNS,
+    "scala": SCALA_PATTERNS,
+    "groovy": GROOVY_PATTERNS,
+    "racket": RACKET_PATTERNS,
+    "clojure": CLOJURE_PATTERNS,
+    "squirrel": SQUIRREL_PATTERNS,
+    "powershell": POWERSHELL_PATTERNS,
     "purescript": {
         "function": """
             [
@@ -1008,26 +740,47 @@ QUERY_PATTERNS = {
             ] @function
         """
     },
-    "dart": {
+    "tcl": {
+        "function": """
+            (procedure
+                name: (_) @function.name
+                arguments: (_) @function.args
+                body: (_) @function.body)
+        """
+    },
+    "verilog": {
         "function": """
             [
-              (function_signature)
-              (method_signature)
-              (constructor_signature)
-              (function_expression)
-              (function_body)
+              (module_declaration) @function
+              (function_declaration) @function
+              (task_declaration) @function
+            ]
+        """
+    },
+    "zig": {
+        "function": """
+            [
+                (Decl (FnProto function: (IDENTIFIER) @function.name (ParamDeclList)? @function.params) (Block) @function.body),
+                (FnProto function: (IDENTIFIER) @function.name (ParamDeclList)? @function.params),
+                (TestDecl (IDENTIFIER) @function.name (Block) @function.body)
             ] @function
         """
     },
-    "ocaml": {
+    "commonlisp": {
         "function": """
-            [
-              (let_binding)
-              (let_rec_binding)
-              (value_binding)
-              (method_binding)
-              (fun_binding)
-            ] @function
+            (list_lit value: [ (sym_lit) @defun.keyword (#eq? @defun.keyword "defun") (sym_lit) @function.name (list_lit) @function.args (_)* @function.body ])
+            (list_lit value: [ (sym_lit) @defmethod.keyword (#eq? @defmethod.keyword "defmethod") (sym_lit) @function.name (list_lit) @function.args (_)* @function.body ])
+            (list_lit value: [ (sym_lit) @defmacro.keyword (#eq? @defmacro.keyword "defmacro") (sym_lit) @function.name (list_lit) @function.args (_)* @function.body ])
+            (list_lit value: [ (sym_lit) @lambda.keyword (#eq? @lambda.keyword "lambda") (list_lit) @function.args (_)* @function.body ])
+        """
+    },
+    "fish": {
+        "function": "(function_definition) @function"
+    },
+    "erlang": {
+        "function": """
+            (fun_decl (function_clause name: (atom) @function.name args: (expr_args) @function.args body: (clause_body) @function.body))
+            (anonymous_fun (fun_clause args: (expr_args) @function.args body: (clause_body) @function.body))
         """
     }
 }

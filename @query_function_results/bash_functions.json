@@ -1,0 +1,382 @@
+[
+  {
+    "function": [
+      "validate_age() {\n    local age=$1\n    if ! [[ \"$age\" =~ ^[0-9]+$ ]]; then\n        echo \"Error: Age must be a number\"\n        return 1\n    elif [ \"$age\" -lt 0 ]; then\n        echo \"Error: Age cannot be negative\"\n        return 1\n    fi\n    return 0\n}"
+    ]
+  },
+  {
+    "function": [
+      "echo \"Error: Age must be a number\""
+    ]
+  },
+  {
+    "function": [
+      "return 1"
+    ]
+  },
+  {
+    "function": [
+      "echo \"Error: Age cannot be negative\""
+    ]
+  },
+  {
+    "function": [
+      "return 1"
+    ]
+  },
+  {
+    "function": [
+      "return 0"
+    ]
+  },
+  {
+    "function": [
+      "is_adult() {\n    local age=$1\n    if [ \"$age\" -ge \"$DEFAULT_AGE\" ]; then\n        return 0  # true in bash\n    else\n        return 1  # false in bash\n    fi\n}"
+    ]
+  },
+  {
+    "function": [
+      "return 0"
+    ]
+  },
+  {
+    "function": [
+      "return 1"
+    ]
+  },
+  {
+    "function": [
+      "format_user() {\n    local name=$1\n    local age=$2\n    echo \"$name ($age years old)\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "echo \"$name ($age years old)\""
+    ]
+  },
+  {
+    "function": [
+      "create_greeting() {\n    local name=$1\n    local prefix=${2:-\"Hello\"}\n    echo \"$prefix, $name!\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "echo \"$prefix, $name!\""
+    ]
+  },
+  {
+    "function": [
+      "process_user_opts() {\n    local OPTIND opt\n    local name=\"\" age=\"\"\n    \n    while getopts \"n:a:\" opt; do\n        case $opt in\n            n) name=\"$OPTARG\" ;;\n            a) age=\"$OPTARG\" ;;\n            *) return 1 ;;\n        esac\n    done\n    \n    if [ -z \"$name\" ] || [ -z \"$age\" ]; then\n        echo \"Error: Both name (-n) and age (-a) are required\"\n        return 1\n    fi\n    \n    format_user \"$name\" \"$age\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "getopts \"n:a:\" opt"
+    ]
+  },
+  {
+    "function": [
+      "return 1"
+    ]
+  },
+  {
+    "function": [
+      "echo \"Error: Both name (-n) and age (-a) are required\""
+    ]
+  },
+  {
+    "function": [
+      "return 1"
+    ]
+  },
+  {
+    "function": [
+      "format_user \"$name\" \"$age\""
+    ]
+  },
+  {
+    "function": [
+      "process_users() {\n    local -n users=$1  # nameref to array\n    local count=0\n    \n    for user in \"${users[@]}\"; do\n        echo \"Processing: $user\"\n        ((count++))\n    done\n    \n    echo \"Processed $count users\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "echo \"Processing: $user\""
+    ]
+  },
+  {
+    "function": [
+      "echo \"Processed $count users\""
+    ]
+  },
+  {
+    "function": [
+      "save_user() {\n    local name=$1\n    local age=$2\n    \n    if ! validate_age \"$age\"; then\n        return 1\n    fi\n    \n    echo \"$name:$age\" >> \"$DB_FILE\"\n    echo \"User saved successfully\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "validate_age \"$age\""
+    ]
+  },
+  {
+    "function": [
+      "return 1"
+    ]
+  },
+  {
+    "function": [
+      "echo \"$name:$age\""
+    ]
+  },
+  {
+    "function": [
+      "echo \"User saved successfully\""
+    ]
+  },
+  {
+    "function": [
+      "get_users() {\n    if [ ! -f \"$DB_FILE\" ]; then\n        echo \"No users found\"\n        return 1\n    fi\n    \n    while IFS=: read -r name age; do\n        format_user \"$name\" \"$age\"\n    done < \"$DB_FILE\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "echo \"No users found\""
+    ]
+  },
+  {
+    "function": [
+      "return 1"
+    ]
+  },
+  {
+    "function": [
+      "IFS=: read -r name age"
+    ]
+  },
+  {
+    "function": [
+      "format_user \"$name\" \"$age\""
+    ]
+  },
+  {
+    "function": [
+      "get_adult_users() {\n    while IFS=: read -r name age; do\n        if is_adult \"$age\"; then\n            format_user \"$name\" \"$age\"\n        fi\n    done < \"$DB_FILE\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "IFS=: read -r name age"
+    ]
+  },
+  {
+    "function": [
+      "is_adult \"$age\""
+    ]
+  },
+  {
+    "function": [
+      "format_user \"$name\" \"$age\""
+    ]
+  },
+  {
+    "function": [
+      "create_user() {\n    local name=$1\n    local age=$2\n    \n    if [ -z \"$name\" ]; then\n        echo \"Error: Name is required\" >&2\n        return 1\n    fi\n    \n    if ! validate_age \"$age\"; then\n        return 1\n    fi\n    \n    save_user \"$name\" \"$age\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "echo \"Error: Name is required\""
+    ]
+  },
+  {
+    "function": [
+      "return 1"
+    ]
+  },
+  {
+    "function": [
+      "validate_age \"$age\""
+    ]
+  },
+  {
+    "function": [
+      "return 1"
+    ]
+  },
+  {
+    "function": [
+      "save_user \"$name\" \"$age\""
+    ]
+  },
+  {
+    "function": [
+      "validate_name() {\n    local name=$1\n    if [[ \"$name\" =~ ^[A-Za-z][A-Za-z\\ \\']*$ ]]; then\n        return 0\n    else\n        echo \"Error: Invalid name format\"\n        return 1\n    fi\n}"
+    ]
+  },
+  {
+    "function": [
+      "return 0"
+    ]
+  },
+  {
+    "function": [
+      "echo \"Error: Invalid name format\""
+    ]
+  },
+  {
+    "function": [
+      "return 1"
+    ]
+  },
+  {
+    "function": [
+      "cleanup() {\n    echo \"Cleaning up...\"\n    [ -f \"$DB_FILE\" ] && rm \"$DB_FILE\"\n    echo \"Cleanup complete\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "echo \"Cleaning up...\""
+    ]
+  },
+  {
+    "function": [
+      "rm \"$DB_FILE\""
+    ]
+  },
+  {
+    "function": [
+      "echo \"Cleanup complete\""
+    ]
+  },
+  {
+    "function": [
+      "trap cleanup EXIT"
+    ]
+  },
+  {
+    "function": [
+      "main() {\n    # Test basic functions\n    echo \"Creating users...\"\n    create_user \"John\" \"25\"\n    create_user \"Alice\" \"17\"\n    \n    echo -e \"\\nAll users:\"\n    get_users\n    \n    echo -e \"\\nAdult users:\"\n    get_adult_users\n    \n    # Test array processing\n    local -a user_list=(\"John (25)\" \"Alice (17)\" \"Bob (30)\")\n    echo -e \"\\nProcessing user list:\"\n    process_users user_list\n    \n    # Test option processing\n    echo -e \"\\nProcessing user with options:\"\n    process_user_opts -n \"Charlie\" -a \"22\"\n    \n    # Test greetings\n    echo -e \"\\nGreetings:\"\n    create_greeting \"David\"\n    create_greeting \"Eve\" \"Hi\"\n    \n    # Test validation\n    echo -e \"\\nValidation tests:\"\n    validate_name \"John Doe\" && echo \"Valid name\"\n    validate_name \"John123\" || echo \"Invalid name\"\n    \n    validate_age \"25\" && echo \"Valid age\"\n    validate_age \"-5\" || echo \"Invalid age\"\n}"
+    ]
+  },
+  {
+    "function": [
+      "echo \"Creating users...\""
+    ]
+  },
+  {
+    "function": [
+      "create_user \"John\" \"25\""
+    ]
+  },
+  {
+    "function": [
+      "create_user \"Alice\" \"17\""
+    ]
+  },
+  {
+    "function": [
+      "echo -e \"\\nAll users:\""
+    ]
+  },
+  {
+    "function": [
+      "get_users"
+    ]
+  },
+  {
+    "function": [
+      "echo -e \"\\nAdult users:\""
+    ]
+  },
+  {
+    "function": [
+      "get_adult_users"
+    ]
+  },
+  {
+    "function": [
+      "echo -e \"\\nProcessing user list:\""
+    ]
+  },
+  {
+    "function": [
+      "process_users user_list"
+    ]
+  },
+  {
+    "function": [
+      "echo -e \"\\nProcessing user with options:\""
+    ]
+  },
+  {
+    "function": [
+      "process_user_opts -n \"Charlie\" -a \"22\""
+    ]
+  },
+  {
+    "function": [
+      "echo -e \"\\nGreetings:\""
+    ]
+  },
+  {
+    "function": [
+      "create_greeting \"David\""
+    ]
+  },
+  {
+    "function": [
+      "create_greeting \"Eve\" \"Hi\""
+    ]
+  },
+  {
+    "function": [
+      "echo -e \"\\nValidation tests:\""
+    ]
+  },
+  {
+    "function": [
+      "validate_name \"John Doe\""
+    ]
+  },
+  {
+    "function": [
+      "echo \"Valid name\""
+    ]
+  },
+  {
+    "function": [
+      "validate_name \"John123\""
+    ]
+  },
+  {
+    "function": [
+      "echo \"Invalid name\""
+    ]
+  },
+  {
+    "function": [
+      "validate_age \"25\""
+    ]
+  },
+  {
+    "function": [
+      "echo \"Valid age\""
+    ]
+  },
+  {
+    "function": [
+      "validate_age \"-5\""
+    ]
+  },
+  {
+    "function": [
+      "echo \"Invalid age\""
+    ]
+  },
+  {
+    "function": [
+      "main"
+    ]
+  }
+]

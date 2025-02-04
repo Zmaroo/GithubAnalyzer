@@ -1,0 +1,167 @@
+[
+  {
+    "function.name": [
+      "create_user"
+    ],
+    "function.args": [
+      "{name age}"
+    ],
+    "function.body": [
+      "{\n        if {$age < 0} {\n            error \"Age cannot be negative\"\n        }\n        return [dict create name $name age $age]\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "format_user"
+    ],
+    "function.args": [
+      "{user {verbose 0}}"
+    ],
+    "function.body": [
+      "{\n        set name [dict get $user name]\n        set age [dict get $user age]\n        if {$verbose} {\n            return \"$name is $age years old\"\n        } else {\n            return \"$name ($age)\"\n        }\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "process_users"
+    ],
+    "function.args": [
+      "{args}"
+    ],
+    "function.body": [
+      "{\n        set results [list]\n        foreach user $args {\n            lappend results [format_user $user]\n        }\n        return $results\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "is_adult"
+    ],
+    "function.args": [
+      "{user}"
+    ],
+    "function.body": [
+      "{\n        variable DEFAULT_AGE\n        set age [dict get $user age]\n        return [expr {$age >= $DEFAULT_AGE}]\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "update_user"
+    ],
+    "function.args": [
+      "{user_var name age}"
+    ],
+    "function.body": [
+      "{\n        upvar 1 $user_var user\n        dict set user name $name\n        dict set user age $age\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "validate_user"
+    ],
+    "function.args": [
+      "{user}"
+    ],
+    "function.body": [
+      "{\n        if {![dict exists $user name] || ![dict exists $user age]} {\n            error \"Invalid user structure\"\n        }\n        set age [dict get $user age]\n        if {![string is integer $age]} {\n            error \"Age must be an integer\"\n        }\n        if {$age < 0} {\n            error \"Age cannot be negative\"\n        }\n        return 1\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "validate_name"
+    ],
+    "function.args": [
+      "{name}"
+    ],
+    "function.body": [
+      "{\n        return [regexp {^[A-Za-z][A-Za-z\\ \\']*$} $name]\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "add_user"
+    ],
+    "function.args": [
+      "{user}"
+    ],
+    "function.body": [
+      "{\n        variable users\n        set name [dict get $user name]\n        dict set users $name $user\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "get_user_stats"
+    ],
+    "function.args": [
+      "{user_list}"
+    ],
+    "function.body": [
+      "{\n        set total [llength $user_list]\n        set adult_count 0\n        foreach user $user_list {\n            if {[is_adult $user]} {\n                incr adult_count\n            }\n        }\n        return [list $total $adult_count]\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "find_user"
+    ],
+    "function.args": [
+      "{user_list name}"
+    ],
+    "function.body": [
+      "{\n        foreach user $user_list {\n            if {[dict get $user name] eq $name} {\n                return $user\n            }\n        }\n        return \"\"\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "create_greeting"
+    ],
+    "function.args": [
+      "{{prefix \"Hello\"} name}"
+    ],
+    "function.body": [
+      "{\n        return \"$prefix, $name!\"\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "process_name"
+    ],
+    "function.args": [
+      "{name}"
+    ],
+    "function.body": [
+      "{\n        set name [string trim $name]\n        set name [string totitle [string tolower $name]]\n        return $name\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "save_users"
+    ],
+    "function.args": [
+      "{filename user_list}"
+    ],
+    "function.body": [
+      "{\n        set f [open $filename w]\n        foreach user $user_list {\n            puts $f [list [dict get $user name] [dict get $user age]]\n        }\n        close $f\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "load_users"
+    ],
+    "function.args": [
+      "{filename}"
+    ],
+    "function.body": [
+      "{\n        set users [list]\n        set f [open $filename r]\n        while {[gets $f line] >= 0} {\n            lassign $line name age\n            lappend users [create_user $name $age]\n        }\n        close $f\n        return $users\n    }"
+    ]
+  },
+  {
+    "function.name": [
+      "main"
+    ],
+    "function.args": [
+      "{}"
+    ],
+    "function.body": [
+      "{\n    # Create test users\n    set user1 [UserManager::create_user \"John\" 25]\n    set user2 [UserManager::create_user \"Alice\" 17]\n    set users [list $user1 $user2]\n    \n    # Test basic functions\n    puts \"Users:\"\n    foreach user $users {\n        puts [UserManager::format_user $user]\n    }\n    \n    # Test verbose formatting\n    puts \"\\nVerbose format:\"\n    foreach user $users {\n        puts [UserManager::format_user $user 1]\n    }\n    \n    # Test adult checking\n    puts \"\\nAdult check:\"\n    foreach user $users {\n        set name [dict get $user name]\n        if {[UserManager::is_adult $user]} {\n            puts \"$name is an adult\"\n        } else {\n            puts \"$name is not an adult\"\n        }\n    }\n    \n    # Test user updating\n    puts \"\\nUpdating user:\"\n    set test_user $user1\n    UserManager::update_user test_user \"John Doe\" 26\n    puts [UserManager::format_user $test_user]\n    \n    # Test validation\n    puts \"\\nValidation:\"\n    foreach user $users {\n        if {[catch {UserManager::validate_user $user} result]} {\n            puts \"Validation failed: $result\"\n        } else {\n            puts \"User is valid\"\n        }\n    }\n    \n    # Test name validation\n    puts \"\\nName validation:\"\n    puts \"John Doe: [UserManager::validate_name \"John Doe\"]\"\n    puts \"John123: [UserManager::validate_name \"John123\"]\"\n    \n    # Test user stats\n    puts \"\\nUser statistics:\"\n    lassign [UserManager::get_user_stats $users] total adult_count\n    puts \"Total users: $total\"\n    puts \"Adult users: $adult_count\"\n    \n    # Test user finding\n    puts \"\\nFinding user:\"\n    set found_user [UserManager::find_user $users \"John\"]\n    if {$found_user ne \"\"} {\n        puts \"Found: [UserManager::format_user $found_user]\"\n    }\n    \n    # Test name processing\n    puts \"\\nProcessed names:\"\n    foreach user $users {\n        set name [dict get $user name]\n        puts [UserManager::process_name $name]\n    }\n    \n    # Test file operations\n    puts \"\\nTesting file operations:\"\n    UserManager::save_users \"test_users.txt\" $users\n    set loaded_users [UserManager::load_users \"test_users.txt\"]\n    puts \"Loaded users:\"\n    foreach user $loaded_users {\n        puts [UserManager::format_user $user]\n    }\n    file delete \"test_users.txt\"\n}"
+    ]
+  }
+]

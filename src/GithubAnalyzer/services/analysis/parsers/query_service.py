@@ -38,7 +38,7 @@ from .language_service import LanguageService
 from .traversal_service import TreeSitterTraversal
 
 # Initialize logger with proper configuration
-logger = get_tree_sitter_logger("query")
+logger = get_logger(__name__)
 
 @dataclass
 class TreeSitterQueryHandler(TreeSitterServiceBase):

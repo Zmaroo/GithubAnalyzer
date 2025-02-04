@@ -1,0 +1,780 @@
+[
+  {
+    "function.def": [
+      "int add(int a, int b) {\n    return a + b;\n}"
+    ],
+    "function": [
+      "int add(int a, int b) {\n    return a + b;\n}"
+    ],
+    "function.constructor": [
+      "add"
+    ],
+    "function.params": [
+      "(int a, int b)"
+    ],
+    "function.body": [
+      "{\n    return a + b;\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "int add(int a, int b) {\n    return a + b;\n}"
+    ],
+    "function": [
+      "int add(int a, int b) {\n    return a + b;\n}"
+    ],
+    "function.return_type": [
+      "int"
+    ],
+    "function.name": [
+      "add"
+    ],
+    "function.params": [
+      "(int a, int b)"
+    ],
+    "function.body": [
+      "{\n    return a + b;\n}"
+    ]
+  },
+  {
+    "function.template": [
+      "template<typename T>\nT maximum(T a, T b) {\n    return (a > b) ? a : b;\n}"
+    ],
+    "function": [
+      "template<typename T>\nT maximum(T a, T b) {\n    return (a > b) ? a : b;\n}"
+    ],
+    "function.template_params": [
+      "<typename T>"
+    ],
+    "function.def": [
+      "T maximum(T a, T b) {\n    return (a > b) ? a : b;\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "T maximum(T a, T b) {\n    return (a > b) ? a : b;\n}"
+    ],
+    "function": [
+      "T maximum(T a, T b) {\n    return (a > b) ? a : b;\n}"
+    ],
+    "function.constructor": [
+      "maximum"
+    ],
+    "function.params": [
+      "(T a, T b)"
+    ],
+    "function.body": [
+      "{\n    return (a > b) ? a : b;\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "T maximum(T a, T b) {\n    return (a > b) ? a : b;\n}"
+    ],
+    "function": [
+      "T maximum(T a, T b) {\n    return (a > b) ? a : b;\n}"
+    ],
+    "function.return_type": [
+      "T"
+    ],
+    "function.name": [
+      "maximum"
+    ],
+    "function.params": [
+      "(T a, T b)"
+    ],
+    "function.body": [
+      "{\n    return (a > b) ? a : b;\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "[](int x, int y) { return x * y; }"
+    ],
+    "function": [
+      "[](int x, int y) { return x * y; }"
+    ],
+    "function.captures": [
+      "[]"
+    ],
+    "function.body": [
+      "{ return x * y; }"
+    ]
+  },
+  {
+    "function.def": [
+      "~Calculator() {}"
+    ],
+    "function": [
+      "~Calculator() {}"
+    ],
+    "function.destructor": [
+      "~Calculator"
+    ],
+    "function.params": [
+      "()"
+    ],
+    "function.body": [
+      "{}"
+    ]
+  },
+  {
+    "function.def": [
+      "int subtract(int a, int b) const {\n        return a - b;\n    }"
+    ],
+    "function": [
+      "int subtract(int a, int b) const {\n        return a - b;\n    }"
+    ],
+    "function.return_type": [
+      "int"
+    ],
+    "function.name": [
+      "subtract"
+    ],
+    "function.params": [
+      "(int a, int b)"
+    ],
+    "function.body": [
+      "{\n        return a - b;\n    }"
+    ]
+  },
+  {
+    "function.def": [
+      "static double divide(double a, double b) {\n        return a / b;\n    }"
+    ],
+    "function": [
+      "static double divide(double a, double b) {\n        return a / b;\n    }"
+    ],
+    "function.return_type": [
+      "double"
+    ],
+    "function.name": [
+      "divide"
+    ],
+    "function.params": [
+      "(double a, double b)"
+    ],
+    "function.body": [
+      "{\n        return a / b;\n    }"
+    ]
+  },
+  {
+    "function.def": [
+      "Calculator operator+(const Calculator& other) {\n        return *this;\n    }"
+    ],
+    "function": [
+      "Calculator operator+(const Calculator& other) {\n        return *this;\n    }"
+    ],
+    "function.operator": [
+      "operator+"
+    ],
+    "function.params": [
+      "(const Calculator& other)"
+    ],
+    "function.body": [
+      "{\n        return *this;\n    }"
+    ]
+  },
+  {
+    "function.template": [
+      "template<typename T>\n    T power(T base, int exp) {\n        T result = 1;\n        for(int i = 0; i < exp; ++i) {\n            result *= base;\n        }\n        return result;\n    }"
+    ],
+    "function": [
+      "template<typename T>\n    T power(T base, int exp) {\n        T result = 1;\n        for(int i = 0; i < exp; ++i) {\n            result *= base;\n        }\n        return result;\n    }"
+    ],
+    "function.template_params": [
+      "<typename T>"
+    ],
+    "function.def": [
+      "T power(T base, int exp) {\n        T result = 1;\n        for(int i = 0; i < exp; ++i) {\n            result *= base;\n        }\n        return result;\n    }"
+    ]
+  },
+  {
+    "function.def": [
+      "T power(T base, int exp) {\n        T result = 1;\n        for(int i = 0; i < exp; ++i) {\n            result *= base;\n        }\n        return result;\n    }"
+    ],
+    "function": [
+      "T power(T base, int exp) {\n        T result = 1;\n        for(int i = 0; i < exp; ++i) {\n            result *= base;\n        }\n        return result;\n    }"
+    ],
+    "function.constructor": [
+      "power"
+    ],
+    "function.params": [
+      "(T base, int exp)"
+    ],
+    "function.body": [
+      "{\n        T result = 1;\n        for(int i = 0; i < exp; ++i) {\n            result *= base;\n        }\n        return result;\n    }"
+    ]
+  },
+  {
+    "function.def": [
+      "T power(T base, int exp) {\n        T result = 1;\n        for(int i = 0; i < exp; ++i) {\n            result *= base;\n        }\n        return result;\n    }"
+    ],
+    "function": [
+      "T power(T base, int exp) {\n        T result = 1;\n        for(int i = 0; i < exp; ++i) {\n            result *= base;\n        }\n        return result;\n    }"
+    ],
+    "function.return_type": [
+      "T"
+    ],
+    "function.name": [
+      "power"
+    ],
+    "function.params": [
+      "(T base, int exp)"
+    ],
+    "function.body": [
+      "{\n        T result = 1;\n        for(int i = 0; i < exp; ++i) {\n            result *= base;\n        }\n        return result;\n    }"
+    ]
+  },
+  {
+    "function.def": [
+      "virtual void update() {}"
+    ],
+    "function": [
+      "virtual void update() {}"
+    ],
+    "function.return_type": [
+      "void"
+    ],
+    "function.name": [
+      "update"
+    ],
+    "function.params": [
+      "()"
+    ],
+    "function.body": [
+      "{}"
+    ]
+  },
+  {
+    "function.def": [
+      "void display() override {\n        std::cout << \"Advanced Calculator Value: \" << getValue() << std::endl;\n    }"
+    ],
+    "function": [
+      "void display() override {\n        std::cout << \"Advanced Calculator Value: \" << getValue() << std::endl;\n    }"
+    ],
+    "function.return_type": [
+      "void"
+    ],
+    "function.name": [
+      "display"
+    ],
+    "function.params": [
+      "()"
+    ],
+    "function.body": [
+      "{\n        std::cout << \"Advanced Calculator Value: \" << getValue() << std::endl;\n    }"
+    ]
+  },
+  {
+    "function.def": [
+      "void increment(int& x) {\n    x++;\n}"
+    ],
+    "function": [
+      "void increment(int& x) {\n    x++;\n}"
+    ],
+    "function.constructor": [
+      "increment"
+    ],
+    "function.params": [
+      "(int& x)"
+    ],
+    "function.body": [
+      "{\n    x++;\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "void increment(int& x) {\n    x++;\n}"
+    ],
+    "function": [
+      "void increment(int& x) {\n    x++;\n}"
+    ],
+    "function.return_type": [
+      "void"
+    ],
+    "function.name": [
+      "increment"
+    ],
+    "function.params": [
+      "(int& x)"
+    ],
+    "function.body": [
+      "{\n    x++;\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "void print(std::string message = \"Hello\") {\n    std::cout << message << std::endl;\n}"
+    ],
+    "function": [
+      "void print(std::string message = \"Hello\") {\n    std::cout << message << std::endl;\n}"
+    ],
+    "function.constructor": [
+      "print"
+    ],
+    "function.params": [
+      "(std::string message = \"Hello\")"
+    ],
+    "function.body": [
+      "{\n    std::cout << message << std::endl;\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "void print(std::string message = \"Hello\") {\n    std::cout << message << std::endl;\n}"
+    ],
+    "function": [
+      "void print(std::string message = \"Hello\") {\n    std::cout << message << std::endl;\n}"
+    ],
+    "function.return_type": [
+      "void"
+    ],
+    "function.name": [
+      "print"
+    ],
+    "function.params": [
+      "(std::string message = \"Hello\")"
+    ],
+    "function.body": [
+      "{\n    std::cout << message << std::endl;\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "auto get_multiplier(int factor) {\n    return [factor](int x) { return x * factor; };\n}"
+    ],
+    "function": [
+      "auto get_multiplier(int factor) {\n    return [factor](int x) { return x * factor; };\n}"
+    ],
+    "function.constructor": [
+      "get_multiplier"
+    ],
+    "function.params": [
+      "(int factor)"
+    ],
+    "function.body": [
+      "{\n    return [factor](int x) { return x * factor; };\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "auto get_multiplier(int factor) {\n    return [factor](int x) { return x * factor; };\n}"
+    ],
+    "function": [
+      "auto get_multiplier(int factor) {\n    return [factor](int x) { return x * factor; };\n}"
+    ],
+    "function.return_type": [
+      "auto"
+    ],
+    "function.name": [
+      "get_multiplier"
+    ],
+    "function.params": [
+      "(int factor)"
+    ],
+    "function.body": [
+      "{\n    return [factor](int x) { return x * factor; };\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "[factor](int x) { return x * factor; }"
+    ],
+    "function": [
+      "[factor](int x) { return x * factor; }"
+    ],
+    "function.captures": [
+      "[factor]"
+    ],
+    "function.body": [
+      "{ return x * factor; }"
+    ]
+  },
+  {
+    "function.def": [
+      "double square(double x) {\n        return x * x;\n    }"
+    ],
+    "function": [
+      "double square(double x) {\n        return x * x;\n    }"
+    ],
+    "function.constructor": [
+      "square"
+    ],
+    "function.params": [
+      "(double x)"
+    ],
+    "function.body": [
+      "{\n        return x * x;\n    }"
+    ]
+  },
+  {
+    "function.def": [
+      "double square(double x) {\n        return x * x;\n    }"
+    ],
+    "function": [
+      "double square(double x) {\n        return x * x;\n    }"
+    ],
+    "function.return_type": [
+      "double"
+    ],
+    "function.name": [
+      "square"
+    ],
+    "function.params": [
+      "(double x)"
+    ],
+    "function.body": [
+      "{\n        return x * x;\n    }"
+    ]
+  },
+  {
+    "function.def": [
+      "double cube(double x) {\n            return x * x * x;\n        }"
+    ],
+    "function": [
+      "double cube(double x) {\n            return x * x * x;\n        }"
+    ],
+    "function.constructor": [
+      "cube"
+    ],
+    "function.params": [
+      "(double x)"
+    ],
+    "function.body": [
+      "{\n            return x * x * x;\n        }"
+    ]
+  },
+  {
+    "function.def": [
+      "double cube(double x) {\n            return x * x * x;\n        }"
+    ],
+    "function": [
+      "double cube(double x) {\n            return x * x * x;\n        }"
+    ],
+    "function.return_type": [
+      "double"
+    ],
+    "function.name": [
+      "cube"
+    ],
+    "function.params": [
+      "(double x)"
+    ],
+    "function.body": [
+      "{\n            return x * x * x;\n        }"
+    ]
+  },
+  {
+    "function.def": [
+      "void process(int x) {\n    // Lambda expression\n    auto square = [](int n) -> int { \n        return n * n; \n    };\n    \n    // Lambda with capture\n    int multiplier = 2;\n    auto multiply = [multiplier](int n) {\n        return n * multiplier;\n    };\n}"
+    ],
+    "function": [
+      "void process(int x) {\n    // Lambda expression\n    auto square = [](int n) -> int { \n        return n * n; \n    };\n    \n    // Lambda with capture\n    int multiplier = 2;\n    auto multiply = [multiplier](int n) {\n        return n * multiplier;\n    };\n}"
+    ],
+    "function.constructor": [
+      "process"
+    ],
+    "function.params": [
+      "(int x)"
+    ],
+    "function.body": [
+      "{\n    // Lambda expression\n    auto square = [](int n) -> int { \n        return n * n; \n    };\n    \n    // Lambda with capture\n    int multiplier = 2;\n    auto multiply = [multiplier](int n) {\n        return n * multiplier;\n    };\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "void process(int x) {\n    // Lambda expression\n    auto square = [](int n) -> int { \n        return n * n; \n    };\n    \n    // Lambda with capture\n    int multiplier = 2;\n    auto multiply = [multiplier](int n) {\n        return n * multiplier;\n    };\n}"
+    ],
+    "function": [
+      "void process(int x) {\n    // Lambda expression\n    auto square = [](int n) -> int { \n        return n * n; \n    };\n    \n    // Lambda with capture\n    int multiplier = 2;\n    auto multiply = [multiplier](int n) {\n        return n * multiplier;\n    };\n}"
+    ],
+    "function.return_type": [
+      "void"
+    ],
+    "function.name": [
+      "process"
+    ],
+    "function.params": [
+      "(int x)"
+    ],
+    "function.body": [
+      "{\n    // Lambda expression\n    auto square = [](int n) -> int { \n        return n * n; \n    };\n    \n    // Lambda with capture\n    int multiplier = 2;\n    auto multiply = [multiplier](int n) {\n        return n * multiplier;\n    };\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "[](int n) -> int { \n        return n * n; \n    }"
+    ],
+    "function": [
+      "[](int n) -> int { \n        return n * n; \n    }"
+    ],
+    "function.captures": [
+      "[]"
+    ],
+    "function.body": [
+      "{ \n        return n * n; \n    }"
+    ]
+  },
+  {
+    "function.def": [
+      "[multiplier](int n) {\n        return n * multiplier;\n    }"
+    ],
+    "function": [
+      "[multiplier](int n) {\n        return n * multiplier;\n    }"
+    ],
+    "function.captures": [
+      "[multiplier]"
+    ],
+    "function.body": [
+      "{\n        return n * multiplier;\n    }"
+    ]
+  },
+  {
+    "function.def": [
+      "void safeOperation() noexcept {\n    // Implementation\n}"
+    ],
+    "function": [
+      "void safeOperation() noexcept {\n    // Implementation\n}"
+    ],
+    "function.constructor": [
+      "safeOperation"
+    ],
+    "function.params": [
+      "()"
+    ],
+    "function.body": [
+      "{\n    // Implementation\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "void safeOperation() noexcept {\n    // Implementation\n}"
+    ],
+    "function": [
+      "void safeOperation() noexcept {\n    // Implementation\n}"
+    ],
+    "function.return_type": [
+      "void"
+    ],
+    "function.name": [
+      "safeOperation"
+    ],
+    "function.params": [
+      "()"
+    ],
+    "function.body": [
+      "{\n    // Implementation\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "constexpr int factorial(int n) {\n    return n <= 1 ? 1 : n * factorial(n - 1);\n}"
+    ],
+    "function": [
+      "constexpr int factorial(int n) {\n    return n <= 1 ? 1 : n * factorial(n - 1);\n}"
+    ],
+    "function.constructor": [
+      "factorial"
+    ],
+    "function.params": [
+      "(int n)"
+    ],
+    "function.body": [
+      "{\n    return n <= 1 ? 1 : n * factorial(n - 1);\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "constexpr int factorial(int n) {\n    return n <= 1 ? 1 : n * factorial(n - 1);\n}"
+    ],
+    "function": [
+      "constexpr int factorial(int n) {\n    return n <= 1 ? 1 : n * factorial(n - 1);\n}"
+    ],
+    "function.return_type": [
+      "int"
+    ],
+    "function.name": [
+      "factorial"
+    ],
+    "function.params": [
+      "(int n)"
+    ],
+    "function.body": [
+      "{\n    return n <= 1 ? 1 : n * factorial(n - 1);\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "auto getSum(int a, int b) -> int {\n    return a + b;\n}"
+    ],
+    "function": [
+      "auto getSum(int a, int b) -> int {\n    return a + b;\n}"
+    ],
+    "function.constructor": [
+      "getSum"
+    ],
+    "function.params": [
+      "(int a, int b)"
+    ],
+    "function.body": [
+      "{\n    return a + b;\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "auto getSum(int a, int b) -> int {\n    return a + b;\n}"
+    ],
+    "function": [
+      "auto getSum(int a, int b) -> int {\n    return a + b;\n}"
+    ],
+    "function.return_type": [
+      "auto"
+    ],
+    "function.name": [
+      "getSum"
+    ],
+    "function.params": [
+      "(int a, int b)"
+    ],
+    "function.body": [
+      "{\n    return a + b;\n}"
+    ]
+  },
+  {
+    "function.template": [
+      "template<typename... Args>\nint sum(Args... args) {\n    return (... + args);\n}"
+    ],
+    "function": [
+      "template<typename... Args>\nint sum(Args... args) {\n    return (... + args);\n}"
+    ],
+    "function.template_params": [
+      "<typename... Args>"
+    ],
+    "function.def": [
+      "int sum(Args... args) {\n    return (... + args);\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "int sum(Args... args) {\n    return (... + args);\n}"
+    ],
+    "function": [
+      "int sum(Args... args) {\n    return (... + args);\n}"
+    ],
+    "function.constructor": [
+      "sum"
+    ],
+    "function.params": [
+      "(Args... args)"
+    ],
+    "function.body": [
+      "{\n    return (... + args);\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "int sum(Args... args) {\n    return (... + args);\n}"
+    ],
+    "function": [
+      "int sum(Args... args) {\n    return (... + args);\n}"
+    ],
+    "function.return_type": [
+      "int"
+    ],
+    "function.name": [
+      "sum"
+    ],
+    "function.params": [
+      "(Args... args)"
+    ],
+    "function.body": [
+      "{\n    return (... + args);\n}"
+    ]
+  },
+  {
+    "function.friend": [
+      "friend void printBox(const Box& b);"
+    ],
+    "function": [
+      "friend void printBox(const Box& b);"
+    ],
+    "function.declarator": [
+      "printBox(const Box& b)"
+    ]
+  },
+  {
+    "function.def": [
+      "void printBox(const Box& b) {\n    std::cout << b.width;\n}"
+    ],
+    "function": [
+      "void printBox(const Box& b) {\n    std::cout << b.width;\n}"
+    ],
+    "function.constructor": [
+      "printBox"
+    ],
+    "function.params": [
+      "(const Box& b)"
+    ],
+    "function.body": [
+      "{\n    std::cout << b.width;\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "void printBox(const Box& b) {\n    std::cout << b.width;\n}"
+    ],
+    "function": [
+      "void printBox(const Box& b) {\n    std::cout << b.width;\n}"
+    ],
+    "function.return_type": [
+      "void"
+    ],
+    "function.name": [
+      "printBox"
+    ],
+    "function.params": [
+      "(const Box& b)"
+    ],
+    "function.body": [
+      "{\n    std::cout << b.width;\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "int main() {\n    Calculator calc;\n    calc.add(5);\n    return 0;\n}"
+    ],
+    "function": [
+      "int main() {\n    Calculator calc;\n    calc.add(5);\n    return 0;\n}"
+    ],
+    "function.constructor": [
+      "main"
+    ],
+    "function.params": [
+      "()"
+    ],
+    "function.body": [
+      "{\n    Calculator calc;\n    calc.add(5);\n    return 0;\n}"
+    ]
+  },
+  {
+    "function.def": [
+      "int main() {\n    Calculator calc;\n    calc.add(5);\n    return 0;\n}"
+    ],
+    "function": [
+      "int main() {\n    Calculator calc;\n    calc.add(5);\n    return 0;\n}"
+    ],
+    "function.return_type": [
+      "int"
+    ],
+    "function.name": [
+      "main"
+    ],
+    "function.params": [
+      "()"
+    ],
+    "function.body": [
+      "{\n    Calculator calc;\n    calc.add(5);\n    return 0;\n}"
+    ]
+  }
+]

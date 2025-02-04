@@ -1,0 +1,27 @@
+[
+  {
+    "function": [
+      "function greet\n    echo \"Hello, World!\"\nend"
+    ]
+  },
+  {
+    "function": [
+      "function greet_user -a name -d \"Greet a user by name\"\n    echo \"Hello, $name!\"\nend"
+    ]
+  },
+  {
+    "function": [
+      "function process_file -a filename -s force -d \"Process a file\"\n    if test -f $filename\n        echo \"Processing $filename...\"\n        if set -q _flag_force\n            echo \"Force mode enabled\"\n        end\n    else\n        echo \"File not found: $filename\"\n        return 1\n    end\nend"
+    ]
+  },
+  {
+    "function": [
+      "function sum\n    set total 0\n    for num in $argv\n        set total (math $total + $num)\n    end\n    echo $total\nend"
+    ]
+  },
+  {
+    "function": [
+      "function is_valid_user -a username\n    if test -z \"$username\"\n        return 1\n    end\n    \n    if grep -q \"^$username:\" /etc/passwd\n        return 0\n    else\n        return 1\n    end\nend"
+    ]
+  }
+]

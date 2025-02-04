@@ -1,0 +1,83 @@
+[
+  {
+    "function.name": [
+      "Create_User"
+    ],
+    "function.body": [
+      "if Age < 0 then\n         raise Invalid_Age with \"Age cannot be negative\";\n      end if;\n      \n      return (Name => To_Unbounded_String(Name),\n              Age  => Age_Type(Age));"
+    ]
+  },
+  {
+    "function.name": [
+      "Print_User"
+    ],
+    "function.body": [
+      "Put(To_String(U.Name));\n      Put(\" (\");\n      Put(Integer(U.Age), 0);\n      Put_Line(\" years old)\");"
+    ]
+  },
+  {
+    "function.name": [
+      "Get_User_Info"
+    ],
+    "function.body": [
+      "Name := To_String(U.Name);\n      Age := Integer(U.Age);"
+    ]
+  },
+  {
+    "function.name": [
+      "Check_Age"
+    ],
+    "function.body": [
+      "return U.Age >= Min_Age;"
+    ]
+  },
+  {
+    "function.name": [
+      "Create_User_Access"
+    ],
+    "function.body": [
+      "return new User'(Create_User(Name, Age));"
+    ]
+  },
+  {
+    "function.name": [
+      "Process_Users"
+    ],
+    "function.body": [
+      "for I in Users'Range loop\n         Put(\"Processing user: \");\n         Print_User(Users(I));\n      end loop;"
+    ]
+  },
+  {
+    "function.name": [
+      "Analyze_Age"
+    ],
+    "function.body": [
+      "Is_Adult := U.Age >= 18;\n      if Is_Adult then\n         Message := \"Adult user     \";\n      else\n         Message := \"Underage user  \";\n      end if;"
+    ]
+  },
+  {
+    "function.name": [
+      "Process_User"
+    ],
+    "function.body": [
+      "Put_Line(\"Processing in protected object: \");\n         Print_User(U);\n         Processed_Count := Processed_Count + 1;"
+    ]
+  },
+  {
+    "function.name": [
+      "Get_Processed_Count"
+    ],
+    "function.body": [
+      "return Processed_Count;"
+    ]
+  },
+  {
+    "function.name": [
+      "User_Manager"
+    ],
+    "function.body": [
+      "-- Type definitions",
+      "type Age_Type is range 0 .. 150;\n   \n   type User is record\n      Name : Unbounded_String;\n      Age  : Age_Type;\n   end record;\n   \n   type User_Array is array (Positive range <>) of User;\n   \n   -- Exception declaration\n   Invalid_Age : exception;\n   \n   -- Function to create a user\n   function Create_User (Name : String; Age : Integer) return User is\n   begin\n      if Age < 0 then\n         raise Invalid_Age with \"Age cannot be negative\";\n      end if;\n      \n      return (Name => To_Unbounded_String(Name),\n              Age  => Age_Type(Age));\n   end Create_User;\n   \n   -- Procedure to print user info\n   procedure Print_User (U : User) is\n   begin\n      Put(To_String(U.Name));\n      Put(\" (\");\n      Put(Integer(U.Age), 0);\n      Put_Line(\" years old)\");\n   end Print_User;\n   \n   -- Function with out parameter\n   procedure Get_User_Info (U : User; Name : out String; Age : out Integer) is\n   begin\n      Name := To_String(U.Name);\n      Age := Integer(U.Age);\n   end Get_User_Info;\n   \n   -- Generic function\n   generic\n      Min_Age : Age_Type;\n   function Check_Age (U : User) return Boolean;\n   \n   function Check_Age (U : User) return Boolean is\n   begin\n      return U.Age >= Min_Age;\n   end Check_Age;\n   \n   -- Instantiate generic function\n   function Is_Adult is new Check_Age(Min_Age => 18);\n   \n   -- Function that returns an access type\n   type User_Access is access User;\n   \n   function Create_User_Access (Name : String; Age : Integer) return User_Access is\n   begin\n      return new User'(Create_User(Name, Age));\n   end Create_User_Access;\n   \n   -- Procedure with array parameter\n   procedure Process_Users (Users : User_Array) is\n   begin\n      for I in Users'Range loop\n         Put(\"Processing user: \");\n         Print_User(Users(I));\n      end loop;\n   end Process_Users;\n   \n   -- Function returning multiple values using out parameters\n   procedure Analyze_Age (U : User; \n                         Is_Adult : out Boolean; \n                         Message : out String) is\n   begin\n      Is_Adult := U.Age >= 18;\n      if Is_Adult then\n         Message := \"Adult user     \";\n      else\n         Message := \"Underage user  \";\n      end if;\n   end Analyze_Age;\n   \n   -- Protected type for thread-safe user processing\n   protected User_Processor is\n      procedure Process_User (U : in User);\n      function Get_Processed_Count return Natural;\n   private\n      Processed_Count : Natural := 0;\n   end User_Processor;\n   \n   protected body User_Processor is\n      procedure Process_User (U : in User) is\n      begin\n         Put_Line(\"Processing in protected object: \");\n         Print_User(U);\n         Processed_Count := Processed_Count + 1;\n      end Process_User;\n      \n      function Get_Processed_Count return Natural is\n      begin\n         return Processed_Count;\n      end Get_Processed_Count;\n   end User_Processor;\n   \n   -- Main program variables\n   User1, User2 : User;\n   Users : User_Array(1..2);\n   User_Ptr : User_Access;\n   Is_User_Adult : Boolean;\n   Status_Message : String(1..13);"
+    ]
+  }
+]

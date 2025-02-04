@@ -4,6 +4,9 @@ from typing import List, Optional, Any, Dict
 
 from pathlib import Path
 
+from GithubAnalyzer.utils.logging import get_logger
+logger = get_logger(__name__)
+
 from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
 
 @dataclass
@@ -34,6 +37,7 @@ class FileInfo:
                 self.is_supported = False
             self.language = detected_language
         except Exception as e:
+            logger.error("Error detecting language for file", extra={'context': {'file': str(self.path), 'error': str(e)}})
             self.language = 'plaintext'
             self.is_supported = False
 

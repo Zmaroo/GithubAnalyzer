@@ -1,0 +1,626 @@
+[
+  {
+    "element.def": [
+      "<meta charset=\"UTF-8\">\n    "
+    ],
+    "element.any": [
+      "<meta charset=\"UTF-8\">\n    "
+    ],
+    "element.name": [
+      "meta"
+    ],
+    "element.attrs": [
+      "charset=\"UTF-8\""
+    ],
+    "element.attr.name": [
+      "charset"
+    ],
+    "element.attr.value": [
+      "UTF-8"
+    ]
+  },
+  {
+    "element.def": [
+      "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    "
+    ],
+    "element.any": [
+      "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    "
+    ],
+    "element.name": [
+      "meta"
+    ],
+    "element.attrs": [
+      "name=\"viewport\"",
+      "content=\"width=device-width, initial-scale=1.0\""
+    ],
+    "element.attr.name": [
+      "name",
+      "content"
+    ],
+    "element.attr.value": [
+      "viewport",
+      "width=device-width, initial-scale=1.0"
+    ]
+  },
+  {
+    "element.def": [
+      "<title>Sample HTML</title>"
+    ],
+    "element.any": [
+      "<title>Sample HTML</title>"
+    ],
+    "element.name": [
+      "title"
+    ],
+    "element.children": [
+      "Sample HTML",
+      "</title>"
+    ]
+  },
+  {
+    "element.def": [
+      "<link rel=\"stylesheet\" href=\"styles.css\">\n    "
+    ],
+    "element.any": [
+      "<link rel=\"stylesheet\" href=\"styles.css\">\n    "
+    ],
+    "element.name": [
+      "link"
+    ],
+    "element.attrs": [
+      "rel=\"stylesheet\"",
+      "href=\"styles.css\""
+    ],
+    "element.attr.name": [
+      "rel",
+      "href"
+    ],
+    "element.attr.value": [
+      "stylesheet",
+      "styles.css"
+    ]
+  },
+  {
+    "style.def": [
+      "<style>\n        body {\n            font-family: Arial, sans-serif;\n            margin: 0;\n            padding: 20px;\n        }\n    </style>"
+    ],
+    "element.any": [
+      "<style>\n        body {\n            font-family: Arial, sans-serif;\n            margin: 0;\n            padding: 20px;\n        }\n    </style>"
+    ],
+    "style.name": [
+      "style"
+    ],
+    "style.content": [
+      "\n        body {\n            font-family: Arial, sans-serif;\n            margin: 0;\n            padding: 20px;\n        }\n    "
+    ]
+  },
+  {
+    "element.def": [
+      "<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Sample HTML</title>\n    <link rel=\"stylesheet\" href=\"styles.css\">\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            margin: 0;\n            padding: 20px;\n        }\n    </style>\n</head>"
+    ],
+    "element.any": [
+      "<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Sample HTML</title>\n    <link rel=\"stylesheet\" href=\"styles.css\">\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            margin: 0;\n            padding: 20px;\n        }\n    </style>\n</head>"
+    ],
+    "element.name": [
+      "head"
+    ],
+    "element.children": [
+      "<meta charset=\"UTF-8\">\n    ",
+      "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    ",
+      "<title>Sample HTML</title>",
+      "<link rel=\"stylesheet\" href=\"styles.css\">\n    ",
+      "<style>\n        body {\n            font-family: Arial, sans-serif;\n            margin: 0;\n            padding: 20px;\n        }\n    </style>",
+      "</head>"
+    ]
+  },
+  {
+    "element.def": [
+      "<a href=\"#home\">Home</a>"
+    ],
+    "element.any": [
+      "<a href=\"#home\">Home</a>"
+    ],
+    "element.name": [
+      "a"
+    ],
+    "element.attrs": [
+      "href=\"#home\""
+    ],
+    "element.attr.name": [
+      "href"
+    ],
+    "element.attr.value": [
+      "#home"
+    ],
+    "element.children": [
+      "Home",
+      "</a>"
+    ]
+  },
+  {
+    "element.def": [
+      "<li><a href=\"#home\">Home</a></li>"
+    ],
+    "element.any": [
+      "<li><a href=\"#home\">Home</a></li>"
+    ],
+    "element.name": [
+      "li"
+    ],
+    "element.children": [
+      "<a href=\"#home\">Home</a>",
+      "</li>"
+    ]
+  },
+  {
+    "element.def": [
+      "<a href=\"#about\">About</a>"
+    ],
+    "element.any": [
+      "<a href=\"#about\">About</a>"
+    ],
+    "element.name": [
+      "a"
+    ],
+    "element.attrs": [
+      "href=\"#about\""
+    ],
+    "element.attr.name": [
+      "href"
+    ],
+    "element.attr.value": [
+      "#about"
+    ],
+    "element.children": [
+      "About",
+      "</a>"
+    ]
+  },
+  {
+    "element.def": [
+      "<li><a href=\"#about\">About</a></li>"
+    ],
+    "element.any": [
+      "<li><a href=\"#about\">About</a></li>"
+    ],
+    "element.name": [
+      "li"
+    ],
+    "element.children": [
+      "<a href=\"#about\">About</a>",
+      "</li>"
+    ]
+  },
+  {
+    "element.def": [
+      "<a href=\"#contact\">Contact</a>"
+    ],
+    "element.any": [
+      "<a href=\"#contact\">Contact</a>"
+    ],
+    "element.name": [
+      "a"
+    ],
+    "element.attrs": [
+      "href=\"#contact\""
+    ],
+    "element.attr.name": [
+      "href"
+    ],
+    "element.attr.value": [
+      "#contact"
+    ],
+    "element.children": [
+      "Contact",
+      "</a>"
+    ]
+  },
+  {
+    "element.def": [
+      "<li><a href=\"#contact\">Contact</a></li>"
+    ],
+    "element.any": [
+      "<li><a href=\"#contact\">Contact</a></li>"
+    ],
+    "element.name": [
+      "li"
+    ],
+    "element.children": [
+      "<a href=\"#contact\">Contact</a>",
+      "</li>"
+    ]
+  },
+  {
+    "element.def": [
+      "<ul>\n            <li><a href=\"#home\">Home</a></li>\n            <li><a href=\"#about\">About</a></li>\n            <li><a href=\"#contact\">Contact</a></li>\n        </ul>"
+    ],
+    "element.any": [
+      "<ul>\n            <li><a href=\"#home\">Home</a></li>\n            <li><a href=\"#about\">About</a></li>\n            <li><a href=\"#contact\">Contact</a></li>\n        </ul>"
+    ],
+    "element.name": [
+      "ul"
+    ],
+    "element.children": [
+      "<li><a href=\"#home\">Home</a></li>",
+      "<li><a href=\"#about\">About</a></li>",
+      "<li><a href=\"#contact\">Contact</a></li>",
+      "</ul>"
+    ]
+  },
+  {
+    "element.def": [
+      "<nav class=\"main-nav\">\n        <ul>\n            <li><a href=\"#home\">Home</a></li>\n            <li><a href=\"#about\">About</a></li>\n            <li><a href=\"#contact\">Contact</a></li>\n        </ul>\n    </nav>"
+    ],
+    "element.any": [
+      "<nav class=\"main-nav\">\n        <ul>\n            <li><a href=\"#home\">Home</a></li>\n            <li><a href=\"#about\">About</a></li>\n            <li><a href=\"#contact\">Contact</a></li>\n        </ul>\n    </nav>"
+    ],
+    "element.name": [
+      "nav"
+    ],
+    "element.attrs": [
+      "class=\"main-nav\""
+    ],
+    "element.attr.name": [
+      "class"
+    ],
+    "element.attr.value": [
+      "main-nav"
+    ],
+    "element.children": [
+      "<ul>\n            <li><a href=\"#home\">Home</a></li>\n            <li><a href=\"#about\">About</a></li>\n            <li><a href=\"#contact\">Contact</a></li>\n        </ul>",
+      "</nav>"
+    ]
+  },
+  {
+    "element.def": [
+      "<h1>Welcome to our site</h1>"
+    ],
+    "element.any": [
+      "<h1>Welcome to our site</h1>"
+    ],
+    "element.name": [
+      "h1"
+    ],
+    "element.children": [
+      "Welcome to our site",
+      "</h1>"
+    ]
+  },
+  {
+    "element.def": [
+      "<p>This is a sample HTML file to test tree-sitter patterns.</p>"
+    ],
+    "element.any": [
+      "<p>This is a sample HTML file to test tree-sitter patterns.</p>"
+    ],
+    "element.name": [
+      "p"
+    ],
+    "element.children": [
+      "This is a sample HTML file to test tree-sitter patterns.",
+      "</p>"
+    ]
+  },
+  {
+    "element.def": [
+      "<h2>Features</h2>"
+    ],
+    "element.any": [
+      "<h2>Features</h2>"
+    ],
+    "element.name": [
+      "h2"
+    ],
+    "element.children": [
+      "Features",
+      "</h2>"
+    ]
+  },
+  {
+    "element.def": [
+      "<li>Regular elements</li>"
+    ],
+    "element.any": [
+      "<li>Regular elements</li>"
+    ],
+    "element.name": [
+      "li"
+    ],
+    "element.children": [
+      "Regular elements",
+      "</li>"
+    ]
+  },
+  {
+    "element.self_closing": [
+      "<img src=\"test.jpg\" alt=\"Test image\"/>"
+    ],
+    "element.any": [
+      "<img src=\"test.jpg\" alt=\"Test image\"/>"
+    ],
+    "element.name": [
+      "img"
+    ],
+    "element.attrs": [
+      "src=\"test.jpg\"",
+      "alt=\"Test image\""
+    ],
+    "element.attr.name": [
+      "src",
+      "alt"
+    ],
+    "element.attr.value": [
+      "test.jpg",
+      "Test image"
+    ]
+  },
+  {
+    "element.def": [
+      "<li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>"
+    ],
+    "element.any": [
+      "<li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>"
+    ],
+    "element.name": [
+      "li"
+    ],
+    "element.children": [
+      "Self-closing elements like",
+      "<img src=\"test.jpg\" alt=\"Test image\"/>",
+      "</li>"
+    ]
+  },
+  {
+    "element.def": [
+      "<li>Script elements</li>"
+    ],
+    "element.any": [
+      "<li>Script elements</li>"
+    ],
+    "element.name": [
+      "li"
+    ],
+    "element.children": [
+      "Script elements",
+      "</li>"
+    ]
+  },
+  {
+    "element.def": [
+      "<li>Style elements</li>"
+    ],
+    "element.any": [
+      "<li>Style elements</li>"
+    ],
+    "element.name": [
+      "li"
+    ],
+    "element.children": [
+      "Style elements",
+      "</li>"
+    ]
+  },
+  {
+    "element.def": [
+      "<ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>"
+    ],
+    "element.any": [
+      "<ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>"
+    ],
+    "element.name": [
+      "ul"
+    ],
+    "element.children": [
+      "<li>Regular elements</li>",
+      "<li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>",
+      "<li>Script elements</li>",
+      "<li>Style elements</li>",
+      "</ul>"
+    ]
+  },
+  {
+    "element.def": [
+      "<section id=\"features\">\n            <h2>Features</h2>\n            <ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>\n        </section>"
+    ],
+    "element.any": [
+      "<section id=\"features\">\n            <h2>Features</h2>\n            <ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>\n        </section>"
+    ],
+    "element.name": [
+      "section"
+    ],
+    "element.attrs": [
+      "id=\"features\""
+    ],
+    "element.attr.name": [
+      "id"
+    ],
+    "element.attr.value": [
+      "features"
+    ],
+    "element.children": [
+      "<h2>Features</h2>",
+      "<ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>",
+      "</section>"
+    ]
+  },
+  {
+    "element.self_closing": [
+      "<input type=\"text\" name=\"username\" required/>"
+    ],
+    "element.any": [
+      "<input type=\"text\" name=\"username\" required/>"
+    ],
+    "element.name": [
+      "input"
+    ],
+    "element.attrs": [
+      "type=\"text\"",
+      "name=\"username\"",
+      "required"
+    ],
+    "element.attr.name": [
+      "type",
+      "name",
+      "required"
+    ],
+    "element.attr.value": [
+      "text",
+      "username"
+    ]
+  },
+  {
+    "element.self_closing": [
+      "<input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>"
+    ],
+    "element.any": [
+      "<input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>"
+    ],
+    "element.name": [
+      "input"
+    ],
+    "element.attrs": [
+      "type=\"email\"",
+      "name=\"email\"",
+      "placeholder=\"Enter your email\""
+    ],
+    "element.attr.name": [
+      "type",
+      "name",
+      "placeholder"
+    ],
+    "element.attr.value": [
+      "email",
+      "email",
+      "Enter your email"
+    ]
+  },
+  {
+    "element.def": [
+      "<button type=\"submit\">Submit</button>"
+    ],
+    "element.any": [
+      "<button type=\"submit\">Submit</button>"
+    ],
+    "element.name": [
+      "button"
+    ],
+    "element.attrs": [
+      "type=\"submit\""
+    ],
+    "element.attr.name": [
+      "type"
+    ],
+    "element.attr.value": [
+      "submit"
+    ],
+    "element.children": [
+      "Submit",
+      "</button>"
+    ]
+  },
+  {
+    "element.def": [
+      "<form action=\"/submit\" method=\"post\">\n            <input type=\"text\" name=\"username\" required/>\n            <input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>\n            <button type=\"submit\">Submit</button>\n        </form>"
+    ],
+    "element.any": [
+      "<form action=\"/submit\" method=\"post\">\n            <input type=\"text\" name=\"username\" required/>\n            <input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>\n            <button type=\"submit\">Submit</button>\n        </form>"
+    ],
+    "element.name": [
+      "form"
+    ],
+    "element.attrs": [
+      "action=\"/submit\"",
+      "method=\"post\""
+    ],
+    "element.attr.name": [
+      "action",
+      "method"
+    ],
+    "element.attr.value": [
+      "/submit",
+      "post"
+    ],
+    "element.children": [
+      "<input type=\"text\" name=\"username\" required/>",
+      "<input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>",
+      "<button type=\"submit\">Submit</button>",
+      "</form>"
+    ]
+  },
+  {
+    "element.def": [
+      "<main>\n        <h1>Welcome to our site</h1>\n        <p>This is a sample HTML file to test tree-sitter patterns.</p>\n        \n        <section id=\"features\">\n            <h2>Features</h2>\n            <ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>\n        </section>\n\n        <form action=\"/submit\" method=\"post\">\n            <input type=\"text\" name=\"username\" required/>\n            <input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>\n            <button type=\"submit\">Submit</button>\n        </form>\n    </main>"
+    ],
+    "element.any": [
+      "<main>\n        <h1>Welcome to our site</h1>\n        <p>This is a sample HTML file to test tree-sitter patterns.</p>\n        \n        <section id=\"features\">\n            <h2>Features</h2>\n            <ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>\n        </section>\n\n        <form action=\"/submit\" method=\"post\">\n            <input type=\"text\" name=\"username\" required/>\n            <input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>\n            <button type=\"submit\">Submit</button>\n        </form>\n    </main>"
+    ],
+    "element.name": [
+      "main"
+    ],
+    "element.children": [
+      "<h1>Welcome to our site</h1>",
+      "<p>This is a sample HTML file to test tree-sitter patterns.</p>",
+      "<section id=\"features\">\n            <h2>Features</h2>\n            <ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>\n        </section>",
+      "<form action=\"/submit\" method=\"post\">\n            <input type=\"text\" name=\"username\" required/>\n            <input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>\n            <button type=\"submit\">Submit</button>\n        </form>",
+      "</main>"
+    ]
+  },
+  {
+    "script.def": [
+      "<script>\n        document.addEventListener('DOMContentLoaded', function() {\n            console.log('Page loaded');\n        });\n    </script>"
+    ],
+    "element.any": [
+      "<script>\n        document.addEventListener('DOMContentLoaded', function() {\n            console.log('Page loaded');\n        });\n    </script>"
+    ],
+    "script.name": [
+      "script"
+    ],
+    "script.content": [
+      "\n        document.addEventListener('DOMContentLoaded', function() {\n            console.log('Page loaded');\n        });\n    "
+    ]
+  },
+  {
+    "element.def": [
+      "<body>\n    <!-- Navigation -->\n    <nav class=\"main-nav\">\n        <ul>\n            <li><a href=\"#home\">Home</a></li>\n            <li><a href=\"#about\">About</a></li>\n            <li><a href=\"#contact\">Contact</a></li>\n        </ul>\n    </nav>\n\n    <!-- Main content -->\n    <main>\n        <h1>Welcome to our site</h1>\n        <p>This is a sample HTML file to test tree-sitter patterns.</p>\n        \n        <section id=\"features\">\n            <h2>Features</h2>\n            <ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>\n        </section>\n\n        <form action=\"/submit\" method=\"post\">\n            <input type=\"text\" name=\"username\" required/>\n            <input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>\n            <button type=\"submit\">Submit</button>\n        </form>\n    </main>\n\n    <script>\n        document.addEventListener('DOMContentLoaded', function() {\n            console.log('Page loaded');\n        });\n    </script>\n</body>"
+    ],
+    "element.any": [
+      "<body>\n    <!-- Navigation -->\n    <nav class=\"main-nav\">\n        <ul>\n            <li><a href=\"#home\">Home</a></li>\n            <li><a href=\"#about\">About</a></li>\n            <li><a href=\"#contact\">Contact</a></li>\n        </ul>\n    </nav>\n\n    <!-- Main content -->\n    <main>\n        <h1>Welcome to our site</h1>\n        <p>This is a sample HTML file to test tree-sitter patterns.</p>\n        \n        <section id=\"features\">\n            <h2>Features</h2>\n            <ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>\n        </section>\n\n        <form action=\"/submit\" method=\"post\">\n            <input type=\"text\" name=\"username\" required/>\n            <input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>\n            <button type=\"submit\">Submit</button>\n        </form>\n    </main>\n\n    <script>\n        document.addEventListener('DOMContentLoaded', function() {\n            console.log('Page loaded');\n        });\n    </script>\n</body>"
+    ],
+    "element.name": [
+      "body"
+    ],
+    "element.children": [
+      "<!-- Navigation -->",
+      "<nav class=\"main-nav\">\n        <ul>\n            <li><a href=\"#home\">Home</a></li>\n            <li><a href=\"#about\">About</a></li>\n            <li><a href=\"#contact\">Contact</a></li>\n        </ul>\n    </nav>",
+      "<!-- Main content -->",
+      "<main>\n        <h1>Welcome to our site</h1>\n        <p>This is a sample HTML file to test tree-sitter patterns.</p>\n        \n        <section id=\"features\">\n            <h2>Features</h2>\n            <ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>\n        </section>\n\n        <form action=\"/submit\" method=\"post\">\n            <input type=\"text\" name=\"username\" required/>\n            <input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>\n            <button type=\"submit\">Submit</button>\n        </form>\n    </main>",
+      "<script>\n        document.addEventListener('DOMContentLoaded', function() {\n            console.log('Page loaded');\n        });\n    </script>",
+      "</body>"
+    ]
+  },
+  {
+    "element.def": [
+      "<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Sample HTML</title>\n    <link rel=\"stylesheet\" href=\"styles.css\">\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            margin: 0;\n            padding: 20px;\n        }\n    </style>\n</head>\n<body>\n    <!-- Navigation -->\n    <nav class=\"main-nav\">\n        <ul>\n            <li><a href=\"#home\">Home</a></li>\n            <li><a href=\"#about\">About</a></li>\n            <li><a href=\"#contact\">Contact</a></li>\n        </ul>\n    </nav>\n\n    <!-- Main content -->\n    <main>\n        <h1>Welcome to our site</h1>\n        <p>This is a sample HTML file to test tree-sitter patterns.</p>\n        \n        <section id=\"features\">\n            <h2>Features</h2>\n            <ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>\n        </section>\n\n        <form action=\"/submit\" method=\"post\">\n            <input type=\"text\" name=\"username\" required/>\n            <input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>\n            <button type=\"submit\">Submit</button>\n        </form>\n    </main>\n\n    <script>\n        document.addEventListener('DOMContentLoaded', function() {\n            console.log('Page loaded');\n        });\n    </script>\n</body>\n</html>"
+    ],
+    "element.any": [
+      "<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Sample HTML</title>\n    <link rel=\"stylesheet\" href=\"styles.css\">\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            margin: 0;\n            padding: 20px;\n        }\n    </style>\n</head>\n<body>\n    <!-- Navigation -->\n    <nav class=\"main-nav\">\n        <ul>\n            <li><a href=\"#home\">Home</a></li>\n            <li><a href=\"#about\">About</a></li>\n            <li><a href=\"#contact\">Contact</a></li>\n        </ul>\n    </nav>\n\n    <!-- Main content -->\n    <main>\n        <h1>Welcome to our site</h1>\n        <p>This is a sample HTML file to test tree-sitter patterns.</p>\n        \n        <section id=\"features\">\n            <h2>Features</h2>\n            <ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>\n        </section>\n\n        <form action=\"/submit\" method=\"post\">\n            <input type=\"text\" name=\"username\" required/>\n            <input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>\n            <button type=\"submit\">Submit</button>\n        </form>\n    </main>\n\n    <script>\n        document.addEventListener('DOMContentLoaded', function() {\n            console.log('Page loaded');\n        });\n    </script>\n</body>\n</html>"
+    ],
+    "element.name": [
+      "html"
+    ],
+    "element.attrs": [
+      "lang=\"en\""
+    ],
+    "element.attr.name": [
+      "lang"
+    ],
+    "element.attr.value": [
+      "en"
+    ],
+    "element.children": [
+      "<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Sample HTML</title>\n    <link rel=\"stylesheet\" href=\"styles.css\">\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            margin: 0;\n            padding: 20px;\n        }\n    </style>\n</head>",
+      "<body>\n    <!-- Navigation -->\n    <nav class=\"main-nav\">\n        <ul>\n            <li><a href=\"#home\">Home</a></li>\n            <li><a href=\"#about\">About</a></li>\n            <li><a href=\"#contact\">Contact</a></li>\n        </ul>\n    </nav>\n\n    <!-- Main content -->\n    <main>\n        <h1>Welcome to our site</h1>\n        <p>This is a sample HTML file to test tree-sitter patterns.</p>\n        \n        <section id=\"features\">\n            <h2>Features</h2>\n            <ul>\n                <li>Regular elements</li>\n                <li>Self-closing elements like <img src=\"test.jpg\" alt=\"Test image\"/></li>\n                <li>Script elements</li>\n                <li>Style elements</li>\n            </ul>\n        </section>\n\n        <form action=\"/submit\" method=\"post\">\n            <input type=\"text\" name=\"username\" required/>\n            <input type=\"email\" name=\"email\" placeholder=\"Enter your email\"/>\n            <button type=\"submit\">Submit</button>\n        </form>\n    </main>\n\n    <script>\n        document.addEventListener('DOMContentLoaded', function() {\n            console.log('Page loaded');\n        });\n    </script>\n</body>",
+      "</html>"
+    ]
+  }
+]

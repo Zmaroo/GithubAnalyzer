@@ -1,0 +1,117 @@
+[
+  {
+    "function": [
+      "User(this.name, this.age)"
+    ]
+  },
+  {
+    "function": [
+      "void printInfo()"
+    ]
+  },
+  {
+    "function": [
+      "void printInfo()"
+    ]
+  },
+  {
+    "function": [
+      "{\n    print('Name: $name, Age: $age');\n  }"
+    ]
+  },
+  {
+    "function": [
+      "bool isAdult(int minAge)"
+    ]
+  },
+  {
+    "function": [
+      "bool isAdult(int minAge)"
+    ]
+  },
+  {
+    "function": [
+      "{\n    return age >= minAge;\n  }"
+    ]
+  },
+  {
+    "function": [
+      "String get info"
+    ]
+  },
+  {
+    "function": [
+      "=> '$name ($age years old)';"
+    ]
+  },
+  {
+    "function": [
+      "static User fromMap(Map<String, dynamic> map)"
+    ]
+  },
+  {
+    "function": [
+      "User fromMap(Map<String, dynamic> map)"
+    ]
+  },
+  {
+    "function": [
+      "{\n    return User(map['name'], map['age']);\n  }"
+    ]
+  },
+  {
+    "function": [
+      "void greet(String name)"
+    ]
+  },
+  {
+    "function": [
+      "{\n  print('Hello, $name!');\n}"
+    ]
+  },
+  {
+    "function": [
+      "String formatName(String firstName, [String? lastName])"
+    ]
+  },
+  {
+    "function": [
+      "{\n  return lastName != null ? '$firstName $lastName' : firstName;\n}"
+    ]
+  },
+  {
+    "function": [
+      "void createUser({required String name, int age = 0})"
+    ]
+  },
+  {
+    "function": [
+      "{\n  final user = User(name, age);\n  user.printInfo();\n}"
+    ]
+  },
+  {
+    "function": [
+      "int add(int a, int b)"
+    ]
+  },
+  {
+    "function": [
+      "=> a + b;"
+    ]
+  },
+  {
+    "function": [
+      "void main()"
+    ]
+  },
+  {
+    "function": [
+      "{\n  // Anonymous function\n  final multiply = (int x, int y) {\n    return x * y;\n  };\n\n  final user = User('John', 25);\n  user.printInfo();\n  \n  greet('Alice');\n  \n  print(add(5, 3));\n  print(multiply(4, 2));\n  \n  createUser(name: 'Bob', age: 30);\n}"
+    ]
+  },
+  {
+    "function": [
+      "(int x, int y) {\n    return x * y;\n  }"
+    ]
+  }
+]

@@ -22,7 +22,7 @@ from .language_service import LanguageService
 T = TypeVar('T', bound=Node)
 
 # Initialize logger
-logger = get_logger("tree_sitter.traversal")
+logger = get_logger(__name__)
 
 @dataclass
 class TreeSitterTraversal(TreeSitterServiceBase):

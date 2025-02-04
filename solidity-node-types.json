@@ -1,0 +1,2200 @@
+{
+  "type": "source_file",
+  "text": "// SPDX-License-Identifier: MIT\n    pragma solidity ^0.8.0;\n\n    contract SimpleStorage {\n        uint256 private value;\n\n        constructor(uint256 initialValue) {\n            value = initialValue;\n        }\n\n        function setValue(uint256 newValue) public {\n            value = newValue;\n        }\n\n        function getValue() public view returns (uint256) {\n            return value;\n        }\n\n        modifier onlyPositive(uint256 _value) {\n            require(_value > 0, \"Value must be positive\");\n            _;\n        }\n\n        function setValueWithCheck(uint256 newValue) public onlyPositive(newValue) {\n            value = newValue;\n        }\n    }\n    ",
+  "start_point": [
+    1,
+    4
+  ],
+  "end_point": [
+    28,
+    4
+  ],
+  "children": [
+    {
+      "type": "comment",
+      "text": "// SPDX-License-Identifier: MIT",
+      "start_point": [
+        1,
+        4
+      ],
+      "end_point": [
+        1,
+        35
+      ],
+      "children": []
+    },
+    {
+      "type": "pragma_directive",
+      "text": "pragma solidity ^0.8.0;",
+      "start_point": [
+        2,
+        4
+      ],
+      "end_point": [
+        2,
+        27
+      ],
+      "children": [
+        {
+          "type": "pragma",
+          "text": "pragma",
+          "start_point": [
+            2,
+            4
+          ],
+          "end_point": [
+            2,
+            10
+          ],
+          "children": []
+        },
+        {
+          "type": "solidity_pragma_token",
+          "text": "solidity ^0.8.0",
+          "start_point": [
+            2,
+            11
+          ],
+          "end_point": [
+            2,
+            26
+          ],
+          "children": [
+            {
+              "type": "solidity",
+              "text": "solidity",
+              "start_point": [
+                2,
+                11
+              ],
+              "end_point": [
+                2,
+                19
+              ],
+              "children": []
+            },
+            {
+              "type": "solidity_version_comparison_operator",
+              "text": " ^",
+              "start_point": [
+                2,
+                19
+              ],
+              "end_point": [
+                2,
+                21
+              ],
+              "children": [
+                {
+                  "type": "^",
+                  "text": " ^",
+                  "start_point": [
+                    2,
+                    19
+                  ],
+                  "end_point": [
+                    2,
+                    21
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "solidity_version",
+              "text": "0.8.0",
+              "start_point": [
+                2,
+                21
+              ],
+              "end_point": [
+                2,
+                26
+              ],
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "contract_declaration",
+      "text": "contract SimpleStorage {\n        uint256 private value;\n\n        constructor(uint256 initialValue) {\n            value = initialValue;\n        }\n\n        function setValue(uint256 newValue) public {\n            value = newValue;\n        }\n\n        function getValue() public view returns (uint256) {\n            return value;\n        }\n\n        modifier onlyPositive(uint256 _value) {\n            require(_value > 0, \"Value must be positive\");\n            _;\n        }\n\n        function setValueWithCheck(uint256 newValue) public onlyPositive(newValue) {\n            value = newValue;\n        }\n    }",
+      "start_point": [
+        4,
+        4
+      ],
+      "end_point": [
+        27,
+        5
+      ],
+      "children": [
+        {
+          "type": "contract",
+          "text": "contract",
+          "start_point": [
+            4,
+            4
+          ],
+          "end_point": [
+            4,
+            12
+          ],
+          "children": []
+        },
+        {
+          "type": "identifier",
+          "text": "SimpleStorage",
+          "start_point": [
+            4,
+            13
+          ],
+          "end_point": [
+            4,
+            26
+          ],
+          "children": []
+        },
+        {
+          "type": "contract_body",
+          "text": "{\n        uint256 private value;\n\n        constructor(uint256 initialValue) {\n            value = initialValue;\n        }\n\n        function setValue(uint256 newValue) public {\n            value = newValue;\n        }\n\n        function getValue() public view returns (uint256) {\n            return value;\n        }\n\n        modifier onlyPositive(uint256 _value) {\n            require(_value > 0, \"Value must be positive\");\n            _;\n        }\n\n        function setValueWithCheck(uint256 newValue) public onlyPositive(newValue) {\n            value = newValue;\n        }\n    }",
+          "start_point": [
+            4,
+            27
+          ],
+          "end_point": [
+            27,
+            5
+          ],
+          "children": [
+            {
+              "type": "{",
+              "text": "{",
+              "start_point": [
+                4,
+                27
+              ],
+              "end_point": [
+                4,
+                28
+              ],
+              "children": []
+            },
+            {
+              "type": "state_variable_declaration",
+              "text": "uint256 private value;",
+              "start_point": [
+                5,
+                8
+              ],
+              "end_point": [
+                5,
+                30
+              ],
+              "children": [
+                {
+                  "type": "type_name",
+                  "text": "uint256",
+                  "start_point": [
+                    5,
+                    8
+                  ],
+                  "end_point": [
+                    5,
+                    15
+                  ],
+                  "children": [
+                    {
+                      "type": "primitive_type",
+                      "text": "uint256",
+                      "start_point": [
+                        5,
+                        8
+                      ],
+                      "end_point": [
+                        5,
+                        15
+                      ],
+                      "children": [
+                        {
+                          "type": "uint256",
+                          "text": "uint256",
+                          "start_point": [
+                            5,
+                            8
+                          ],
+                          "end_point": [
+                            5,
+                            15
+                          ],
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "visibility",
+                  "text": "private",
+                  "start_point": [
+                    5,
+                    16
+                  ],
+                  "end_point": [
+                    5,
+                    23
+                  ],
+                  "children": [
+                    {
+                      "type": "private",
+                      "text": "private",
+                      "start_point": [
+                        5,
+                        16
+                      ],
+                      "end_point": [
+                        5,
+                        23
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "identifier",
+                  "text": "value",
+                  "start_point": [
+                    5,
+                    24
+                  ],
+                  "end_point": [
+                    5,
+                    29
+                  ],
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "constructor_definition",
+              "text": "constructor(uint256 initialValue) {\n            value = initialValue;\n        }",
+              "start_point": [
+                7,
+                8
+              ],
+              "end_point": [
+                9,
+                9
+              ],
+              "children": [
+                {
+                  "type": "constructor",
+                  "text": "constructor",
+                  "start_point": [
+                    7,
+                    8
+                  ],
+                  "end_point": [
+                    7,
+                    19
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "(",
+                  "text": "(",
+                  "start_point": [
+                    7,
+                    19
+                  ],
+                  "end_point": [
+                    7,
+                    20
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "parameter",
+                  "text": "uint256 initialValue",
+                  "start_point": [
+                    7,
+                    20
+                  ],
+                  "end_point": [
+                    7,
+                    40
+                  ],
+                  "children": [
+                    {
+                      "type": "type_name",
+                      "text": "uint256",
+                      "start_point": [
+                        7,
+                        20
+                      ],
+                      "end_point": [
+                        7,
+                        27
+                      ],
+                      "children": [
+                        {
+                          "type": "primitive_type",
+                          "text": "uint256",
+                          "start_point": [
+                            7,
+                            20
+                          ],
+                          "end_point": [
+                            7,
+                            27
+                          ],
+                          "children": [
+                            {
+                              "type": "uint256",
+                              "text": "uint256",
+                              "start_point": [
+                                7,
+                                20
+                              ],
+                              "end_point": [
+                                7,
+                                27
+                              ],
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "identifier",
+                      "text": "initialValue",
+                      "start_point": [
+                        7,
+                        28
+                      ],
+                      "end_point": [
+                        7,
+                        40
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": ")",
+                  "text": ")",
+                  "start_point": [
+                    7,
+                    40
+                  ],
+                  "end_point": [
+                    7,
+                    41
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "function_body",
+                  "text": "{\n            value = initialValue;\n        }",
+                  "start_point": [
+                    7,
+                    42
+                  ],
+                  "end_point": [
+                    9,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "{",
+                      "text": "{",
+                      "start_point": [
+                        7,
+                        42
+                      ],
+                      "end_point": [
+                        7,
+                        43
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "statement",
+                      "text": "value = initialValue;",
+                      "start_point": [
+                        8,
+                        12
+                      ],
+                      "end_point": [
+                        8,
+                        33
+                      ],
+                      "children": [
+                        {
+                          "type": "expression_statement",
+                          "text": "value = initialValue;",
+                          "start_point": [
+                            8,
+                            12
+                          ],
+                          "end_point": [
+                            8,
+                            33
+                          ],
+                          "children": [
+                            {
+                              "type": "expression",
+                              "text": "value = initialValue",
+                              "start_point": [
+                                8,
+                                12
+                              ],
+                              "end_point": [
+                                8,
+                                32
+                              ],
+                              "children": [
+                                {
+                                  "type": "assignment_expression",
+                                  "text": "value = initialValue",
+                                  "start_point": [
+                                    8,
+                                    12
+                                  ],
+                                  "end_point": [
+                                    8,
+                                    32
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "expression",
+                                      "text": "value",
+                                      "start_point": [
+                                        8,
+                                        12
+                                      ],
+                                      "end_point": [
+                                        8,
+                                        17
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "identifier",
+                                          "text": "value",
+                                          "start_point": [
+                                            8,
+                                            12
+                                          ],
+                                          "end_point": [
+                                            8,
+                                            17
+                                          ],
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "=",
+                                      "text": "=",
+                                      "start_point": [
+                                        8,
+                                        18
+                                      ],
+                                      "end_point": [
+                                        8,
+                                        19
+                                      ],
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "expression",
+                                      "text": "initialValue",
+                                      "start_point": [
+                                        8,
+                                        20
+                                      ],
+                                      "end_point": [
+                                        8,
+                                        32
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "identifier",
+                                          "text": "initialValue",
+                                          "start_point": [
+                                            8,
+                                            20
+                                          ],
+                                          "end_point": [
+                                            8,
+                                            32
+                                          ],
+                                          "children": []
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "}",
+                      "text": "}",
+                      "start_point": [
+                        9,
+                        8
+                      ],
+                      "end_point": [
+                        9,
+                        9
+                      ],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "function_definition",
+              "text": "function setValue(uint256 newValue) public {\n            value = newValue;\n        }",
+              "start_point": [
+                11,
+                8
+              ],
+              "end_point": [
+                13,
+                9
+              ],
+              "children": [
+                {
+                  "type": "function",
+                  "text": "function",
+                  "start_point": [
+                    11,
+                    8
+                  ],
+                  "end_point": [
+                    11,
+                    16
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "identifier",
+                  "text": "setValue",
+                  "start_point": [
+                    11,
+                    17
+                  ],
+                  "end_point": [
+                    11,
+                    25
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "(",
+                  "text": "(",
+                  "start_point": [
+                    11,
+                    25
+                  ],
+                  "end_point": [
+                    11,
+                    26
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "parameter",
+                  "text": "uint256 newValue",
+                  "start_point": [
+                    11,
+                    26
+                  ],
+                  "end_point": [
+                    11,
+                    42
+                  ],
+                  "children": [
+                    {
+                      "type": "type_name",
+                      "text": "uint256",
+                      "start_point": [
+                        11,
+                        26
+                      ],
+                      "end_point": [
+                        11,
+                        33
+                      ],
+                      "children": [
+                        {
+                          "type": "primitive_type",
+                          "text": "uint256",
+                          "start_point": [
+                            11,
+                            26
+                          ],
+                          "end_point": [
+                            11,
+                            33
+                          ],
+                          "children": [
+                            {
+                              "type": "uint256",
+                              "text": "uint256",
+                              "start_point": [
+                                11,
+                                26
+                              ],
+                              "end_point": [
+                                11,
+                                33
+                              ],
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "identifier",
+                      "text": "newValue",
+                      "start_point": [
+                        11,
+                        34
+                      ],
+                      "end_point": [
+                        11,
+                        42
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": ")",
+                  "text": ")",
+                  "start_point": [
+                    11,
+                    42
+                  ],
+                  "end_point": [
+                    11,
+                    43
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "visibility",
+                  "text": "public",
+                  "start_point": [
+                    11,
+                    44
+                  ],
+                  "end_point": [
+                    11,
+                    50
+                  ],
+                  "children": [
+                    {
+                      "type": "public",
+                      "text": "public",
+                      "start_point": [
+                        11,
+                        44
+                      ],
+                      "end_point": [
+                        11,
+                        50
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "function_body",
+                  "text": "{\n            value = newValue;\n        }",
+                  "start_point": [
+                    11,
+                    51
+                  ],
+                  "end_point": [
+                    13,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "{",
+                      "text": "{",
+                      "start_point": [
+                        11,
+                        51
+                      ],
+                      "end_point": [
+                        11,
+                        52
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "statement",
+                      "text": "value = newValue;",
+                      "start_point": [
+                        12,
+                        12
+                      ],
+                      "end_point": [
+                        12,
+                        29
+                      ],
+                      "children": [
+                        {
+                          "type": "expression_statement",
+                          "text": "value = newValue;",
+                          "start_point": [
+                            12,
+                            12
+                          ],
+                          "end_point": [
+                            12,
+                            29
+                          ],
+                          "children": [
+                            {
+                              "type": "expression",
+                              "text": "value = newValue",
+                              "start_point": [
+                                12,
+                                12
+                              ],
+                              "end_point": [
+                                12,
+                                28
+                              ],
+                              "children": [
+                                {
+                                  "type": "assignment_expression",
+                                  "text": "value = newValue",
+                                  "start_point": [
+                                    12,
+                                    12
+                                  ],
+                                  "end_point": [
+                                    12,
+                                    28
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "expression",
+                                      "text": "value",
+                                      "start_point": [
+                                        12,
+                                        12
+                                      ],
+                                      "end_point": [
+                                        12,
+                                        17
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "identifier",
+                                          "text": "value",
+                                          "start_point": [
+                                            12,
+                                            12
+                                          ],
+                                          "end_point": [
+                                            12,
+                                            17
+                                          ],
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "=",
+                                      "text": "=",
+                                      "start_point": [
+                                        12,
+                                        18
+                                      ],
+                                      "end_point": [
+                                        12,
+                                        19
+                                      ],
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "expression",
+                                      "text": "newValue",
+                                      "start_point": [
+                                        12,
+                                        20
+                                      ],
+                                      "end_point": [
+                                        12,
+                                        28
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "identifier",
+                                          "text": "newValue",
+                                          "start_point": [
+                                            12,
+                                            20
+                                          ],
+                                          "end_point": [
+                                            12,
+                                            28
+                                          ],
+                                          "children": []
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "}",
+                      "text": "}",
+                      "start_point": [
+                        13,
+                        8
+                      ],
+                      "end_point": [
+                        13,
+                        9
+                      ],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "function_definition",
+              "text": "function getValue() public view returns (uint256) {\n            return value;\n        }",
+              "start_point": [
+                15,
+                8
+              ],
+              "end_point": [
+                17,
+                9
+              ],
+              "children": [
+                {
+                  "type": "function",
+                  "text": "function",
+                  "start_point": [
+                    15,
+                    8
+                  ],
+                  "end_point": [
+                    15,
+                    16
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "identifier",
+                  "text": "getValue",
+                  "start_point": [
+                    15,
+                    17
+                  ],
+                  "end_point": [
+                    15,
+                    25
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "(",
+                  "text": "(",
+                  "start_point": [
+                    15,
+                    25
+                  ],
+                  "end_point": [
+                    15,
+                    26
+                  ],
+                  "children": []
+                },
+                {
+                  "type": ")",
+                  "text": ")",
+                  "start_point": [
+                    15,
+                    26
+                  ],
+                  "end_point": [
+                    15,
+                    27
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "visibility",
+                  "text": "public",
+                  "start_point": [
+                    15,
+                    28
+                  ],
+                  "end_point": [
+                    15,
+                    34
+                  ],
+                  "children": [
+                    {
+                      "type": "public",
+                      "text": "public",
+                      "start_point": [
+                        15,
+                        28
+                      ],
+                      "end_point": [
+                        15,
+                        34
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "state_mutability",
+                  "text": "view",
+                  "start_point": [
+                    15,
+                    35
+                  ],
+                  "end_point": [
+                    15,
+                    39
+                  ],
+                  "children": [
+                    {
+                      "type": "view",
+                      "text": "view",
+                      "start_point": [
+                        15,
+                        35
+                      ],
+                      "end_point": [
+                        15,
+                        39
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "return_type_definition",
+                  "text": "returns (uint256)",
+                  "start_point": [
+                    15,
+                    40
+                  ],
+                  "end_point": [
+                    15,
+                    57
+                  ],
+                  "children": [
+                    {
+                      "type": "returns",
+                      "text": "returns",
+                      "start_point": [
+                        15,
+                        40
+                      ],
+                      "end_point": [
+                        15,
+                        47
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "(",
+                      "text": "(",
+                      "start_point": [
+                        15,
+                        48
+                      ],
+                      "end_point": [
+                        15,
+                        49
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "parameter",
+                      "text": "uint256",
+                      "start_point": [
+                        15,
+                        49
+                      ],
+                      "end_point": [
+                        15,
+                        56
+                      ],
+                      "children": [
+                        {
+                          "type": "type_name",
+                          "text": "uint256",
+                          "start_point": [
+                            15,
+                            49
+                          ],
+                          "end_point": [
+                            15,
+                            56
+                          ],
+                          "children": [
+                            {
+                              "type": "primitive_type",
+                              "text": "uint256",
+                              "start_point": [
+                                15,
+                                49
+                              ],
+                              "end_point": [
+                                15,
+                                56
+                              ],
+                              "children": [
+                                {
+                                  "type": "uint256",
+                                  "text": "uint256",
+                                  "start_point": [
+                                    15,
+                                    49
+                                  ],
+                                  "end_point": [
+                                    15,
+                                    56
+                                  ],
+                                  "children": []
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": ")",
+                      "text": ")",
+                      "start_point": [
+                        15,
+                        56
+                      ],
+                      "end_point": [
+                        15,
+                        57
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "function_body",
+                  "text": "{\n            return value;\n        }",
+                  "start_point": [
+                    15,
+                    58
+                  ],
+                  "end_point": [
+                    17,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "{",
+                      "text": "{",
+                      "start_point": [
+                        15,
+                        58
+                      ],
+                      "end_point": [
+                        15,
+                        59
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "statement",
+                      "text": "return value;",
+                      "start_point": [
+                        16,
+                        12
+                      ],
+                      "end_point": [
+                        16,
+                        25
+                      ],
+                      "children": [
+                        {
+                          "type": "return_statement",
+                          "text": "return value;",
+                          "start_point": [
+                            16,
+                            12
+                          ],
+                          "end_point": [
+                            16,
+                            25
+                          ],
+                          "children": [
+                            {
+                              "type": "return",
+                              "text": "return",
+                              "start_point": [
+                                16,
+                                12
+                              ],
+                              "end_point": [
+                                16,
+                                18
+                              ],
+                              "children": []
+                            },
+                            {
+                              "type": "expression",
+                              "text": "value",
+                              "start_point": [
+                                16,
+                                19
+                              ],
+                              "end_point": [
+                                16,
+                                24
+                              ],
+                              "children": [
+                                {
+                                  "type": "identifier",
+                                  "text": "value",
+                                  "start_point": [
+                                    16,
+                                    19
+                                  ],
+                                  "end_point": [
+                                    16,
+                                    24
+                                  ],
+                                  "children": []
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "}",
+                      "text": "}",
+                      "start_point": [
+                        17,
+                        8
+                      ],
+                      "end_point": [
+                        17,
+                        9
+                      ],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "modifier_definition",
+              "text": "modifier onlyPositive(uint256 _value) {\n            require(_value > 0, \"Value must be positive\");\n            _;\n        }",
+              "start_point": [
+                19,
+                8
+              ],
+              "end_point": [
+                22,
+                9
+              ],
+              "children": [
+                {
+                  "type": "modifier",
+                  "text": "modifier",
+                  "start_point": [
+                    19,
+                    8
+                  ],
+                  "end_point": [
+                    19,
+                    16
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "identifier",
+                  "text": "onlyPositive",
+                  "start_point": [
+                    19,
+                    17
+                  ],
+                  "end_point": [
+                    19,
+                    29
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "(",
+                  "text": "(",
+                  "start_point": [
+                    19,
+                    29
+                  ],
+                  "end_point": [
+                    19,
+                    30
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "parameter",
+                  "text": "uint256 _value",
+                  "start_point": [
+                    19,
+                    30
+                  ],
+                  "end_point": [
+                    19,
+                    44
+                  ],
+                  "children": [
+                    {
+                      "type": "type_name",
+                      "text": "uint256",
+                      "start_point": [
+                        19,
+                        30
+                      ],
+                      "end_point": [
+                        19,
+                        37
+                      ],
+                      "children": [
+                        {
+                          "type": "primitive_type",
+                          "text": "uint256",
+                          "start_point": [
+                            19,
+                            30
+                          ],
+                          "end_point": [
+                            19,
+                            37
+                          ],
+                          "children": [
+                            {
+                              "type": "uint256",
+                              "text": "uint256",
+                              "start_point": [
+                                19,
+                                30
+                              ],
+                              "end_point": [
+                                19,
+                                37
+                              ],
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "identifier",
+                      "text": "_value",
+                      "start_point": [
+                        19,
+                        38
+                      ],
+                      "end_point": [
+                        19,
+                        44
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": ")",
+                  "text": ")",
+                  "start_point": [
+                    19,
+                    44
+                  ],
+                  "end_point": [
+                    19,
+                    45
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "function_body",
+                  "text": "{\n            require(_value > 0, \"Value must be positive\");\n            _;\n        }",
+                  "start_point": [
+                    19,
+                    46
+                  ],
+                  "end_point": [
+                    22,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "{",
+                      "text": "{",
+                      "start_point": [
+                        19,
+                        46
+                      ],
+                      "end_point": [
+                        19,
+                        47
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "statement",
+                      "text": "require(_value > 0, \"Value must be positive\");",
+                      "start_point": [
+                        20,
+                        12
+                      ],
+                      "end_point": [
+                        20,
+                        58
+                      ],
+                      "children": [
+                        {
+                          "type": "expression_statement",
+                          "text": "require(_value > 0, \"Value must be positive\");",
+                          "start_point": [
+                            20,
+                            12
+                          ],
+                          "end_point": [
+                            20,
+                            58
+                          ],
+                          "children": [
+                            {
+                              "type": "expression",
+                              "text": "require(_value > 0, \"Value must be positive\")",
+                              "start_point": [
+                                20,
+                                12
+                              ],
+                              "end_point": [
+                                20,
+                                57
+                              ],
+                              "children": [
+                                {
+                                  "type": "call_expression",
+                                  "text": "require(_value > 0, \"Value must be positive\")",
+                                  "start_point": [
+                                    20,
+                                    12
+                                  ],
+                                  "end_point": [
+                                    20,
+                                    57
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "expression",
+                                      "text": "require",
+                                      "start_point": [
+                                        20,
+                                        12
+                                      ],
+                                      "end_point": [
+                                        20,
+                                        19
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "identifier",
+                                          "text": "require",
+                                          "start_point": [
+                                            20,
+                                            12
+                                          ],
+                                          "end_point": [
+                                            20,
+                                            19
+                                          ],
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "(",
+                                      "text": "(",
+                                      "start_point": [
+                                        20,
+                                        19
+                                      ],
+                                      "end_point": [
+                                        20,
+                                        20
+                                      ],
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "call_argument",
+                                      "text": "_value > 0",
+                                      "start_point": [
+                                        20,
+                                        20
+                                      ],
+                                      "end_point": [
+                                        20,
+                                        30
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "expression",
+                                          "text": "_value > 0",
+                                          "start_point": [
+                                            20,
+                                            20
+                                          ],
+                                          "end_point": [
+                                            20,
+                                            30
+                                          ],
+                                          "children": [
+                                            {
+                                              "type": "binary_expression",
+                                              "text": "_value > 0",
+                                              "start_point": [
+                                                20,
+                                                20
+                                              ],
+                                              "end_point": [
+                                                20,
+                                                30
+                                              ],
+                                              "children": [
+                                                {
+                                                  "type": "expression",
+                                                  "text": "_value",
+                                                  "start_point": [
+                                                    20,
+                                                    20
+                                                  ],
+                                                  "end_point": [
+                                                    20,
+                                                    26
+                                                  ],
+                                                  "children": [
+                                                    {
+                                                      "type": "identifier",
+                                                      "text": "_value",
+                                                      "start_point": [
+                                                        20,
+                                                        20
+                                                      ],
+                                                      "end_point": [
+                                                        20,
+                                                        26
+                                                      ],
+                                                      "children": []
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "type": ">",
+                                                  "text": ">",
+                                                  "start_point": [
+                                                    20,
+                                                    27
+                                                  ],
+                                                  "end_point": [
+                                                    20,
+                                                    28
+                                                  ],
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "expression",
+                                                  "text": "0",
+                                                  "start_point": [
+                                                    20,
+                                                    29
+                                                  ],
+                                                  "end_point": [
+                                                    20,
+                                                    30
+                                                  ],
+                                                  "children": [
+                                                    {
+                                                      "type": "number_literal",
+                                                      "text": "0",
+                                                      "start_point": [
+                                                        20,
+                                                        29
+                                                      ],
+                                                      "end_point": [
+                                                        20,
+                                                        30
+                                                      ],
+                                                      "children": []
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": ",",
+                                      "text": ",",
+                                      "start_point": [
+                                        20,
+                                        30
+                                      ],
+                                      "end_point": [
+                                        20,
+                                        31
+                                      ],
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "call_argument",
+                                      "text": "\"Value must be positive\"",
+                                      "start_point": [
+                                        20,
+                                        32
+                                      ],
+                                      "end_point": [
+                                        20,
+                                        56
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "expression",
+                                          "text": "\"Value must be positive\"",
+                                          "start_point": [
+                                            20,
+                                            32
+                                          ],
+                                          "end_point": [
+                                            20,
+                                            56
+                                          ],
+                                          "children": [
+                                            {
+                                              "type": "string_literal",
+                                              "text": "\"Value must be positive\"",
+                                              "start_point": [
+                                                20,
+                                                32
+                                              ],
+                                              "end_point": [
+                                                20,
+                                                56
+                                              ],
+                                              "children": [
+                                                {
+                                                  "type": "string",
+                                                  "text": "\"Value must be positive\"",
+                                                  "start_point": [
+                                                    20,
+                                                    32
+                                                  ],
+                                                  "end_point": [
+                                                    20,
+                                                    56
+                                                  ],
+                                                  "children": [
+                                                    {
+                                                      "type": "\"",
+                                                      "text": "\"",
+                                                      "start_point": [
+                                                        20,
+                                                        32
+                                                      ],
+                                                      "end_point": [
+                                                        20,
+                                                        33
+                                                      ],
+                                                      "children": []
+                                                    },
+                                                    {
+                                                      "type": "\"",
+                                                      "text": "\"",
+                                                      "start_point": [
+                                                        20,
+                                                        55
+                                                      ],
+                                                      "end_point": [
+                                                        20,
+                                                        56
+                                                      ],
+                                                      "children": []
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": ")",
+                                      "text": ")",
+                                      "start_point": [
+                                        20,
+                                        56
+                                      ],
+                                      "end_point": [
+                                        20,
+                                        57
+                                      ],
+                                      "children": []
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "statement",
+                      "text": "_;",
+                      "start_point": [
+                        21,
+                        12
+                      ],
+                      "end_point": [
+                        21,
+                        14
+                      ],
+                      "children": [
+                        {
+                          "type": "expression_statement",
+                          "text": "_;",
+                          "start_point": [
+                            21,
+                            12
+                          ],
+                          "end_point": [
+                            21,
+                            14
+                          ],
+                          "children": [
+                            {
+                              "type": "expression",
+                              "text": "_",
+                              "start_point": [
+                                21,
+                                12
+                              ],
+                              "end_point": [
+                                21,
+                                13
+                              ],
+                              "children": [
+                                {
+                                  "type": "identifier",
+                                  "text": "_",
+                                  "start_point": [
+                                    21,
+                                    12
+                                  ],
+                                  "end_point": [
+                                    21,
+                                    13
+                                  ],
+                                  "children": []
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "}",
+                      "text": "}",
+                      "start_point": [
+                        22,
+                        8
+                      ],
+                      "end_point": [
+                        22,
+                        9
+                      ],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "function_definition",
+              "text": "function setValueWithCheck(uint256 newValue) public onlyPositive(newValue) {\n            value = newValue;\n        }",
+              "start_point": [
+                24,
+                8
+              ],
+              "end_point": [
+                26,
+                9
+              ],
+              "children": [
+                {
+                  "type": "function",
+                  "text": "function",
+                  "start_point": [
+                    24,
+                    8
+                  ],
+                  "end_point": [
+                    24,
+                    16
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "identifier",
+                  "text": "setValueWithCheck",
+                  "start_point": [
+                    24,
+                    17
+                  ],
+                  "end_point": [
+                    24,
+                    34
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "(",
+                  "text": "(",
+                  "start_point": [
+                    24,
+                    34
+                  ],
+                  "end_point": [
+                    24,
+                    35
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "parameter",
+                  "text": "uint256 newValue",
+                  "start_point": [
+                    24,
+                    35
+                  ],
+                  "end_point": [
+                    24,
+                    51
+                  ],
+                  "children": [
+                    {
+                      "type": "type_name",
+                      "text": "uint256",
+                      "start_point": [
+                        24,
+                        35
+                      ],
+                      "end_point": [
+                        24,
+                        42
+                      ],
+                      "children": [
+                        {
+                          "type": "primitive_type",
+                          "text": "uint256",
+                          "start_point": [
+                            24,
+                            35
+                          ],
+                          "end_point": [
+                            24,
+                            42
+                          ],
+                          "children": [
+                            {
+                              "type": "uint256",
+                              "text": "uint256",
+                              "start_point": [
+                                24,
+                                35
+                              ],
+                              "end_point": [
+                                24,
+                                42
+                              ],
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "identifier",
+                      "text": "newValue",
+                      "start_point": [
+                        24,
+                        43
+                      ],
+                      "end_point": [
+                        24,
+                        51
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": ")",
+                  "text": ")",
+                  "start_point": [
+                    24,
+                    51
+                  ],
+                  "end_point": [
+                    24,
+                    52
+                  ],
+                  "children": []
+                },
+                {
+                  "type": "visibility",
+                  "text": "public",
+                  "start_point": [
+                    24,
+                    53
+                  ],
+                  "end_point": [
+                    24,
+                    59
+                  ],
+                  "children": [
+                    {
+                      "type": "public",
+                      "text": "public",
+                      "start_point": [
+                        24,
+                        53
+                      ],
+                      "end_point": [
+                        24,
+                        59
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "modifier_invocation",
+                  "text": "onlyPositive(newValue)",
+                  "start_point": [
+                    24,
+                    60
+                  ],
+                  "end_point": [
+                    24,
+                    82
+                  ],
+                  "children": [
+                    {
+                      "type": "identifier",
+                      "text": "onlyPositive",
+                      "start_point": [
+                        24,
+                        60
+                      ],
+                      "end_point": [
+                        24,
+                        72
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "(",
+                      "text": "(",
+                      "start_point": [
+                        24,
+                        72
+                      ],
+                      "end_point": [
+                        24,
+                        73
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "call_argument",
+                      "text": "newValue",
+                      "start_point": [
+                        24,
+                        73
+                      ],
+                      "end_point": [
+                        24,
+                        81
+                      ],
+                      "children": [
+                        {
+                          "type": "expression",
+                          "text": "newValue",
+                          "start_point": [
+                            24,
+                            73
+                          ],
+                          "end_point": [
+                            24,
+                            81
+                          ],
+                          "children": [
+                            {
+                              "type": "identifier",
+                              "text": "newValue",
+                              "start_point": [
+                                24,
+                                73
+                              ],
+                              "end_point": [
+                                24,
+                                81
+                              ],
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": ")",
+                      "text": ")",
+                      "start_point": [
+                        24,
+                        81
+                      ],
+                      "end_point": [
+                        24,
+                        82
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "function_body",
+                  "text": "{\n            value = newValue;\n        }",
+                  "start_point": [
+                    24,
+                    83
+                  ],
+                  "end_point": [
+                    26,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "{",
+                      "text": "{",
+                      "start_point": [
+                        24,
+                        83
+                      ],
+                      "end_point": [
+                        24,
+                        84
+                      ],
+                      "children": []
+                    },
+                    {
+                      "type": "statement",
+                      "text": "value = newValue;",
+                      "start_point": [
+                        25,
+                        12
+                      ],
+                      "end_point": [
+                        25,
+                        29
+                      ],
+                      "children": [
+                        {
+                          "type": "expression_statement",
+                          "text": "value = newValue;",
+                          "start_point": [
+                            25,
+                            12
+                          ],
+                          "end_point": [
+                            25,
+                            29
+                          ],
+                          "children": [
+                            {
+                              "type": "expression",
+                              "text": "value = newValue",
+                              "start_point": [
+                                25,
+                                12
+                              ],
+                              "end_point": [
+                                25,
+                                28
+                              ],
+                              "children": [
+                                {
+                                  "type": "assignment_expression",
+                                  "text": "value = newValue",
+                                  "start_point": [
+                                    25,
+                                    12
+                                  ],
+                                  "end_point": [
+                                    25,
+                                    28
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "expression",
+                                      "text": "value",
+                                      "start_point": [
+                                        25,
+                                        12
+                                      ],
+                                      "end_point": [
+                                        25,
+                                        17
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "identifier",
+                                          "text": "value",
+                                          "start_point": [
+                                            25,
+                                            12
+                                          ],
+                                          "end_point": [
+                                            25,
+                                            17
+                                          ],
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "=",
+                                      "text": "=",
+                                      "start_point": [
+                                        25,
+                                        18
+                                      ],
+                                      "end_point": [
+                                        25,
+                                        19
+                                      ],
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "expression",
+                                      "text": "newValue",
+                                      "start_point": [
+                                        25,
+                                        20
+                                      ],
+                                      "end_point": [
+                                        25,
+                                        28
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "identifier",
+                                          "text": "newValue",
+                                          "start_point": [
+                                            25,
+                                            20
+                                          ],
+                                          "end_point": [
+                                            25,
+                                            28
+                                          ],
+                                          "children": []
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "}",
+                      "text": "}",
+                      "start_point": [
+                        26,
+                        8
+                      ],
+                      "end_point": [
+                        26,
+                        9
+                      ],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "}",
+              "text": "}",
+              "start_point": [
+                27,
+                4
+              ],
+              "end_point": [
+                27,
+                5
+              ],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

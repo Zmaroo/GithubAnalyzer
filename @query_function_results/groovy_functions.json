@@ -1,410 +1,157 @@
-{
-  "language": "groovy",
-  "pattern": "\n            (func) @function\n        ",
-  "total_functions": 31,
-  "functions": [
-    {
-      "type": "func",
-      "start_point": {
-        "row": 6,
-        "column": 4
-      },
-      "end_point": {
-        "row": 6,
-        "column": 30
-      },
-      "code": "User(String name, int age)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 12,
-        "column": 8
-      },
-      "end_point": {
-        "row": 12,
-        "column": 38
-      },
-      "code": "greet(String prefix = \"Hello\")",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 17,
-        "column": 8
-      },
-      "end_point": {
-        "row": 17,
-        "column": 24
-      },
-      "code": "getDescription()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 18,
-        "column": 17
-      },
-      "end_point": {
-        "row": 18,
-        "column": 29
-      },
-      "code": "capitalize()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 22,
-        "column": 12
-      },
-      "end_point": {
-        "row": 22,
-        "column": 21
-      },
-      "code": "isAdult()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 28,
-        "column": 9
-      },
-      "end_point": {
-        "row": 28,
-        "column": 25
-      },
-      "code": "plus(User other)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 29,
-        "column": 12
-      },
-      "end_point": {
-        "row": 29,
-        "column": 69
-      },
-      "code": "User(name + \" & \" + other.name, Math.max(age, other.age))",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 29,
-        "column": 49
-      },
-      "end_point": {
-        "row": 29,
-        "column": 68
-      },
-      "code": "max(age, other.age)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 33,
-        "column": 11
-      },
-      "end_point": {
-        "row": 33,
-        "column": 21
-      },
-      "code": "toString()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 34,
-        "column": 8
-      },
-      "end_point": {
-        "row": 34,
-        "column": 24
-      },
-      "code": "getDescription()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 40,
-        "column": 17
-      },
-      "end_point": {
-        "row": 40,
-        "column": 26
-      },
-      "code": "process()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 42,
-        "column": 8
-      },
-      "end_point": {
-        "row": 42,
-        "column": 18
-      },
-      "code": "validate()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 49,
-        "column": 4
-      },
-      "end_point": {
-        "row": 49,
-        "column": 41
-      },
-      "code": "ProcessableUser(String name, int age)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 50,
-        "column": 8
-      },
-      "end_point": {
-        "row": 50,
-        "column": 24
-      },
-      "code": "super(name, age)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 53,
-        "column": 8
-      },
-      "end_point": {
-        "row": 53,
-        "column": 17
-      },
-      "code": "process()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 61,
-        "column": 9
-      },
-      "end_point": {
-        "row": 61,
-        "column": 18
-      },
-      "code": "isAdult()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 65,
-        "column": 4
-      },
-      "end_point": {
-        "row": 65,
-        "column": 34
-      },
-      "code": "getUserStats(List<User> users)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 66,
-        "column": 38
-      },
-      "end_point": {
-        "row": 66,
-        "column": 47
-      },
-      "code": "isAdult()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 73,
-        "column": 18
-      },
-      "end_point": {
-        "row": 73,
-        "column": 31
-      },
-      "code": "toUpperCase()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 77,
-        "column": 4
-      },
-      "end_point": {
-        "row": 77,
-        "column": 34
-      },
-      "code": "processUsers(List<User> users)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 78,
-        "column": 11
-      },
-      "end_point": {
-        "row": 78,
-        "column": 20
-      },
-      "code": "process()",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 82,
-        "column": 4
-      },
-      "end_point": {
-        "row": 82,
-        "column": 18
-      },
-      "code": "formatAge(age)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 96,
-        "column": 20
-      },
-      "end_point": {
-        "row": 96,
-        "column": 47
-      },
-      "code": "ProcessableUser(\"John\", 25)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 97,
-        "column": 20
-      },
-      "end_point": {
-        "row": 97,
-        "column": 48
-      },
-      "code": "ProcessableUser(\"Alice\", 17)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 106,
-        "column": 25
-      },
-      "end_point": {
-        "row": 106,
-        "column": 42
-      },
-      "code": "userProcessor(it)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 109,
-        "column": 16
-      },
-      "end_point": {
-        "row": 109,
-        "column": 35
-      },
-      "code": "getUserStats(users)",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 123,
-        "column": 19
-      },
-      "end_point": {
-        "row": 123,
-        "column": 42
-      },
-      "code": "createGreeting(\"Hello\")",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 124,
-        "column": 16
-      },
-      "end_point": {
-        "row": 124,
-        "column": 36
-      },
-      "code": "createGreeting(\"Hi\")",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 126,
-        "column": 12
-      },
-      "end_point": {
-        "row": 126,
-        "column": 27
-      },
-      "code": "sayHello(\"Bob\")",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 127,
-        "column": 12
-      },
-      "end_point": {
-        "row": 127,
-        "column": 28
-      },
-      "code": "sayHi(\"Charlie\")",
-      "name": "Anonymous"
-    },
-    {
-      "type": "func",
-      "start_point": {
-        "row": 131,
-        "column": 4
-      },
-      "end_point": {
-        "row": 131,
-        "column": 23
-      },
-      "code": "processUsers(users)",
-      "name": "Anonymous"
-    }
-  ]
-}
+[
+  {
+    "function": [
+      "User(String name, int age)"
+    ]
+  },
+  {
+    "function": [
+      "greet(String prefix = \"Hello\")"
+    ]
+  },
+  {
+    "function": [
+      "getDescription()"
+    ]
+  },
+  {
+    "function": [
+      "capitalize()"
+    ]
+  },
+  {
+    "function": [
+      "isAdult()"
+    ]
+  },
+  {
+    "function": [
+      "plus(User other)"
+    ]
+  },
+  {
+    "function": [
+      "User(name + \" & \" + other.name, Math.max(age, other.age))"
+    ]
+  },
+  {
+    "function": [
+      "max(age, other.age)"
+    ]
+  },
+  {
+    "function": [
+      "toString()"
+    ]
+  },
+  {
+    "function": [
+      "getDescription()"
+    ]
+  },
+  {
+    "function": [
+      "process()"
+    ]
+  },
+  {
+    "function": [
+      "validate()"
+    ]
+  },
+  {
+    "function": [
+      "ProcessableUser(String name, int age)"
+    ]
+  },
+  {
+    "function": [
+      "super(name, age)"
+    ]
+  },
+  {
+    "function": [
+      "process()"
+    ]
+  },
+  {
+    "function": [
+      "isAdult()"
+    ]
+  },
+  {
+    "function": [
+      "getUserStats(List<User> users)"
+    ]
+  },
+  {
+    "function": [
+      "isAdult()"
+    ]
+  },
+  {
+    "function": [
+      "toUpperCase()"
+    ]
+  },
+  {
+    "function": [
+      "processUsers(List<User> users)"
+    ]
+  },
+  {
+    "function": [
+      "process()"
+    ]
+  },
+  {
+    "function": [
+      "formatAge(age)"
+    ]
+  },
+  {
+    "function": [
+      "ProcessableUser(\"John\", 25)"
+    ]
+  },
+  {
+    "function": [
+      "ProcessableUser(\"Alice\", 17)"
+    ]
+  },
+  {
+    "function": [
+      "userProcessor(it)"
+    ]
+  },
+  {
+    "function": [
+      "getUserStats(users)"
+    ]
+  },
+  {
+    "function": [
+      "createGreeting(\"Hello\")"
+    ]
+  },
+  {
+    "function": [
+      "createGreeting(\"Hi\")"
+    ]
+  },
+  {
+    "function": [
+      "sayHello(\"Bob\")"
+    ]
+  },
+  {
+    "function": [
+      "sayHi(\"Charlie\")"
+    ]
+  },
+  {
+    "function": [
+      "processUsers(users)"
+    ]
+  }
+]
