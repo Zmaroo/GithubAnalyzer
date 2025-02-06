@@ -21,6 +21,7 @@ dependencies = [
     "toml>=0.10.2",
     "click>=8.1.8",
     "tree-sitter-c-sharp>=0.23.1",
+    "isort>=6.0.0",
 ]
 requires-python = ">=3.11,<=3.13"
 readme = "README.md"

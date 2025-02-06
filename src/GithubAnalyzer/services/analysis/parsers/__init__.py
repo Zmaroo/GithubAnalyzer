@@ -1,16 +1,19 @@
-"""Parser services package."""
+"""Analysis parser services for the GithubAnalyzer package."""
 
-from .language_service import LanguageService
-from .query_patterns import QueryOptimizationSettings
+# Analysis parser
+from .analysis_parser import AnalysisParserService
+# Editor services
+from .editor_service import TreeSitterEditor
+# Query services
 from .query_service import TreeSitterQueryHandler
-from .traversal_service import TreeSitterTraversal
-from GithubAnalyzer.utils.logging import get_logger
-
-logger = get_logger(__name__)
 
 __all__ = [
-    'LanguageService',
-    'QueryOptimizationSettings',
-    'TreeSitterQueryHandler',
-    'TreeSitterTraversal'
+    # Analysis parser
+    'AnalysisParserService',
+    
+    # Editor services
+    'TreeSitterEditor',
+    
+    # Query services
+    'TreeSitterQueryHandler'
 ] 

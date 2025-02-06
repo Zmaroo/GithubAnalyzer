@@ -4,11 +4,11 @@ This module demonstrates various Python code patterns and features
 that can be analyzed by GithubAnalyzer.
 """
 
-from typing import Dict, List, Optional
-from dataclasses import dataclass
-from datetime import datetime
 import asyncio
 import logging
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, List, Optional
 
 # Configure logging
 logger = logging.getLogger(__name__)

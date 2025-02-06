@@ -1,41 +1,28 @@
-"""Tree-sitter editor for modifying code."""
-import sys
-import time
+"""Tree-sitter editor for code manipulation."""
 import threading
-import logging
-from logging import Logger
-from pathlib import Path
+import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional, Tuple, Union, Sequence
-from tree_sitter import Tree, Node, Point, Parser, Range, Query, Language
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from collections import defaultdict
 
-from tree_sitter_language_pack import get_binding, get_language, get_parser
+from tree_sitter import Language, Node, Parser, Point, Query, Range, Tree
 
-from GithubAnalyzer.models.core.errors import ParserError
-from GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger, LoggerFactory, StructuredFormatter
-from GithubAnalyzer.utils.logging.tree_sitter_logging import TreeSitterLogHandler
+from GithubAnalyzer.models.analysis.types import NodeDict, NodeList
+from GithubAnalyzer.models.analysis.query import QueryResult
+from GithubAnalyzer.models.core.errors import EditorError, ParserError
+from GithubAnalyzer.models.core.tree_sitter_core import (
+    get_node_text, get_node_text_safe, get_node_type, is_valid_node, node_to_dict
+)
+from GithubAnalyzer.services.core.base_service import BaseService
+from GithubAnalyzer.services.parsers.core.query_handler import TreeSitterQueryHandler
+from GithubAnalyzer.utils.logging import get_logger
 
-from .utils import TreeSitterServiceBase
 from .language_service import LanguageService
-from .traversal_service import TreeSitterTraversal
-from .query_service import TreeSitterQueryHandler
+from .traversal_service import TraversalService
 
-from GithubAnalyzer.models.analysis.types import (
-    NodeDict,
-    NodeList,
-    QueryResult
-)
-from .utils import (
-    get_node_text,
-    node_to_dict,
-    is_valid_node,
-    get_node_type,
-    get_node_text_safe,
-    TreeSitterServiceBase
-)
-
-# Use tree-sitter logger instead of standard logger
-logger = get_tree_sitter_logger("tree_sitter.editor")
+# Initialize logger
+logger = get_logger(__name__)
 
 @dataclass
 class EditOperation:
@@ -53,75 +40,110 @@ class EditOperation:
     text: str
 
 @dataclass
-class TreeSitterEditor(TreeSitterServiceBase):
-    """Editor for tree-sitter trees."""
-
-    _text: str = field(default='')
+class TreeSitterEditor(BaseService):
+    """Editor for manipulating code using tree-sitter."""
+    
     _language_service: LanguageService = field(default_factory=LanguageService)
-    _parser: Optional[Parser] = field(default=None)
-    _current_language: Optional[str] = field(default=None)
-    _traversal: TreeSitterTraversal = field(default_factory=TreeSitterTraversal)
+    _traversal_service: TraversalService = field(default_factory=TraversalService)
     _query_handler: TreeSitterQueryHandler = field(default_factory=TreeSitterQueryHandler)
-
+    _parser: Optional[Parser] = field(default=None)
+    _text: str = field(default="")
+    _log_handler: Any = field(default_factory=lambda: logger)
+    _operation_times: Dict[str, List[float]] = field(default_factory=lambda: defaultdict(list))
+    
     def __post_init__(self):
-        """Initialize the editor."""
+        """Initialize editor."""
         super().__post_init__()
         
-        # Set up logging with tree-sitter specific context
-        self._logger = get_tree_sitter_logger("tree_sitter.editor")
-        self._logger.debug({
-            "message": "TreeSitterEditor initialized",
-            "context": {
-                'source': 'tree-sitter',
-                'type': 'editor',
-                'log_type': 'initialization',
-                'thread': threading.get_ident()
-            }
-        })
-
-    def parse_code(self, code: str, language: Optional[str] = None, file_path: Optional[str] = None) -> Tree:
-        """Parse code into a tree.
-
+        self._log("debug", "Tree-sitter editor initialized",
+                operation="initialization")
+        
+    def parse_code(self, code: str, language: str) -> Tree:
+        """Parse code into a syntax tree.
+        
         Args:
-            code: Code to parse
-            language: Language to use for parsing. If None, will try to detect from content or file_path.
-            file_path: Optional file path to help with language detection
-
+            code: The code to parse
+            language: The language of the code
+            
         Returns:
-            Parsed tree
+            Parsed syntax tree
             
         Raises:
-            ParserError: If language detection fails or parsing fails
+            EditorError: If parsing fails
         """
-        start_time = self._time_operation('parse_code')
-
+        self._log("debug", "Parsing code",
+                operation="code_parsing",
+                language=language,
+                code_length=len(code))
+                
         try:
-            # Store the text for later use
-            self._text = code
+            # Get parser for language
+            parser = self._language_service.get_parser(language)
             
-            # Detect language using multiple methods
-            if not language:
-                if file_path:
-                    # Try to detect from file path first
-                    language = self._language_service.get_language_for_file(file_path)
-                if language == 'plaintext' or not language:
-                    # If file path detection failed or no file path, try content detection
-                    language = self._language_service.detect_language(code)
+            # Parse code
+            tree = parser.parse(bytes(code, "utf8"))
+            if not tree:
+                raise EditorError(f"Failed to parse {language} code")
+                
+            self._log("debug", "Code parsed successfully",
+                    operation="code_parsing",
+                    language=language,
+                    root_type=tree.root_node.type)
+                    
+            return tree
             
-            # Validate language support
-            if not self._language_service.is_language_supported(language):
-                raise ParserError(f"Language not supported: {language}")
-            
-            # Get parser from language service
-            if self._current_language != language or not self._parser:
-                self._parser = self._language_service.get_parser(language)
-                self._current_language = language
-            
-            return self._parser.parse(code.encode('utf-8'))
         except Exception as e:
-            raise ParserError(f"Failed to parse code: {str(e)}")
-        finally:
-            self._end_operation('parse_code', start_time)
+            self._log("error", "Code parsing failed",
+                    operation="code_parsing",
+                    language=language,
+                    error=str(e))
+            raise EditorError(f"Failed to parse code: {str(e)}")
+            
+    def edit_code(self, tree: Tree, edits: List[Dict[str, Any]]) -> str:
+        """Apply edits to code using the syntax tree.
+        
+        Args:
+            tree: The syntax tree to edit
+            edits: List of edit operations to apply
+            
+        Returns:
+            The edited code
+            
+        Raises:
+            EditorError: If editing fails
+        """
+        self._log("debug", "Applying code edits",
+                operation="code_editing",
+                edit_count=len(edits))
+                
+        try:
+            # Apply each edit
+            for edit in edits:
+                edit_type = edit.get('type')
+                if not edit_type:
+                    continue
+                    
+                if edit_type == 'replace':
+                    self._replace_node(tree, edit)
+                elif edit_type == 'insert':
+                    self._insert_node(tree, edit)
+                elif edit_type == 'delete':
+                    self._delete_node(tree, edit)
+                    
+            # Get edited code
+            edited_code = self._get_edited_code(tree)
+            
+            self._log("debug", "Code edits applied successfully",
+                    operation="code_editing",
+                    edit_count=len(edits))
+                    
+            return edited_code
+            
+        except Exception as e:
+            self._log("error", "Code editing failed",
+                    operation="code_editing",
+                    error=str(e))
+            raise EditorError(f"Failed to edit code: {str(e)}")
 
     def get_changed_ranges(self, old_tree: Tree, new_tree: Tree) -> List[Range]:
         """Get ranges that changed between two trees.
@@ -664,3 +686,80 @@ class TreeSitterEditor(TreeSitterServiceBase):
             text = tree.text.decode("utf8")
         lines = text.split("\n")
         return text, lines
+
+    def find_nodes_by_type(self, tree: Tree, node_type: str, language: Optional[str] = None) -> List[Node]:
+        """Find nodes of a specific type in the tree.
+        
+        Args:
+            tree: Tree to search
+            node_type: Type of nodes to find
+            language: Optional language override
+            
+        Returns:
+            List of matching nodes
+        """
+        return self._query_handler.find_nodes_by_type(tree.root_node, node_type, language)
+
+    def find_nodes_by_pattern(self, tree: Tree, pattern_type: str, language: Optional[str] = None) -> List[Dict[str, Node]]:
+        """Find nodes matching a pattern in the tree.
+        
+        Args:
+            tree: Tree to search
+            pattern_type: Type of pattern to match
+            language: Optional language override
+            
+        Returns:
+            List of matching nodes with captures
+        """
+        return self._query_handler.find_nodes(tree.root_node, pattern_type, language)
+
+    def validate_syntax(self, tree: Tree, language: Optional[str] = None) -> Tuple[bool, List[str]]:
+        """Validate syntax of a tree.
+        
+        Args:
+            tree: Tree to validate
+            language: Optional language override
+            
+        Returns:
+            Tuple of (is_valid, error_messages)
+        """
+        return self._query_handler.validate_syntax(tree.root_node, language)
+
+    def find_error_nodes(self, tree: Tree) -> List[Node]:
+        """Find error nodes in a tree.
+        
+        Args:
+            tree: Tree to search
+            
+        Returns:
+            List of error nodes
+        """
+        return self._query_handler.find_error_nodes(tree.root_node)
+
+    def find_missing_nodes(self, tree: Tree) -> List[Node]:
+        """Find missing nodes in a tree.
+        
+        Args:
+            tree: Tree to search
+            
+        Returns:
+            List of missing nodes
+        """
+        return self._query_handler.find_missing_nodes(tree.root_node)
+
+    def execute_query(self, tree: Tree, query_string: str, language: Optional[str] = None) -> QueryResult:
+        """Execute a query on a tree.
+        
+        Args:
+            tree: Tree to query
+            query_string: Query pattern to execute
+            language: Optional language override
+            
+        Returns:
+            Query execution result
+        """
+        query = self._query_handler.create_query(query_string, language)
+        if not query:
+            return QueryResult(is_valid=False, errors=["Failed to create query"])
+            
+        return self._query_handler.execute_query(query, tree)

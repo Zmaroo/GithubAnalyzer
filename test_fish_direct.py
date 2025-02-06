@@ -1,6 +1,9 @@
-from tree_sitter_language_pack import get_binding, get_language, get_parser
 from pathlib import Path
-from src.GithubAnalyzer.services.analysis.parsers.query_patterns import QUERY_PATTERNS
+
+from tree_sitter_language_pack import get_binding, get_language, get_parser
+
+from src.GithubAnalyzer.services.analysis.parsers.query_patterns import \
+    QUERY_PATTERNS
 
 parser = get_parser('fish')
 lang = get_language('fish')

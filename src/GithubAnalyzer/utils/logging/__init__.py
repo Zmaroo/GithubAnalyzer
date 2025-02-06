@@ -1,11 +1,11 @@
 """Logging utilities for GithubAnalyzer."""
-import sys
 import json
-import uuid
+import sys
 import time
-from pathlib import Path
-from typing import Optional, Dict, Any, TYPE_CHECKING
+import uuid
 from datetime import datetime
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:
     import logging
@@ -55,7 +55,11 @@ class StructuredFormatter:
         
         # Add context if available
         if hasattr(record, "context"):
-            data["context"] = record.context
+            context = record.context
+            # Convert sets to lists for JSON serialization
+            if isinstance(context, dict):
+                context = {k: list(v) if isinstance(v, set) else v for k, v in context.items()}
+            data["context"] = context
             
         # Add exception info if present
         if record.exc_info:
@@ -71,6 +75,18 @@ class StructuredFormatter:
         """Format an exception info tuple."""
         import traceback
         return ''.join(traceback.format_exception(*exc_info))
+        
+    def _prepare_for_json(self, obj: Any) -> Any:
+        """Prepare an object for JSON serialization by handling special types."""
+        if isinstance(obj, set):
+            return list(obj)
+        elif isinstance(obj, dict):
+            return {k: self._prepare_for_json(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [self._prepare_for_json(item) for item in obj]
+        elif hasattr(obj, '__dict__'):
+            return self._prepare_for_json(obj.__dict__)
+        return obj
 
 class LoggerFactory:
     """Factory for creating and configuring loggers."""

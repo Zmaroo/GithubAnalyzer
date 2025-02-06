@@ -7,142 +7,240 @@
 - The AI agent interacts with the system using the `DatabaseService` as the central coordinator.
 - It integrates multiple functionalities: database operations, AST-based code analysis, advanced graph analytics, and centralized logging.
 
-### 1. Initialization Phase
+### 1. Project Structure & Component Organization
 
-- **DatabaseService Initialization:**
-  - Establishes connections to PostgreSQL via `PostgresService` for relational data (code snippets, embeddings, etc.).
-  - Connects to Neo4j via `Neo4jService` for graph-based relationships.
-  - Initializes supplementary services:
-    - `DatabaseCleaner`
-    - `TreeSitterQueryHandler`
-    - `TreeSitterEditor`
-    - `TreeSitterTraversal`
-    - `LanguageService`
-    - `ParserService`
-    - `RepoProcessor`
-- **Database and Graph Setup:**
-  - Calls `initialize_databases` to set up schemas, constraints, and perform initial synchronization.
+**Models Layer (`models/`)**
 
-### 2. Repository Ingestion & Code Storage
+- Core Models (`models/core/`):
+  - AST & Parsing:
+    - `ast.py`: Core tree-sitter types and base functionality
+    - `parsers.py`: Base parser interfaces and common parsing functionality
+    - `language.py`: Language-specific models and types
+  - Base & Common:
+    - `base_model.py`: Base model class with common functionality
+    - `errors.py`: Common error types and handling
+    - `types.py`: Core type definitions
+  - Domain Models:
+    - `file.py`: File-related models and operations
+    - `repository.py`: Repository-related models
+  - Database Models:
+    - `db/`: Database-specific models and schemas
 
-- **Repository Analysis:**
-  - `analyze_repository(repo_url)` creates a repository record and processes files using `RepoProcessor`.
-- **Code Storage:**
-  - `store_code_data` processes code with `ParserService` and `LanguageService` to store code snippets and AST details into PostgreSQL and Neo4j.
-- **Batch Storage:**
-  - `batch_store_code` supports multi-record storage ensuring consistency across databases.
+- Analysis Models (`models/analysis/`):
+  - Query & Patterns:
+    - `query.py`: Query-specific models and result types
+    - `query_constants.py`: Query-related constants
+    - `pattern_registry.py`: Language-specific query patterns
+  - Tree-Sitter Extensions:
+    - `tree_sitter.py`: Extended tree-sitter functionality
+    - `tree_sitter_patterns.py`: Tree-sitter query patterns
+  - Analysis Types:
+    - `types.py`: Analysis-specific type definitions
+    - `results.py`: Analysis result models
+  - Code Analysis:
+    - `code_analysis.py`: Code analysis models and types
+    - `editor.py`: Code editing models
+    - `language.py`: Language analysis models
 
-### 3. Querying & Analysis
+**Services Layer (`services/`)**
 
-- **Semantic Search:**
-  - `semantic_code_search` retrieves semantically relevant code snippets based on natural language queries.
-- **Repository-Level Structural Analysis:**
-  - `analyze_repository_structure` examines repository-level structure using advanced graph algorithms (dependency analysis, code pattern similarity, community detection, and critical path analysis).
-- **File-Level AST Analysis:**
-  - `analyze_file_ast` provides a unified method for extracting AST details (syntax validity, errors, and code elements) using `ParserService` and `LanguageService`.
-- **Context Retrieval:**
-  - `get_code_context` and `get_documentation_context` supply contextual information and documentation extracts.
+- Core Services (`services/core/`):
+  - `base_service.py`: Base service functionality
+  - `file_service.py`: File operations service
+  - `parser_service.py`: Core parsing service
+  - `repo_processor.py`: Repository processing service
+  - Database Services:
+    - `database/`: Database-related services and configs
 
-### 4. Advanced Analytics Integration
+- Parser Services (`services/parsers/core/`):
+  - `base_parser.py`: Base parser service with tree-sitter integration
+  - `language_service.py`: Language detection and support
+  - `traversal_service.py`: AST traversal functionality
+  - `custom_parsers.py`: Specialized language parsers
 
-- **Advanced Analysis API:**
-  - A new method, `get_advanced_analysis(repo_id: str)`, in `DatabaseService` integrates with `CodeAnalyticsService` to retrieve detailed graph-based metrics (centrality, communities, similarity scores, etc.).
-  - This provides a clear API endpoint for the AI agent to access deep insights.
+- Analysis Services (`services/analysis/`):
+  - `code_analytics_service.py`: Code analysis orchestration
+  - Parser Extensions:
+    - `parsers/analysis_parser.py`: Extended parsing capabilities
+    - `parsers/query_service.py`: Query execution and pattern handling
+    - `parsers/tree_sitter_editor.py`: Tree-sitter based editing
 
-### 5. Code Editing and AST Manipulation
+**Utils Layer (`utils/`)**
 
-- **Editing Operations:**
-  - `edit_code` applies precise edits via `TreeSitterEditor`, ensuring that the AST remains valid post-changes.
-- **Element Detection:**
-  - `find_code_elements` locates specific code structures (functions, classes) using language-specific queries.
-- **Control Flow Analysis:**
-  - `analyze_code_flow` traverses the AST to identify error nodes, missing nodes, and control flow structures.
+- Tree-Sitter Utils:
+  - `tree_sitter_utils.py`: Tree-sitter utility functions
+    - Core function re-exports
+    - Analysis-specific utilities
+    - Safe node operations
 
-### 6. Data Management (Updates/Deletions) & Stored Data Overview
+- Development Tools:
+  - `dev_tools.py`: Development utilities
+  - `import_fixer.py`: Import statement fixer
 
-- **Updates:**
-  - `update_code_data` and `update_file_language` modify code snippets and AST representations in both PostgreSQL and Neo4j.
-- **Deletions:**
-  - `delete_code_data` and `delete_file` remove data atomically from both systems.
-- **Stored Data Overview:**
-  - `get_stored_data` provides an overview of files, functions, classes, and relationships in the system.
+- System Utils:
+  - `timing.py`: Performance monitoring
+  - `logging/`: Logging configuration
+    - `config.py`: Logging setup
+    - `tree_sitter_logging.py`: Tree-sitter specific logging
+
+- Database Utils:
+  - `db/`: Database utilities
+    - `cleanup.py`: Database cleanup tools
+
+### 2. Component Integration & Dependencies
+
+**Model Dependencies**:
+
+```plaintext
+models/core/
+  ↑
+models/analysis/
+```
+
+**Service Dependencies**:
+
+```plaintext
+services/core/base_service
+         ↑
+services/parsers/core/
+         ↑
+services/analysis/parsers/
+```
+
+**Utils Integration**:
+
+```plaintext
+models/core/  →  utils/tree_sitter_utils  ←  services/
+```
+
+**Detailed Component Dependencies**:
+
+```plaintext
+models/core/         models/analysis/
+    ↑ ↖                ↗ ↑
+    |   ╲            ╱  |
+    |    services/core  |
+    |         ↓        |
+utils/  services/parsers/core
+    ↖         ↓       ↗
+      services/analysis/
+```
+
+This diagram shows how:
+
+- Core and analysis models are the foundation
+- Services/core provides base functionality used by all components
+- Utils integrates with both models and services
+- Parser services bridge between core and analysis layers
+- Analysis services depend on all other components
+
+### 3. Key Services & Their Roles
+
+**BaseParserService**:
+
+- Inherits from both `BaseService` and `TreeSitterBase`
+- Provides core parsing functionality
+- Handles file type detection and language support
+- Manages parser initialization and configuration
+
+**TreeSitterQueryHandler**:
+
+- Extends `BaseParserService`
+- Manages query patterns and execution
+- Provides language-specific validation
+- Handles query optimization and caching
+
+**QueryService**:
+
+- High-level interface for code querying
+- Delegates to `TreeSitterQueryHandler`
+- Provides simplified API for pattern matching
+- Manages query results and error handling
+
+### 4. Current Status & Recent Improvements
+
+1. **Model Layer Organization**: ✅
+   - Clear separation between core and analysis models
+   - Proper type definitions and interfaces
+   - Reduced code duplication
+
+2. **Service Layer Integration**: ✅
+   - Proper inheritance hierarchy
+   - Clear separation of concerns
+   - Efficient delegation patterns
+
+3. **Utils Layer Enhancement**: ✅
+   - Proper separation of core and analysis utilities
+   - Improved error handling
+   - Better null checks and safety
+
+4. **Query System Improvements**: ✅
+   - Enhanced pattern registry
+   - Better query optimization
+   - Language-specific validation
+
+### 5. Next Steps
+
+1. **Testing & Validation**:
+   - Add comprehensive tests for parser services
+   - Validate language-specific functionality
+   - Test error handling and edge cases
+
+2. **Documentation**:
+   - Add detailed API documentation
+   - Create usage examples
+   - Document language-specific features
+
+3. **Performance Optimization**:
+   - Implement query caching
+   - Optimize AST traversal
+   - Add performance monitoring
+
+4. **Language Support**:
+   - Extend language-specific patterns
+   - Add more custom parsers
+   - Improve validation rules
+
+### 6. Running Tests
+
+For testing, use:
+
+```bash
+PYTHONPATH=src pdm run python -m GithubAnalyzer --analyze tests/data | cat
+```
 
 ### 7. Logging & Monitoring
 
-- **Centralized Logging:**
-  - The project uses Python's built-in logging, configured centrally via `logging/config.py` and the logger factory in `logging/__init__.py`.
-- **Tree-Sitter Logging Integration:**
-  - A configuration flag (`TREE_SITTER_LOGGING_ENABLED`) controls detailed tree-sitter logging.
-  - The helper function `get_tree_sitter_logger()` provides a built-in logger for tree-sitter, ensuring that logs from parsing and lexing are consistent and can be turned on/off as needed.
+**Centralized Logging**:
+
+- Uses Python's built-in logging
+- Configured via `logging/config.py`
+- Tree-sitter specific logging via `get_tree_sitter_logger()`
+
+**Performance Monitoring**:
+
+- `@timer` decorator for performance tracking
+- Operation timing in services
+- Detailed logging of query execution times
 
 ## Visual Flow Outline
 
 ```plaintext
-[AI Agent Entry Point]  --->  database_service.py
+[AI Agent Entry Point]
         |
-        +-- Initialization (DatabaseService)
-              |-- Setup: PostgresService & Neo4jService; ParserService, TreeSitter Query/Editor/Traversal; RepoProcessor; LanguageService
+        +-- Models Layer
+        |     |-- Core Models (ast.py, parsers.py, etc.)
+        |     |-- Analysis Models (query.py, pattern_registry.py, etc.)
         |
-        +-- Database Initialization & Synchronization
+        +-- Services Layer
+        |     |-- Core Services (base_service.py)
+        |     |-- Parser Services (base_parser.py, language_service.py, etc.)
+        |     |-- Analysis Services (query_service.py)
         |
-        +-- Repository Ingestion & Code Storage
-              |-- analyze_repository, store_code_data, batch_store_code
-        |
-        +-- Querying & Analysis
-              |-- semantic_code_search, analyze_repository_structure, get_context and get_documentation_context
-              |-- analyze_file_ast (Unified file-level AST analysis)
-        |
-        +-- Advanced Analytics
-              |-- get_advanced_analysis integrates CodeAnalyticsService for graph-based metrics
-        |
-        +-- Code Editing & AST Manipulation
-              |-- edit_code, find_code_elements, analyze_code_flow
-        |
-        +-- Data Management (Updates/Deletions)
-              |-- update_code_data, delete_code_data, update_file_language
-        |
-        +-- Logging & Monitoring
-              |-- Centralized logging via Python's built-in logging; TREE_SITTER_LOGGING_ENABLED controls tree-sitter logs
+        +-- Utils Layer
+              |-- tree_sitter_utils.py
+              |-- logging/
+              |-- timing.py
 ```
 
-## Key Observations & Recommendations
-
-1. **Consolidation & Clarity:**
-   - AST analysis is unified with `analyze_file_ast`, reducing redundant code.
-   - Distinct methods handle repository-level and file-level analysis for clear separation of concerns.
-
-2. **Advanced Analytics:**
-   - The integration with `CodeAnalyticsService` via `get_advanced_analysis` offers the AI agent deep insights into code structure through graph analytics.
-
-3. **Logging Improvements:**
-   - A unified logging strategy is in place, with a centralized configuration and controlled tree-sitter logging using Python's built-in logging.
-
-## Next Steps
-
-### 1. Query Patterns Reorganization & Enhancement
-
-- We have reorganized the query_patterns module into a dedicated subdirectory under src/GithubAnalyzer/services/analysis/parsers. This new structure includes:
-  - **templates.py:** Contains our PATTERN_TEMPLATES and the create_function_pattern, create_class_pattern, and create_method_pattern functions. These functions now support optional configuration dictionaries to allow language-specific overrides.
-  - **common.py:** Contains COMMON_PATTERNS, DEFAULT_OPTIMIZATIONS, and the get_language_patterns helper function, which merges common patterns with language-specific patterns.
-  - **language_patterns.py:** Contains hard-coded, language-specific query patterns for languages such as Python, C, YAML, and JavaScript/TypeScript.
-  - ****init**.py:** Aggregates and re-exports the key components from these modules.
-- The next phase is to extend these patterns to capture additional code constructs such as import statements, variable assignments, control flow constructs, and decorators/annotations, in order to store a comprehensive AST representation.
-
-### 2. Target Languages and Comprehensive Coverage
-
-- For widely used GitHub repositories (e.g., those written in Python, JavaScript, and TypeScript), we will further refine these hard-coded, language-specific patterns to capture their unique syntactic nuances.
-- For less common languages, our flexible templated approach—with optional configuration dictionaries—will serve as the baseline, allowing for future refinement as needed.
-
-### 3. Testing and Integration
-
-- Develop comprehensive unit and integration tests (leveraging our tests/data) to ensure that all new and extended patterns accurately capture the intended AST details.
-- Validate that the semantic data stored in PostgreSQL and the structural relationships stored in Neo4j are complete and robust for advanced querying.
-
-### 4. AI Agent Integration
-
-- With the enriched AST data, integrate these capabilities into the AI agent interface.
-- This will enable the AI agent to retrieve and analyze detailed code insights, which are critical for generating, understanding, and refactoring an entire project based on the information stored in the databases.
-
----
-
-This updated guide now reflects the progress made so far and outlines clear next steps. Let me know if any adjustments are needed or if you'd like to proceed with further tasks!
+This updated guide reflects our current architecture and recent improvements. The system now has a clearer separation of concerns, better error handling, and improved integration between components.

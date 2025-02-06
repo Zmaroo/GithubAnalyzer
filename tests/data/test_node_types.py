@@ -1,5 +1,7 @@
-from tree_sitter_language_pack import get_binding, get_language, get_parser
 from pathlib import Path
+
+from tree_sitter_language_pack import get_binding, get_language, get_parser
+
 
 def print_node_types(name, sample_file_path):
     """Print all node types in a file's AST."""

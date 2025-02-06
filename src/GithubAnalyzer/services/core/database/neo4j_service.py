@@ -1,13 +1,15 @@
 """Neo4j service for storing code relationships with advanced graph analytics."""
-from typing import Dict, List, Any, Optional, Set
-from neo4j import GraphDatabase
 import json
 import os
-import time
 import threading
+import time
 from dataclasses import dataclass
-from dotenv import load_dotenv
+from typing import Any, Dict, List, Optional, Set
 
+from dotenv import load_dotenv
+from neo4j import GraphDatabase
+
+from GithubAnalyzer.exceptions import DatabaseError
 from GithubAnalyzer.models.core.file import FileInfo
 from GithubAnalyzer.utils.logging import get_logger
 
@@ -39,15 +41,23 @@ class Neo4jService:
                 os.getenv("NEO4J_PASSWORD", "adminadmin")
             )
         )
-        self._setup_gds_procedures()
+        try:
+            self._setup_gds_procedures()
+        except Exception as e:
+            self._logger.error("Neo4j service initialization failed, disabling neo4j features", error=str(e))
+            self._driver.close()
+            self._driver = None
         
-        self._logger.info("Neo4j service initialized", extra={
-            'context': {
-                'module': 'neo4j',
-                'thread': threading.get_ident(),
-                'duration_ms': (time.time() - self._start_time) * 1000
-            }
-        })
+        if self._driver is not None:
+            self._logger.info("Neo4j service initialized", extra={
+                'context': {
+                    'module': 'neo4j',
+                    'thread': threading.get_ident(),
+                    'duration_ms': (time.time() - self._start_time) * 1000
+                }
+            })
+        else:
+            self._logger.warning("Neo4j service disabled due to connection issues")
         
     def _get_context(self, **kwargs) -> Dict[str, Any]:
         """Get standard context for logging.
@@ -361,47 +371,27 @@ class Neo4jService:
         
     def setup_constraints(self) -> None:
         """Set up Neo4j constraints and indexes."""
-        with self._driver.session() as session:
-            # File node constraints
-            session.run("""
-                CREATE CONSTRAINT file_unique IF NOT EXISTS
-                FOR (f:File) REQUIRE (f.repo_id, f.path) IS UNIQUE
-            """)
-            
-            # Function node constraints
-            session.run("""
-                CREATE CONSTRAINT function_unique IF NOT EXISTS
-                FOR (f:Function) REQUIRE (f.repo_id, f.file_path, f.name) IS UNIQUE
-            """)
-            
-            # Class node constraints
-            session.run("""
-                CREATE CONSTRAINT class_unique IF NOT EXISTS
-                FOR (c:Class) REQUIRE (c.repo_id, c.file_path, c.name) IS UNIQUE
-            """)
-            
-            # Language constraints
-            session.run("""
-                CREATE CONSTRAINT language_unique IF NOT EXISTS
-                FOR (l:Language) REQUIRE l.name IS UNIQUE
-            """)
-            
-            # Create indexes for common queries
-            session.run("""
-                CREATE INDEX file_language_idx IF NOT EXISTS
-                FOR (f:File) ON (f.language)
-            """)
-            
-            session.run("""
-                CREATE INDEX function_language_idx IF NOT EXISTS
-                FOR (f:Function) ON (f.language)
-            """)
-            
-            session.run("""
-                CREATE INDEX class_language_idx IF NOT EXISTS
-                FOR (c:Class) ON (c.language)
-            """)
-            
+        try:
+            with self._driver.session() as session:
+                # Read and execute schema file
+                schema_path = os.path.join(
+                    os.path.dirname(__file__),
+                    'schema',
+                    'neo4j',
+                    'schema.cypher'
+                )
+                with open(schema_path, 'r') as f:
+                    schema_cypher = f.read()
+                    
+                # Split and execute each statement
+                statements = [stmt.strip() for stmt in schema_cypher.split(';') if stmt.strip()]
+                for stmt in statements:
+                    session.run(stmt)
+                    
+        except Exception as e:
+            self._log("error", "Failed to setup Neo4j constraints and indexes", error=str(e))
+            raise DatabaseError(f"Failed to setup Neo4j schema: {str(e)}")
+
     def create_file_node(self, file: FileInfo) -> None:
         """Create a file node with language information."""
         start_time = time.time()

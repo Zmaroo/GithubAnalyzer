@@ -1,67 +1,94 @@
-"""Tree-sitter traversal service for AST navigation."""
-import time
+"""Service for traversing syntax trees."""
 import threading
-from typing import List, Dict, Any, Optional, Union, TypeVar, Iterator, Generator, Tuple
-from dataclasses import dataclass
-from tree_sitter import Node, Tree, TreeCursor, Parser, Range, Point, Query
+import time
+from dataclasses import dataclass, field
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union
 
-from tree_sitter_language_pack import get_binding, get_language, get_parser
-from GithubAnalyzer.models.core.errors import ParserError
+from tree_sitter import (Language, Node, Parser, Point, Query, Range, Tree,
+                         TreeCursor)
+from tree_sitter_language_pack import get_parser
+
+from GithubAnalyzer.models.analysis.types import NodeDict, NodeList
+from GithubAnalyzer.models.core.errors import TraversalError
+from GithubAnalyzer.services.analysis.parsers.language_service import \
+    LanguageService
+from GithubAnalyzer.services.core.base_service import BaseService
 from GithubAnalyzer.utils.logging import get_logger
-from .utils import (
-    get_node_text,
-    node_to_dict,
-    iter_children,
-    get_node_hierarchy,
-    find_common_ancestor,
-    TreeSitterServiceBase
-)
-from .language_service import LanguageService
 
-# Type variables for better type hints
-T = TypeVar('T', bound=Node)
+from .utils import (TreeSitterServiceBase, get_node_text, get_node_text_safe,
+                    get_node_type, is_valid_node, node_to_dict)
 
-# Initialize logger
-logger = get_logger(__name__)
 
 @dataclass
-class TreeSitterTraversal(TreeSitterServiceBase):
-    """Utility class for traversing tree-sitter ASTs."""
-
+class TraversalService(BaseService, TreeSitterServiceBase):
+    """Service for traversing syntax trees."""
+    
+    _language_service: LanguageService = field(default_factory=LanguageService)
+    
     def __post_init__(self):
-        """Initialize traversal."""
+        """Initialize traversal service."""
         super().__post_init__()
+        TreeSitterServiceBase.__post_init__(self)
         
-        # Initialize language service
-        self._language_service = LanguageService()
+        self._log("debug", "Traversal service initialized",
+                operation="initialization")
         
-        # Log initialization
-        self._logger = logger
-        self._start_time = time.time()
+    def traverse_tree(self, tree: Tree, visit_fn: Optional[callable] = None) -> NodeList:
+        """Traverse a syntax tree and collect nodes.
         
-        self._logger.debug("TreeSitterTraversal initialized", extra={
-            'context': {
-                'module': 'traversal',
-                'thread': threading.get_ident(),
-                'duration_ms': 0
-            }
-        })
-
-    def _get_context(self, **kwargs) -> Dict[str, Any]:
-        """Get standard context for logging."""
-        context = {
-            'source': 'tree-sitter',
-            'type': 'traversal',
-            'thread_id': threading.get_ident(),
-            'elapsed_time': time.time() - self._start_time
-        }
-        context.update(kwargs)
-        return context
-
-    def _log(self, level: str, msg: str, **kwargs) -> None:
-        """Log a message with standard context."""
-        context = self._get_context(**kwargs)
-        getattr(self._logger, level)(msg, extra={'context': context})
+        Args:
+            tree: The syntax tree to traverse
+            visit_fn: Optional function to call for each node
+            
+        Returns:
+            List of visited nodes
+            
+        Raises:
+            TraversalError: If traversal fails
+        """
+        self._log("debug", "Starting tree traversal",
+                operation="tree_traversal",
+                root_type=tree.root_node.type)
+                
+        try:
+            nodes = []
+            for node in self._traverse_node(tree.root_node):
+                if not is_valid_node(node):
+                    continue
+                    
+                node_info = node_to_dict(node)
+                if visit_fn:
+                    visit_fn(node_info)
+                nodes.append(node_info)
+                
+            self._log("debug", "Tree traversal completed",
+                    operation="tree_traversal",
+                    node_count=len(nodes))
+                    
+            return nodes
+            
+        except Exception as e:
+            self._log("error", "Tree traversal failed",
+                    operation="tree_traversal",
+                    error=str(e))
+            raise TraversalError(f"Failed to traverse tree: {str(e)}")
+            
+    def _traverse_node(self, node: Node) -> Generator[Node, None, None]:
+        """Traverse a node and its children.
+        
+        Args:
+            node: The node to traverse
+            
+        Yields:
+            Each node in the traversal
+        """
+        if not node:
+            return
+            
+        yield node
+        
+        for child in node.children:
+            yield from self._traverse_node(child)
 
     def find_nodes_in_range(self, root: Node, range_obj: Range) -> List[Node]:
         """Find nodes in range using tree-sitter queries.
@@ -76,32 +103,21 @@ class TreeSitterTraversal(TreeSitterServiceBase):
         start_time = self._time_operation('find_nodes_in_range')
         try:
             if not root:
-                self._logger.error({
-                    "message": "No root node provided",
-                    "context": {
-                        'range': {
+                self._log("error", "No root node provided",
+                        operation="find_nodes_in_range",
+                        range={
                             'start': range_obj.start_point,
                             'end': range_obj.end_point
-                        },
-                        'operation': 'find_nodes_in_range',
-                        'type': 'query',
-                        'source': 'tree-sitter'
-                    }
-                })
+                        })
                 return []
                 
-            self._logger.debug({
-                "message": "Finding nodes in range",
-                "context": {
-                    'range': {
+            self._log("debug", "Finding nodes in range",
+                    operation="find_nodes_in_range",
+                    range={
                         'start': range_obj.start_point,
                         'end': range_obj.end_point
                     },
-                    'root_type': root.type,
-                    'type': 'query',
-                    'source': 'tree-sitter'
-                }
-            })
+                    root_type=root.type)
             
             # Create query to find nodes in range
             query_str = f"""
@@ -110,40 +126,214 @@ class TreeSitterTraversal(TreeSitterServiceBase):
             # Get language from root node's grammar name
             language = root.grammar_name
             if not language:
-                self._logger.error("Could not determine language from root node")
+                self._log("error", "Could not determine language from root node")
                 return []
                 
             query = Query(self._language_service.get_language_object(language), query_str)
             captures = query.captures(root)
             nodes = [capture[0] for capture in captures]
                     
-            self._logger.debug({
-                "message": f"Found {len(nodes)} nodes in range",
-                "context": {
-                    'node_count': len(nodes),
-                    'range': {
+            self._log("debug", f"Found {len(nodes)} nodes in range",
+                    operation="find_nodes_in_range",
+                    node_count=len(nodes),
+                    range={
                         'start': range_obj.start_point,
                         'end': range_obj.end_point
-                    }
-                }
-            })
+                    })
             
             return nodes
             
         except Exception as e:
-            self._logger.error({
-                "message": "Error finding nodes in range",
-                "context": {
-                    'range': {
+            self._log("error", "Error finding nodes in range",
+                    operation="find_nodes_in_range",
+                    range={
                         'start': range_obj.start_point,
                         'end': range_obj.end_point
                     },
-                    'error': str(e)
-                }
-            })
+                    error=str(e))
             return []
         finally:
             self._end_operation('find_nodes_in_range', start_time)
+
+    def find_node_at_point(self, root: Node, point: Point) -> Optional[Node]:
+        """Find smallest node at point using tree-sitter's native API."""
+        try:
+            if not root:
+                self._log("error", "No root node provided",
+                        operation="find_node_at_point",
+                        point=point)
+                return None
+                
+            self._log("debug", "Finding node at point",
+                    operation="find_node_at_point",
+                    point=point,
+                    root_type=root.type,
+                    root_range=self.get_node_range(root))
+            
+            node = root.descendant_for_point_range(point, point)
+            
+            if node:
+                self._log("debug", "Found node at point",
+                        operation="find_node_at_point",
+                        node_type=node.type,
+                        node_range=self.get_node_range(node))
+            return node
+            
+        except Exception as e:
+            self._log("error", "Error finding node at point",
+                    operation="find_node_at_point",
+                    point=point,
+                    error=str(e))
+            return None
+
+    def node_in_range(self, node: Node, range_obj: Range) -> bool:
+        """Check if node is within range.
+        
+        Args:
+            node: Node to check
+            range_obj: Range to check against
+            
+        Returns:
+            True if node is within range
+        """
+        try:
+            if not node:
+                self._log("debug", "Node is None in range check")
+                return False
+                
+            node_start = Point(*node.start_point)
+            node_end = Point(*node.end_point)
+            
+            in_range = (node_start >= range_obj.start_point and
+                       node_end <= range_obj.end_point)
+                       
+            self._log("debug", "Range check result",
+                    operation="node_in_range",
+                    node_type=node.type,
+                    node_range={
+                        'start': node_start,
+                        'end': node_end
+                    },
+                    target_range={
+                        'start': range_obj.start_point,
+                        'end': range_obj.end_point
+                    },
+                    in_range=in_range)
+            
+            return in_range
+            
+        except Exception as e:
+            self._log("error", "Error checking node range",
+                    operation="node_in_range",
+                    node_type=node.type if node else None,
+                    range={
+                        'start': range_obj.start_point,
+                        'end': range_obj.end_point
+                    },
+                    error=str(e))
+            return False
+
+    def get_node_range(self, node: Node) -> Dict[str, Any]:
+        """Get range spanned by node."""
+        return {
+            'start_point': node.start_point,
+            'end_point': node.end_point,
+            'start_byte': node.start_byte,
+            'end_byte': node.end_byte
+        }
+
+    def get_node_context(self, node: Node, context_lines: int = 2) -> Dict[str, Any]:
+        """Get context around node including surrounding lines."""
+        if not node:
+            return {
+                'node': None,
+                'start_line': 0,
+                'end_line': 0,
+                'context_before': 0,
+                'context_after': 0,
+                'text': '',
+                'range': None
+            }
+            
+        start_line = max(0, node.start_point[0] - context_lines)
+        end_line = node.end_point[0] + context_lines
+        
+        return {
+            'node': node,
+            'start_line': start_line,
+            'end_line': end_line,
+            'context_before': context_lines,
+            'context_after': context_lines,
+            'text': node.text.decode('utf8'),
+            'range': self.get_node_range(node)
+        }
+
+    def find_nodes_by_type(self, node: Node, node_type: str) -> List[Node]:
+        """Find all nodes of a specific type."""
+        nodes = []
+        cursor = node.walk()
+        
+        while True:
+            if cursor.node.type == node_type:
+                nodes.append(cursor.node)
+            
+            if not cursor.goto_first_child():
+                while not cursor.goto_next_sibling():
+                    if not cursor.goto_parent():
+                        return nodes
+        return nodes
+
+    def find_node_at_position(self, node: Node, point: Point) -> Optional[Node]:
+        """Find the smallest node containing a point."""
+        cursor = node.walk()
+        
+        while True:
+            if (cursor.node.start_point <= point and 
+                point <= cursor.node.end_point):
+                
+                if cursor.goto_first_child():
+                    continue
+                return cursor.node
+            
+            if not cursor.goto_next_sibling():
+                if not cursor.goto_parent():
+                    return None
+        return None
+
+    def find_child_by_field(self, node: Node, field_name: str) -> Optional[Node]:
+        """Find a child node by its field name."""
+        try:
+            return node.child_by_field_name(field_name)
+        except Exception as e:
+            self._log("error", "Error finding child by field",
+                    operation="find_child_by_field",
+                    field_name=field_name,
+                    error=str(e))
+            return None
+
+    def find_parent_of_type(self, node: Node, type_name: str) -> Optional[Node]:
+        """Find closest parent node of given type.
+        
+        Args:
+            node: Node to start from
+            type_name: Type of parent to find
+            
+        Returns:
+            Parent node of given type or None
+        """
+        try:
+            if not node:
+                return None
+                
+            current = node
+            while current.parent:
+                current = current.parent
+                if current.type == type_name:
+                    return current
+            return None
+        except Exception as e:
+            self._log("error", f"Error finding parent of type: {e}")
+            return None
 
     @staticmethod
     def walk_tree(node: Node) -> Generator[Node, None, None]:
@@ -178,209 +368,6 @@ class TreeSitterTraversal(TreeSitterServiceBase):
                 if cursor.goto_next_sibling():
                     break
 
-    def find_node_at_point(self, root: Node, point: Point) -> Optional[Node]:
-        """Find smallest node at point using tree-sitter's native API."""
-        try:
-            if not root:
-                self._logger.error({
-                    "message": "No root node provided",
-                    "context": {
-                        'point': point,
-                        "operation": 'find_node_at_point'
-                    }
-                })
-                return None
-                
-            self._logger.debug({
-                "message": "Finding node at point",
-                "context": {
-                    'point': point,
-                    'root_type': root.type,
-                    'root_range': self.get_node_range(root)
-                }
-            })
-            
-            node = root.descendant_for_point_range(point, point)
-            
-            if node:
-                self._logger.debug({
-                    "message": "Found node at point",
-                    "context": {
-                        'node_type': node.type,
-                        'node_range': self.get_node_range(node)
-                    }
-                })
-            return node
-            
-        except Exception as e:
-            self._logger.error({
-                "message": "Error finding node at point",
-                "context": {
-                    'point': point,
-                    'error': str(e),
-                    'stack_trace': self._get_stack_trace()
-                }
-            })
-            return None
-
-    def node_in_range(self, node: Node, range_obj: Range) -> bool:
-        """Check if node is within range.
-        
-        Args:
-            node: Node to check
-            range_obj: Range to check against
-            
-        Returns:
-            True if node is within range
-        """
-        try:
-            if not node:
-                self._logger.debug({
-                    "message": "Node is None in range check"
-                })
-                return False
-                
-            node_start = Point(*node.start_point)
-            node_end = Point(*node.end_point)
-            
-            in_range = (node_start >= range_obj.start_point and
-                       node_end <= range_obj.end_point)
-                       
-            self._logger.debug({
-                "message": "Range check result",
-                "context": {
-                    'node_type': node.type,
-                    'node_range': {
-                        'start': node_start,
-                        'end': node_end
-                    },
-                    'target_range': {
-                        'start': range_obj.start_point,
-                        'end': range_obj.end_point
-                    },
-                    'in_range': in_range
-                }
-            })
-            
-            return in_range
-            
-        except Exception as e:
-            self._logger.error({
-                "message": "Error checking node range",
-                "context": {
-                    'node_type': node.type if node else None,
-                    'range': {
-                        'start': range_obj.start_point,
-                        'end': range_obj.end_point
-                    }
-                }
-            })
-            return False
-
-    def find_parent_of_type(self, node: Node, type_name: str) -> Optional[Node]:
-        """Find closest parent node of given type.
-        
-        Args:
-            node: Node to start from
-            type_name: Type of parent to find
-            
-        Returns:
-            Parent node of given type or None
-        """
-        try:
-            if not node:
-                return None
-                
-            current = node
-            while current.parent:
-                current = current.parent
-                if current.type == type_name:
-                    return current
-            return None
-        except Exception as e:
-            self._logger.error(f"Error finding parent of type: {e}")
-            return None
-
-    @staticmethod
-    def get_node_range(node: Node) -> Dict[str, Any]:
-        """Get range spanned by node."""
-        return {
-            'start_point': node.start_point,
-            'end_point': node.end_point,
-            'start_byte': node.start_byte,
-            'end_byte': node.end_byte
-        }
-
-    @staticmethod
-    def get_node_context(node: Node, context_lines: int = 2) -> Dict[str, Any]:
-        """Get context around node including surrounding lines."""
-        if not node:
-            return {
-                'node': None,
-                'start_line': 0,
-                'end_line': 0,
-                'context_before': 0,
-                'context_after': 0,
-                'text': '',
-                'range': None
-            }
-            
-        start_line = max(0, node.start_point[0] - context_lines)
-        end_line = node.end_point[0] + context_lines
-        
-        return {
-            'node': node,
-            'start_line': start_line,
-            'end_line': end_line,
-            'context_before': context_lines,
-            'context_after': context_lines,
-            'text': node.text.decode('utf8'),
-            'range': TreeSitterTraversal.get_node_range(node)
-        }
-
-    @staticmethod
-    def find_nodes_by_type(node: Node, node_type: str) -> List[Node]:
-        """Find all nodes of a specific type."""
-        nodes = []
-        cursor = node.walk()
-        
-        while True:
-            if cursor.node.type == node_type:
-                nodes.append(cursor.node)
-            
-            if not cursor.goto_first_child():
-                while not cursor.goto_next_sibling():
-                    if not cursor.goto_parent():
-                        return nodes
-        return nodes
-
-    @staticmethod
-    def find_node_at_position(node: Node, point: Point) -> Optional[Node]:
-        """Find the smallest node containing a point."""
-        cursor = node.walk()
-        
-        while True:
-            if (cursor.node.start_point <= point and 
-                point <= cursor.node.end_point):
-                
-                if cursor.goto_first_child():
-                    continue
-                return cursor.node
-            
-            if not cursor.goto_next_sibling():
-                if not cursor.goto_parent():
-                    return None
-        return None
-
-    @staticmethod
-    def find_child_by_field(node: Node, field_name: str) -> Optional[Node]:
-        """Find a child node by its field name."""
-        try:
-            return node.child_by_field_name(field_name)
-        except Exception as e:
-            logger.error(f"Error finding child by field {field_name}: {e}")
-            return None
-
     def get_named_descendants(self, node: Node, start_byte: int = 0, end_byte: Optional[int] = None) -> List[Node]:
         """Get all named descendants in a byte range.
         
@@ -398,7 +385,7 @@ class TreeSitterTraversal(TreeSitterServiceBase):
             # Get language from root node's grammar name
             language = node.grammar_name
             if not language:
-                self._logger.error("Could not determine language from root node")
+                self._log("error", "Could not determine language from root node")
                 return []
                 
             # Create parser for getting node text
@@ -441,45 +428,45 @@ class TreeSitterTraversal(TreeSitterServiceBase):
     def get_node_at_byte_range(self, node: Optional[Node], start_byte: int, end_byte: int) -> Optional[Node]:
         """Get the smallest node that spans the given byte range."""
         if not node:
-            self._logger.error("Cannot get node at byte range: Node is None")
+            self._log("error", "Cannot get node at byte range: Node is None")
             return None
             
         # Validate byte range
         if start_byte < 0 or end_byte < start_byte or end_byte > node.end_byte:
-            self._logger.error(f"Invalid byte range: {start_byte} -> {end_byte} (node range: 0 -> {node.end_byte})")
+            self._log("error", f"Invalid byte range: {start_byte} -> {end_byte} (node range: 0 -> {node.end_byte})")
             return None
             
-        self._logger.debug(f"Finding node at byte range {start_byte} -> {end_byte}")
+        self._log("debug", f"Finding node at byte range {start_byte} -> {end_byte}")
         
         # Get smallest descendant containing range
         found = node.descendant_for_byte_range(start_byte, end_byte)
         if not found:
-            self._logger.warning("No node found containing byte range")
+            self._log("warning", "No node found containing byte range")
             return None
             
         # Walk up until we find a node that fully contains the range
         while found:
-            self._logger.debug(f"Checking node {found.type} at bytes {found.start_byte} -> {found.end_byte}")
+            self._log("debug", f"Checking node {found.type} at bytes {found.start_byte} -> {found.end_byte}")
             if found.start_byte <= start_byte and found.end_byte >= end_byte:
                 if not found.has_error and not found.is_missing:
-                    self._logger.info(f"Found valid node: {found.type}")
+                    self._log("info", f"Found valid node: {found.type}")
                     return found
                 else:
-                    self._logger.warning(f"Found node has errors: {found.type}")
+                    self._log("warning", f"Found node has errors: {found.type}")
             found = found.parent
             
-        self._logger.warning("No valid node found containing byte range")
+        self._log("warning", "No valid node found containing byte range")
         return None
 
     def verify_byte_range(self, node: Optional[Node], start_byte: int, end_byte: int, expected_text: str) -> bool:
         """Verify that a byte range in a node matches expected text."""
         if not node:
-            self._logger.error("Cannot verify byte range: Node is None")
+            self._log("error", "Cannot verify byte range: Node is None")
             return False
             
         # Validate byte range
         if start_byte < 0 or end_byte < start_byte or end_byte > node.end_byte:
-            self._logger.error(f"Invalid byte range: {start_byte} -> {end_byte} (node range: 0 -> {node.end_byte})")
+            self._log("error", f"Invalid byte range: {start_byte} -> {end_byte} (node range: 0 -> {node.end_byte})")
             return False
             
         # Get text at byte range
@@ -487,12 +474,12 @@ class TreeSitterTraversal(TreeSitterServiceBase):
             text = node.text[start_byte - node.start_byte:end_byte - node.start_byte]
             actual_text = text.decode('utf8')
             if actual_text != expected_text:
-                self._logger.error(f"Text mismatch at byte range. Expected: '{expected_text}', Got: '{actual_text}'")
+                self._log("error", f"Text mismatch at byte range. Expected: '{expected_text}', Got: '{actual_text}'")
                 return False
-            self._logger.debug(f"Text matches at byte range: '{actual_text}'")
+            self._log("debug", f"Text matches at byte range: '{actual_text}'")
             return True
         except Exception as e:
-            self._logger.error(f"Error verifying byte range: {e}", exc_info=True)
+            self._log("error", f"Error verifying byte range: {e}", exc_info=True)
             return False
 
     def get_byte_range_for_point_range(
@@ -557,6 +544,7 @@ class TreeSitterTraversal(TreeSitterServiceBase):
             cursor.goto_first_child_for_point(point)
             return cursor
         except Exception as e:
+            logger = get_logger(__name__)
             logger.error(f"Error creating cursor at point {point}: {e}")
             return None
 
@@ -565,21 +553,21 @@ class TreeSitterTraversal(TreeSitterServiceBase):
         """Walk through all descendants of a node."""
         for child in node.children:
             yield child
-            yield from TreeSitterTraversal.walk_descendants(child)
+            yield from TraversalService.walk_descendants(child)
 
     def walk_named_descendants(self, node: Node) -> Generator[Node, None, None]:
         """Walk through all named descendants of a node."""
         if not node:
-            self._logger.warning("No node provided to walk_named_descendants")
+            self._log("warning", "No node provided to walk_named_descendants")
             return
             
-        self._logger.debug(f"Starting walk of named descendants from node type: {node.type}")
+        self._log("debug", f"Starting walk of named descendants from node type: {node.type}")
         cursor = node.walk()
         reached_root = False
         
         while not reached_root:
             if cursor.node.is_named:
-                self._logger.debug(f"Found named node during walk: {cursor.node.type}")
+                self._log("debug", f"Found named node during walk: {cursor.node.type}")
                 yield cursor.node
                 
             if cursor.goto_first_child():
@@ -591,7 +579,7 @@ class TreeSitterTraversal(TreeSitterServiceBase):
             while not reached_root:
                 if not cursor.goto_parent():
                     reached_root = True
-                    self._logger.debug("Reached root node, walk complete")
+                    self._log("debug", "Reached root node, walk complete")
                     break
 
     @staticmethod
@@ -639,12 +627,6 @@ class TreeSitterTraversal(TreeSitterServiceBase):
                 return current
             current = current.parent
         return None
-
-    def traverse_tree(self, node: Node) -> Generator[Node, None, None]:
-        """Traverse tree nodes."""
-        yield node
-        for child in node.children:
-            yield from self.traverse_tree(child)
 
     def get_node_info(self, node: Node) -> Dict[str, Any]:
         """Get comprehensive information about a node.
@@ -884,7 +866,7 @@ class TreeSitterTraversal(TreeSitterServiceBase):
             for symbol_name in lookahead.iter_names():
                 valid_symbols.append(symbol_name)
                 
-            self._logger.debug({
+            self._log("debug", {
                 "message": "Found valid symbols at error node",
                 "context": {
                     "node_type": node.type,
@@ -896,7 +878,7 @@ class TreeSitterTraversal(TreeSitterServiceBase):
             return valid_symbols
             
         except Exception as e:
-            self._logger.error({
+            self._log("error", {
                 "message": "Error getting valid symbols",
                 "context": {
                     "node_type": node.type,

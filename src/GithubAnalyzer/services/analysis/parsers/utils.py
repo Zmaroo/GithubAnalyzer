@@ -1,17 +1,15 @@
 """Utility functions and types for parser services."""
-from typing import Dict, Any, Set, Optional, List, Union, Tuple
-from tree_sitter import Language, Parser, Node, Tree, Query
-import time
 import logging
+import time
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
+
+from tree_sitter import Language, Node, Parser, Query, Tree
+
+from GithubAnalyzer.models.analysis.types import (LanguageId, NodeDict,
+                                                  NodeList, QueryPattern,
+                                                  QueryResult)
 from GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger
-from GithubAnalyzer.models.analysis.types import (
-    LanguageId,
-    QueryPattern,
-    NodeDict,
-    NodeList,
-    QueryResult
-)
 
 # Common type aliases
 LanguageId = str
@@ -26,13 +24,11 @@ logger = get_logger(__name__)
 class TreeSitterServiceBase:
     """Base class for tree-sitter services with common functionality."""
     
-    _logger: logging.Logger = field(init=False)
-    _operation_times: Dict[str, List[float]] = field(default_factory=dict)
-    
+    _operation_times: dict = field(default_factory=dict)
+
     def __post_init__(self):
-        """Initialize base service."""
-        # Use tree-sitter specific logger
-        self._logger = get_tree_sitter_logger(self.__class__.__name__.lower())
+        """Initialize tree-sitter service."""
+        self._operation_times = {}
     
     def _time_operation(self, operation_name: str) -> float:
         """Record timing for an operation.
@@ -63,19 +59,18 @@ class TreeSitterServiceBase:
         avg_time = sum(times) / len(times)
         max_time = max(times)
         
-        # Use query logger for traversal operations
-        self._logger.debug({
-            "message": f"Operation timing: {operation_name}",
-            "context": {
-                "operation": operation_name,
-                "duration_ms": duration,
-                "avg_duration_ms": avg_time,
-                "max_duration_ms": max_time,
-                "call_count": len(times),
-                "type": "query",  # Mark as query operation for proper logging
-                "source": "tree-sitter"
-            }
-        })
+        self._log("debug", f"Operation timing: {operation_name}",
+                operation=operation_name,
+                duration_ms=duration,
+                avg_duration_ms=avg_time,
+                max_duration_ms=max_time,
+                call_count=len(times),
+                type="query",
+                source="tree-sitter")
+
+    def _log(self, level: str, message: str, **kwargs):
+        logger = get_logger(__name__)
+        getattr(logger, level)(message, extra={'context': kwargs})
 
 def get_node_text(node: Optional[Node]) -> str:
     """Get text from a node."""

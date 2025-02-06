@@ -1,14 +1,22 @@
 """Service for advanced code analytics using graph algorithms."""
-from typing import Dict, List, Any, Optional
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
-from GithubAnalyzer.services.core.database.neo4j_service import Neo4jService
-from GithubAnalyzer.services.core.database.postgres_service import PostgresService
-from GithubAnalyzer.models.core.database import GraphAnalytics
-from GithubAnalyzer.models.analysis.code_analysis import CodeAnalysisResult, BatchAnalysisResult
+from GithubAnalyzer.models.analysis.code_analysis import (BatchAnalysisResult,
+                                                          CodeAnalysisResult)
 from GithubAnalyzer.models.core.ast import ParseResult
+from GithubAnalyzer.models.core.base_model import BaseModel
+from GithubAnalyzer.models.core.db.database import GraphAnalytics
+from GithubAnalyzer.services.core.database.neo4j_service import Neo4jService
+from GithubAnalyzer.services.core.database.postgres_service import \
+    PostgresService
+from GithubAnalyzer.utils.logging import get_logger
 
-class CodeAnalyticsService:
-    """Service for advanced code analytics."""
+logger = get_logger(__name__)
+
+@dataclass
+class CodeAnalyticsService(BaseModel):
+    """Service for analyzing code structure and metrics."""
     
     def __init__(self):
         """Initialize analytics service."""
@@ -67,7 +75,7 @@ class CodeAnalyticsService:
             }
         )
         
-    def get_code_metrics(self, repo_id: str) -> CodeAnalysisResult:
+    def get_code_metrics(self, repo_id: int) -> CodeAnalysisResult:
         """Get comprehensive code metrics using graph analytics.
         
         This method combines various metrics:
@@ -126,7 +134,7 @@ class CodeAnalyticsService:
             graph_metrics=graph_metrics
         )
         
-    def get_batch_analysis(self, repo_id: str) -> BatchAnalysisResult:
+    def get_batch_analysis(self, repo_id: int) -> BatchAnalysisResult:
         """Get batch analysis for an entire repository.
         
         Args:

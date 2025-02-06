@@ -1,5 +1,6 @@
 from tree_sitter_language_pack import get_binding, get_language, get_parser
 
+
 def print_node(cursor, level=0):
     node = cursor.node
     print('  ' * level + f'{node.type}: {node.text.decode()} ({node.start_point}, {node.end_point})')

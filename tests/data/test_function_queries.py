@@ -1,12 +1,16 @@
-from tree_sitter_language_pack import get_binding, get_language, get_parser
 import json
-from pathlib import Path
-import os
-from src.GithubAnalyzer.services.analysis.parsers.traversal_service import TreeSitterTraversal
-from src.GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger
-from src.GithubAnalyzer.services.analysis.parsers.query_patterns import QUERY_PATTERNS, JS_VARIANT_PATTERNS
 import logging
+import os
+from pathlib import Path
 from typing import List
+
+from tree_sitter_language_pack import get_binding, get_language, get_parser
+
+from GithubAnalyzer.services.analysis.parsers.query_patterns import (
+    JS_VARIANT_PATTERNS, QUERY_PATTERNS)
+from GithubAnalyzer.services.analysis.parsers.traversal_service import \
+    TreeSitterTraversal
+from GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger
 
 # Get absolute path to workspace root and output directory
 WORKSPACE_ROOT = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))

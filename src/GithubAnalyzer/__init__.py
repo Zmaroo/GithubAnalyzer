@@ -15,13 +15,18 @@ if src_dir not in sys.path:
 
 # Set up logging
 from GithubAnalyzer.utils.logging import get_logger
+from GithubAnalyzer.utils.logging.config import configure_logging
 
 # Get logger for this module
 logger = get_logger(__name__)
 
+# Configure logging on package import
+configure_logging()
+
 # Import core components
 try:
-    from GithubAnalyzer.services.core.database.database_service import DatabaseService
+    from GithubAnalyzer.services.core.database.database_service import \
+        DatabaseService
     from GithubAnalyzer.services.core.parser_service import ParserService
     CORE_SERVICES_AVAILABLE = True
 except ImportError as e:
@@ -29,27 +34,41 @@ except ImportError as e:
     CORE_SERVICES_AVAILABLE = False
 
 # Import models
-from GithubAnalyzer.models.core.errors import (
-    ParserError,
-    ServiceError,
-    FileOperationError,
-    ConfigError
-)
+from GithubAnalyzer.models.core.ast import NodeDict, NodeList
+from GithubAnalyzer.models.core.base_model import BaseModel
+from GithubAnalyzer.models.core.db.database import (Class, CodebaseQuery,
+                                                    CodeSnippet,
+                                                    DatabaseConfig,
+                                                    DatabaseConnection,
+                                                    DatabaseModel, File,
+                                                    Function, GraphAnalytics)
+from GithubAnalyzer.models.core.errors import (EditorError, LanguageError,
+                                               ParserError, TraversalError,
+                                               ValidationError)
+from GithubAnalyzer.models.core.file import FileModel, FileInfo
+from GithubAnalyzer.models.core.language import LanguageFeatures, LanguageInfo
+from GithubAnalyzer.models.core.parsers import (CustomParseResult,
+                                                EditorConfigResult,
+                                                GitignoreResult,
+                                                LockFileResult,
+                                                RequirementsResult)
+from GithubAnalyzer.models.core.repository import (ProcessingResult,
+                                                   ProcessingStats,
+                                                   RepositoryInfo)
+from GithubAnalyzer.models.core.traversal import TreeSitterTraversal
+from GithubAnalyzer.models.core.types import (FileId, FileType, LanguageId,
+                                              LanguageType, NodeId, NodeType,
+                                              QueryId, QueryType)
 
 # Version
 __version__ = "0.1.0"
-
-# Models
-from GithubAnalyzer.models.core.database import (
-    CodeSnippet,
-    Function,
-    File,
-    CodebaseQuery,
-)
+__author__ = "Michael Marler"
+__email__ = "michaelmarler@example.com"
 
 # Services - Optional dependencies
 try:
-    from GithubAnalyzer.services.core.database.embedding_service import CodeEmbeddingService as EmbeddingService
+    from GithubAnalyzer.services.core.database.embedding_service import \
+        CodeEmbeddingService as EmbeddingService
     EMBEDDING_SERVICE_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Embedding service not available: {str(e)}")
@@ -57,7 +76,8 @@ except ImportError as e:
     EmbeddingService = None
 
 try:
-    from GithubAnalyzer.services.core.database.neo4j_service import Neo4jService
+    from GithubAnalyzer.services.core.database.neo4j_service import \
+        Neo4jService
     NEO4J_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Neo4j service not available: {str(e)}")
@@ -65,7 +85,8 @@ except ImportError as e:
     Neo4jService = None
 
 try:
-    from GithubAnalyzer.services.core.database.postgres_service import PostgresService
+    from GithubAnalyzer.services.core.database.postgres_service import \
+        PostgresService
     POSTGRES_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"PostgreSQL service not available: {str(e)}")
@@ -83,12 +104,47 @@ except ImportError as e:
 # Utils
 from GithubAnalyzer.utils.timing import Timer, timer
 
+# Package exports
+from .models import *
+from .services import *
+from .utils import *
+
 __all__ = [
-    # Models
-    'CodeSnippet',
-    'Function',
-    'File',
-    'CodebaseQuery',
+    "__version__",
+    "__author__",
+    "__email__",
+    # AST models
+    'NodeDict', 'NodeList',
+    'TreeSitterTraversal',
+    
+    # Base models
+    'BaseModel',
+    
+    # Database models
+    'DatabaseConfig', 'DatabaseConnection', 'DatabaseModel',
+    'CodebaseQuery', 'CodeSnippet', 'File', 'Function', 'Class',
+    'GraphAnalytics',
+    
+    # Error models
+    'ParserError', 'EditorError', 'TraversalError',
+    'ValidationError', 'LanguageError',
+    
+    # File models
+    'FileModel', 'FileInfo',
+    
+    # Language models
+    'LanguageFeatures', 'LanguageInfo',
+    
+    # Parser models
+    'CustomParseResult', 'LockFileResult', 'RequirementsResult',
+    'GitignoreResult', 'EditorConfigResult',
+    
+    # Repository models
+    'RepositoryInfo', 'ProcessingStats', 'ProcessingResult',
+    
+    # Type definitions
+    'FileId', 'LanguageId', 'NodeId', 'QueryId',
+    'FileType', 'LanguageType', 'NodeType', 'QueryType',
     
     # Services
     'DatabaseService',
@@ -97,7 +153,6 @@ __all__ = [
     'PostgresService',
     'FileService',
     'ParserService',
-    'ParserError',
     'ServiceError',
     'FileOperationError',
     'ConfigError',

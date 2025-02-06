@@ -1,5 +1,7 @@
-from tree_sitter_language_pack import get_binding, get_language, get_parser
 import os
+
+from tree_sitter_language_pack import get_binding, get_language, get_parser
+
 
 def inspect_file(file_path, language_name):
     print(f"\nInspecting {language_name} file: {file_path}")

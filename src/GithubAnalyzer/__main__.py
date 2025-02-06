@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 import argparse
 
-from GithubAnalyzer.services.core.database.database_service import DatabaseService
+from GithubAnalyzer.services.core.database.database_service import \
+    DatabaseService
 
 
 def main():

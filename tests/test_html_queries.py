@@ -1,6 +1,10 @@
-from tree_sitter_language_pack import get_parser
 from pathlib import Path
-from src.GithubAnalyzer.services.analysis.parsers.query_patterns import QUERY_PATTERNS
+
+from tree_sitter_language_pack import get_parser
+
+from GithubAnalyzer.services.analysis.parsers.query_patterns import \
+    QUERY_PATTERNS
+
 
 def test_html_patterns():
     # Get the HTML parser

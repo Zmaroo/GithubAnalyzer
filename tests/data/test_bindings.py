@@ -1,5 +1,6 @@
 from tree_sitter_language_pack import get_binding, get_language, get_parser
 
+
 def test_language(name):
     print(f"\nTesting {name}:")
     try:

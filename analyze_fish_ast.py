@@ -1,7 +1,9 @@
-from tree_sitter_language_pack import get_parser
-from pathlib import Path
 import json
 import os
+from pathlib import Path
+
+from tree_sitter_language_pack import get_parser
+
 
 def analyze_node(node, source_bytes):
     """Analyze a node and its children recursively."""

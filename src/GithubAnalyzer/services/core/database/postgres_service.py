@@ -1,24 +1,32 @@
-from typing import Optional, List, Dict, Any, Tuple, Set
-import psycopg2
 import json
-from datetime import datetime
-from psycopg2.extras import execute_values
-import numpy as np
-import time
+import os
 import threading
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 
-from GithubAnalyzer.services.core.database.embedding_service import CodeEmbeddingService
+import numpy as np
+import psycopg2
 from psycopg2.extensions import connection
+from psycopg2.extras import execute_values
+
+from GithubAnalyzer.exceptions import DatabaseError
+from GithubAnalyzer.models.core.db.database import (CodeSnippet,
+                                                    DatabaseConfig,
+                                                    DatabaseConnection,
+                                                    DatabaseModel)
+from GithubAnalyzer.services.core.base_service import BaseService
 from GithubAnalyzer.services.core.database.db_config import get_postgres_config
-from GithubAnalyzer.models.core.database import CodeSnippet
+from GithubAnalyzer.services.core.database.embedding_service import \
+    CodeEmbeddingService
 from GithubAnalyzer.utils.logging import get_logger
 
-logger = get_logger("core.database.postgres")
+logger = get_logger(__name__)
 
 @dataclass
-class PostgresService:
+class PostgresService(BaseService):
     def __post_init__(self):
         """Initialize the PostgreSQL service."""
         self._conn: Optional[connection] = None
@@ -94,140 +102,24 @@ class PostgresService:
         """Create necessary tables for code storage with vector embeddings."""
         self.ensure_connection()
         with self._conn.cursor() as cur:
-            # Drop existing tables if they exist
-            cur.execute('DROP TABLE IF EXISTS code_snippets CASCADE;')
-            cur.execute('DROP TABLE IF EXISTS repositories CASCADE;')
-            cur.execute('DROP TABLE IF EXISTS functions CASCADE;')
-            cur.execute('DROP TABLE IF EXISTS classes CASCADE;')
-            cur.execute('DROP TABLE IF EXISTS comments CASCADE;')
-            self._conn.commit()
-            
-            # Enable vector extension
-            cur.execute('CREATE EXTENSION IF NOT EXISTS vector;')
-            self._conn.commit()
-            
-            # Repositories table
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS repositories (
-                    id SERIAL PRIMARY KEY,
-                    url TEXT NOT NULL,
-                    resource_type TEXT NOT NULL CHECK (resource_type IN ('codebase', 'documentation')),
-                    repo_name TEXT,
-                    description TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            try:
+                # Read and execute schema file
+                schema_path = os.path.join(
+                    os.path.dirname(__file__),
+                    'schema',
+                    'postgresql',
+                    'schema.sql'
                 )
-            """)
-            self._conn.commit()
-            
-            # Code snippets table with vector embeddings and metadata
-            cur.execute('''
-                CREATE TABLE code_snippets (
-                    id SERIAL PRIMARY KEY,
-                    repo_id INTEGER REFERENCES repositories(id),
-                    file_path TEXT NOT NULL,
-                    code_text TEXT NOT NULL,
-                    language TEXT NOT NULL,
-                    syntax_valid BOOLEAN DEFAULT true,
-                    ast_data JSONB DEFAULT NULL,
-                    complexity_metrics JSONB DEFAULT NULL,
-                    embedding VECTOR(768),
-                    metadata JSONB DEFAULT NULL,
-                    is_supported BOOLEAN DEFAULT true,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                );
-            ''')
-            self._conn.commit()
-            
-            # Add language constraint
-            cur.execute('''
-                ALTER TABLE code_snippets
-                ADD CONSTRAINT valid_language CHECK (language IN (
-                    'python', 'javascript', 'typescript', 'java', 'cpp', 'c', 'go', 'rust',
-                    'ruby', 'php', 'html', 'css', 'markdown', 'yaml', 'json', 'toml', 'xml',
-                    'dockerfile', 'makefile', 'gitignore', 'requirements', 'plaintext', 'toml'
-                ));
-            ''')
-            self._conn.commit()
-            
-            # Add metadata constraint
-            cur.execute('''
-                ALTER TABLE code_snippets
-                ADD CONSTRAINT valid_metadata 
-                CHECK (metadata IS NULL OR jsonb_typeof(metadata) = 'object');
-            ''')
-            self._conn.commit()
-            
-            # Create indexes
-            cur.execute('CREATE INDEX idx_code_snippets_language ON code_snippets(language);')
-            cur.execute('CREATE INDEX idx_code_snippets_supported ON code_snippets(is_supported);')
-            cur.execute('CREATE INDEX idx_code_snippets_metadata ON code_snippets USING gin(metadata);')
-            self._conn.commit()
-            
-            # Functions table
-            cur.execute('''
-                CREATE TABLE functions (
-                    id SERIAL PRIMARY KEY,
-                    repo_id INTEGER REFERENCES repositories(id),
-                    file_path TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    language TEXT NOT NULL,
-                    metadata JSONB,
-                    start_point JSONB,
-                    end_point JSONB,
-                    docstring TEXT,
-                    docstring_embedding vector(768),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            ''')
-            self._conn.commit()
-            
-            # Add position constraint
-            cur.execute('''
-                ALTER TABLE functions
-                ADD CONSTRAINT valid_position CHECK (
-                    start_point IS NULL OR (
-                        jsonb_typeof(start_point) = 'object' AND
-                        start_point ? 'line' AND
-                        start_point ? 'character'
-                    )
-                );
-            ''')
-            self._conn.commit()
-            
-            # Create function indexes
-            cur.execute('CREATE INDEX idx_functions_language ON functions(language);')
-            cur.execute('CREATE INDEX idx_functions_name ON functions(name);')
-            cur.execute('CREATE INDEX idx_functions_metadata ON functions USING gin(metadata);')
-            self._conn.commit()
-            
-            # Classes table
-            cur.execute('''
-                CREATE TABLE classes (
-                    id SERIAL PRIMARY KEY,
-                    repo_id INTEGER REFERENCES repositories(id),
-                    file_path TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    docstring TEXT,
-                    docstring_embedding vector(768),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            ''')
-            self._conn.commit()
-            
-            # Comments table
-            cur.execute('''
-                CREATE TABLE comments (
-                    id SERIAL PRIMARY KEY,
-                    repo_id INTEGER REFERENCES repositories(id),
-                    file_path TEXT NOT NULL,
-                    comment_type TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    embedding vector(768),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            ''')
-            self._conn.commit()
+                with open(schema_path, 'r') as f:
+                    schema_sql = f.read()
+                    
+                # Execute schema
+                cur.execute(schema_sql)
+                self._conn.commit()
+                
+            except Exception as e:
+                self._conn.rollback()
+                raise DatabaseError(f"Failed to create tables: {str(e)}")
 
     def store_code_with_embedding(self, snippet: CodeSnippet) -> None:
         """Store code snippet with its embedding vector and metadata."""
@@ -240,18 +132,17 @@ class PostgresService:
                 cur.execute('''
                     INSERT INTO code_snippets (
                         repo_id, file_path, code_text, language, embedding, 
-                        metadata, is_supported, created_at
+                        metadata, is_supported
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ''', (
                     snippet.repo_id,
                     snippet.file_path,
                     snippet.code_text,
                     snippet.language,
                     embedding,
-                    json.dumps(snippet.metadata) if hasattr(snippet, 'metadata') else None,
-                    snippet.metadata.get('is_supported', True) if hasattr(snippet, 'metadata') else True,
-                    snippet.created_at
+                    json.dumps(snippet.metadata) if snippet.metadata else None,
+                    snippet.metadata.get('is_supported', True) if snippet.metadata else True
                 ))
                 self._conn.commit()
                 
@@ -259,7 +150,7 @@ class PostgresService:
                          file_path=snippet.file_path,
                          language=snippet.language,
                          has_embedding=bool(embedding),
-                         has_metadata=hasattr(snippet, 'metadata'),
+                         has_metadata=bool(snippet.metadata),
                          duration_ms=int((time.time() - start_time) * 1000))
         except Exception as e:
             self._log('error', 'Failed to store code snippet',
@@ -392,7 +283,7 @@ class PostgresService:
                 
             # Create new repository
             cur.execute("""
-                INSERT INTO repositories (url, resource_type, repo_name, description)
+                INSERT INTO repositories (url, resource_type, name, description)
                 VALUES (%s, %s, %s, %s)
                 RETURNING id
             """, (url, resource_type, name, description))
@@ -608,7 +499,7 @@ class PostgresService:
         """Get all repositories."""
         with self._conn.cursor() as cur:
             cur.execute("""
-                SELECT id, url, resource_type, repo_name, description, 
+                SELECT id, url, resource_type, name, description, 
                        created_at, updated_at
                 FROM repositories
             """)
@@ -616,11 +507,7 @@ class PostgresService:
             return [dict(zip(columns, row)) for row in cur.fetchall()]
 
     def get_all_code_snippets(self) -> List[Dict[str, Any]]:
-        """Get all code snippets from the database.
-        
-        Returns:
-            List of dictionaries containing code snippet information
-        """
+        """Get all code snippets from the database."""
         self.ensure_connection()
         with self._conn.cursor() as cur:
             cur.execute('''
@@ -633,6 +520,14 @@ class PostgresService:
             
             self._log('debug', f'Retrieved {len(snippets)} code snippets')
             return snippets
+
+    def get_code_text(self, repo_id: int, file_path: str) -> Optional[str]:
+        """Retrieve the stored code text for a given repository and file path."""
+        self.ensure_connection()
+        with self._conn.cursor() as cur:
+            cur.execute("SELECT code_text FROM code_snippets WHERE repo_id = %s AND file_path = %s LIMIT 1", (repo_id, file_path))
+            row = cur.fetchone()
+            return row[0] if row else None
 
     def delete_file_snippets(self, file_path: str) -> None:
         """Delete all code snippets for a given file path."""

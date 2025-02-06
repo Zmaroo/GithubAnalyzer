@@ -1,11 +1,11 @@
 """Service for generating code embeddings using GraphCodeBERT."""
-import time
 import threading
+import time
 from dataclasses import dataclass
-from typing import List, Union, Dict, Any
+from typing import Any, Dict, List, Union
 
 try:
-    from transformers import AutoTokenizer, AutoModel
+    from transformers import AutoModel, AutoTokenizer
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False

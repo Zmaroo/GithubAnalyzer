@@ -1,24 +1,30 @@
 """Test suite for the AI agent interface (DatabaseService)."""
 import logging
-import sys
-from pathlib import Path
-from typing import Dict, Any
-from dataclasses import dataclass
-import pytest
 import re
-from tree_sitter import Parser, Language, Query
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict
 
+import pytest
+from tree_sitter import Language, Parser, Query
 from tree_sitter_language_pack import get_binding, get_language, get_parser
 
-from GithubAnalyzer.services.core.database.database_service import DatabaseService
-from GithubAnalyzer.services.core.repo_processor import RepoProcessor
-from GithubAnalyzer.services.analysis.parsers.tree_sitter_editor import TreeSitterEditor
-from GithubAnalyzer.services.analysis.parsers.query_service import TreeSitterQueryHandler
-from GithubAnalyzer.services.analysis.parsers.traversal_service import TreeSitterTraversal
-from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
-from GithubAnalyzer.utils.logging import get_logger, LoggerFactory, StructuredFormatter
 from GithubAnalyzer.models.core.errors import LanguageError
 from GithubAnalyzer.models.core.file import FileInfo
+from GithubAnalyzer.services.analysis.parsers.language_service import \
+    LanguageService
+from GithubAnalyzer.services.analysis.parsers.query_service import \
+    TreeSitterQueryHandler
+from GithubAnalyzer.services.analysis.parsers.traversal_service import \
+    TreeSitterTraversal
+from GithubAnalyzer.services.analysis.parsers.tree_sitter_editor import \
+    TreeSitterEditor
+from GithubAnalyzer.services.core.database.database_service import \
+    DatabaseService
+from GithubAnalyzer.services.core.repo_processor import RepoProcessor
+from GithubAnalyzer.utils.logging import (LoggerFactory, StructuredFormatter,
+                                          get_logger)
 
 logger = get_logger(__name__)
 
@@ -202,14 +208,14 @@ def test_url_handling():
         assert repo_entry is not None, "Repository not stored in database"
         assert repo_entry['resource_type'] == 'codebase', "Repository should be marked as codebase"
         # Extract repo name from the last part of the path
-        expected_repo_name = Path(repo_url.replace("file://", "")).name
-        assert repo_entry['repo_name'] == expected_repo_name, f"Repository name mismatch. Expected {expected_repo_name}, got {repo_entry['repo_name']}"
+        expected_name = Path(repo_url.replace("file://", "")).name
+        assert repo_entry['name'] == expected_name, f"Repository name mismatch. Expected {expected_name}, got {repo_entry['name']}"
         
         # Find documentation entry
         doc_entry = next((r for r in repos if r['url'] == doc_url), None)
         assert doc_entry is not None, "Documentation not stored in database"
         assert doc_entry['resource_type'] == 'documentation', "Documentation should be marked as documentation"
-        assert doc_entry['repo_name'] == "Test Documentation", "Documentation name mismatch"
+        assert doc_entry['name'] == "Test Documentation", "Documentation name mismatch"
 
 def test_code_analysis():
     """Test code analysis functionality."""

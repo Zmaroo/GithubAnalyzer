@@ -1,5 +1,6 @@
-from tree_sitter_language_pack import get_binding, get_language, get_parser
 import os
+
+from tree_sitter_language_pack import get_binding, get_language, get_parser
 
 # Read the TypeScript file
 ts_file_path = os.path.join(os.path.dirname(__file__), 'types.ts')

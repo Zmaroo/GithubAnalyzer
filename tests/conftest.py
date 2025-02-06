@@ -1,9 +1,14 @@
-from tree_sitter_language_pack import get_parser, get_binding, get_language
 import pytest
+from tree_sitter_language_pack import get_binding, get_language, get_parser
+
 """Test configuration and fixtures."""
 from pathlib import Path
+
 from tree_sitter import Language, Parser
-from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
+
+from GithubAnalyzer.services.analysis.parsers.language_service import \
+    LanguageService
+
 
 @pytest.fixture
 def repo_url():
@@ -71,9 +76,11 @@ class Greeter:
 @pytest.fixture
 def test_logging_setup():
     """Set up logging for tests."""
-    from GithubAnalyzer.utils.logging import get_logger, LoggerFactory, StructuredFormatter
     import logging
-    
+
+    from GithubAnalyzer.utils.logging import (LoggerFactory,
+                                              StructuredFormatter, get_logger)
+
     # Create logger factory instance
     factory = LoggerFactory()
     

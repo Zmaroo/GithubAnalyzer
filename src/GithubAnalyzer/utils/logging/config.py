@@ -1,10 +1,100 @@
 """Logging configuration for GithubAnalyzer."""
+import json
 import logging
-from typing import Dict, Any, Optional
+import logging.config
+import os
+from enum import Enum
 from pathlib import Path
-from tree_sitter import Parser, LogType
+from typing import Any, Dict, Optional
+
+from tree_sitter import LogType, Parser
 
 from . import get_logger, get_tree_sitter_logger
+
+
+class Environment(Enum):
+    """Environment types for configuration."""
+    DEVELOPMENT = "development"
+    TESTING = "testing"
+    PRODUCTION = "production"
+
+# Default log levels by environment
+DEFAULT_LOG_LEVELS = {
+    Environment.DEVELOPMENT: logging.DEBUG,
+    Environment.TESTING: logging.DEBUG,
+    Environment.PRODUCTION: logging.INFO
+}
+
+# Get environment from env var, default to development
+ENVIRONMENT = Environment(os.getenv("GITHUB_ANALYZER_ENV", "development").lower())
+
+# Base configuration
+LOG_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "structured": {
+            "()": "GithubAnalyzer.utils.logging.StructuredFormatter",
+            "indent": None if ENVIRONMENT == Environment.PRODUCTION else 2
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "structured",
+            "level": DEFAULT_LOG_LEVELS[ENVIRONMENT]
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "formatter": "structured",
+            "filename": "logs/github_analyzer.log",
+            "maxBytes": 10485760,  # 10MB
+            "backupCount": 5,
+            "encoding": "utf8"
+        }
+    },
+    "loggers": {
+        "GithubAnalyzer": {
+            "level": DEFAULT_LOG_LEVELS[ENVIRONMENT],
+            "handlers": ["console", "file"],
+            "propagate": False
+        },
+        "tree_sitter": {
+            "level": DEFAULT_LOG_LEVELS[ENVIRONMENT],
+            "handlers": ["console", "file"],
+            "propagate": False
+        }
+    }
+}
+
+def configure_logging(config: Optional[Dict[str, Any]] = None) -> None:
+    """Configure logging with given config or defaults.
+    
+    Args:
+        config: Optional custom logging configuration
+    """
+    # Use provided config or default
+    log_config = config or LOG_CONFIG
+    
+    # Ensure log directory exists
+    log_dir = Path("logs")
+    log_dir.mkdir(exist_ok=True)
+    
+    # Apply configuration
+    logging.config.dictConfig(log_config)
+    
+    # Log configuration applied
+    logger = get_logger("GithubAnalyzer")
+    logger.info(
+        "Logging configured",
+        extra={
+            "context": {
+                "environment": ENVIRONMENT.value,
+                "log_level": logging.getLevelName(DEFAULT_LOG_LEVELS[ENVIRONMENT]),
+                "config": log_config
+            }
+        }
+    )
 
 def configure_test_logging() -> Dict[str, Any]:
     """Configure logging for tests.
@@ -46,15 +136,15 @@ def configure_parser_logging(parser: Parser, logger_name: str = "tree_sitter") -
     # Create a logging callback that handles both PARSE and LEX log types
     def logger_callback(log_type: LogType, msg: str) -> None:
         try:
+            # Only log parse messages; ignore lex messages
+            if log_type != LogType.PARSE:
+                return
             context = {
                 'source': 'tree-sitter',
                 'type': 'parser',
-                'log_type': 'parse' if log_type == LogType.PARSE else 'lex'
+                'log_type': 'parse'
             }
-            if log_type == LogType.PARSE:
-                ts_logger.debug(msg, extra={'context': context})
-            else:  # LEX
-                ts_logger.info(msg, extra={'context': context})
+            ts_logger.debug(msg, extra={'context': context})
         except Exception as e:
             ts_logger.error("Exception in logger_callback: %s", str(e))
     
@@ -63,5 +153,5 @@ def configure_parser_logging(parser: Parser, logger_name: str = "tree_sitter") -
     
     return ts_logger
 
-# Add this to the end of the file
-TREE_SITTER_LOGGING_ENABLED = False 
+# Tree-sitter logging configuration
+TREE_SITTER_LOGGING_ENABLED = ENVIRONMENT in {Environment.DEVELOPMENT, Environment.TESTING} 

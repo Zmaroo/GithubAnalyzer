@@ -1,7 +1,9 @@
+import json
+from pathlib import Path
+
 from tree_sitter import Parser
 from tree_sitter_language_pack import get_binding, get_language, get_parser
-from pathlib import Path
-import json
+
 
 def main():
     # Get the parser

@@ -1,91 +1,63 @@
 """Language service for managing tree-sitter language support."""
 import json
 import re
-from pathlib import Path
-from typing import Dict, Optional, Set, Any, List
-from tree_sitter import Language, Parser, Node
-import time
 import threading
-from dataclasses import dataclass
-import tree_sitter_c_sharp as tscsharp
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
 
+import tree_sitter_c_sharp as tscsharp
+from tree_sitter import Language, Node, Parser
 from tree_sitter_language_pack import get_binding, get_language, get_parser
 
-from GithubAnalyzer.models.analysis.types import (
-    LanguageId,
-    QueryPattern,
-    NodeDict,
-    NodeList,
-    QueryResult
-)
+from GithubAnalyzer.models.analysis.types import (LanguageId, NodeDict,
+                                                  NodeList, QueryPattern,
+                                                  QueryResult)
 from GithubAnalyzer.models.core.errors import LanguageError, ParserError
+from GithubAnalyzer.models.core.language import (EXTENSION_TO_LANGUAGE,
+                                                 LANGUAGE_FEATURES,
+                                                 SPECIAL_FILENAMES,
+                                                 LanguageFeatures,
+                                                 LanguageInfo,
+                                                 get_base_language)
+from GithubAnalyzer.models.core.tree_sitter_core import get_node_text
 from GithubAnalyzer.utils.logging import get_logger
-from .utils import (
-    get_node_text,
-    node_to_dict,
-    is_valid_node,
-    get_node_type,
-    get_node_text_safe,
-    TreeSitterServiceBase
-)
-from .query_patterns import (
-    QUERY_PATTERNS,
-    EXTENSION_TO_LANGUAGE,
-    SPECIAL_FILENAMES
-)
 
-# Initialize logger
-logger = get_logger(__name__)
+from .query_patterns import (EXTENSION_TO_LANGUAGE, QUERY_PATTERNS,
+                             SPECIAL_FILENAMES)
+from .utils import (TreeSitterServiceBase, get_node_text_safe,
+                    get_node_type, is_valid_node, node_to_dict)
+
+from GithubAnalyzer.services.parsers.core.custom_parsers import \
+    get_custom_parser
+
+# Initialize logger with correlation ID
+logger = get_logger(__name__, correlation_id='language_service')
 
 @dataclass
 class LanguageService(TreeSitterServiceBase):
     """Service for managing tree-sitter languages."""
     
+    _parsers: Dict[str, Parser] = field(default_factory=dict)
+    _patterns: Dict[str, str] = field(default_factory=dict)
+    _language_patterns: Dict[str, Dict[str, str]] = field(default_factory=dict)
+    _operation_times: Dict[str, float] = field(default_factory=dict)
+    _operation_counts: Dict[str, int] = field(default_factory=dict)
+    
     def __post_init__(self):
         """Initialize language service."""
         super().__post_init__()
-        self._logger = logger
-        self._start_time = time.time()
-        
-        self._logger.debug("LanguageService initialized", extra={
-            'context': {
-                'module': 'language',
-                'thread': threading.get_ident(),
-                'duration_ms': 0
-            }
-        })
         
         self._supported_languages = set(EXTENSION_TO_LANGUAGE.values())
         self._extension_to_language = EXTENSION_TO_LANGUAGE
         
-    def _get_context(self, **kwargs) -> Dict[str, Any]:
-        """Get standard context for logging.
+        self._log("debug", "Language service initialized", 
+                operation="initialization",
+                supported_languages=len(self._supported_languages))
         
-        Args:
-            **kwargs: Additional context key-value pairs
-            
-        Returns:
-            Dict with standard context fields plus any additional fields
-        """
-        context = {
-            'module': 'language',
-            'thread': threading.get_ident(),
-            'duration_ms': (time.time() - self._start_time) * 1000
-        }
-        context.update(kwargs)
-        return context
-
-    def _log(self, level: str, message: str, **kwargs) -> None:
-        """Log with consistent context.
+        self._initialize_patterns()
         
-        Args:
-            level: Log level (debug, info, warning, error, critical)
-            message: Message to log
-            **kwargs: Additional context key-value pairs
-        """
-        context = self._get_context(**kwargs)
-        getattr(self._logger, level)(message, extra={'context': context})
-
     @property
     def supported_languages(self) -> Set[str]:
         """Get the set of supported languages."""
@@ -105,44 +77,64 @@ class LanguageService(TreeSitterServiceBase):
         Returns:
             Language identifier string. Returns 'plaintext' for unsupported or unknown file types.
         """
+        self._log("debug", "Detecting language for file", 
+                operation="language_detection",
+                file_path=file_path)
+                
         # Handle special filenames without extensions
         filename = Path(file_path).name.lower()
         if filename in SPECIAL_FILENAMES:
             mapped = SPECIAL_FILENAMES[filename]
             if self.is_language_supported(mapped):
+                self._log("debug", "Language detected from special filename",
+                        operation="language_detection",
+                        file_path=file_path,
+                        detected_language=mapped)
                 return mapped
             return 'plaintext'
         
         # Get extension and try to map it
         extension = Path(file_path).suffix.lstrip('.')
         if not extension:
-            # Try to detect language from content for files without extension
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                detected = self.detect_language(content)
-                if detected != 'plaintext':
-                    return detected
-            except:
-                pass
+            # For files without extension, check if we have a custom parser
+            custom_parser = get_custom_parser(file_path)
+            if custom_parser:
+                parser_type = type(custom_parser).__name__
+                detected_language = parser_type.replace('Parser', '').lower()
+                self._log("debug", "Language detected from custom parser",
+                        operation="language_detection",
+                        file_path=file_path,
+                        parser_type=parser_type,
+                        detected_language=detected_language)
+                return detected_language
             return 'plaintext'
             
         # Check if extension maps to a language
         if extension.lower() in self._extension_to_language:
             language = self._extension_to_language[extension.lower()]
             if self.is_language_supported(language):
+                self._log("debug", "Language detected from file extension",
+                        operation="language_detection",
+                        file_path=file_path,
+                        extension=extension,
+                        detected_language=language)
                 return language
-                
-        # Try to detect language from content for unknown extensions
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            detected = self.detect_language(content)
-            if detected != 'plaintext':
-                return detected
-        except:
-            pass
             
+        # For unknown extensions, check if we have a custom parser
+        custom_parser = get_custom_parser(file_path)
+        if custom_parser:
+            parser_type = type(custom_parser).__name__
+            detected_language = parser_type.replace('Parser', '').lower()
+            self._log("debug", "Language detected from custom parser (unknown extension)",
+                    operation="language_detection",
+                    file_path=file_path,
+                    parser_type=parser_type,
+                    detected_language=detected_language)
+            return detected_language
+                
+        self._log("debug", "No language detected, defaulting to plaintext",
+                operation="language_detection",
+                file_path=file_path)
         return 'plaintext'
         
     def is_language_supported(self, language: str) -> bool:
@@ -154,46 +146,67 @@ class LanguageService(TreeSitterServiceBase):
         Returns:
             True if the language is supported
         """
-        try:
-            # Try to get the language object - if it succeeds, the language is supported
-            return bool(get_language(language))
-        except:
-            return False
-        
-    def get_tree_sitter_language(self, language: str) -> Language:
-        """Return a tree_sitter.Language instance for the given language."""
-        if language.lower() in ['c_sharp', 'c#', 'csharp']:
-            return Language(tscsharp.language())
+        normalized_lang = language.lower().strip()
+        if normalized_lang in ['c_sharp', 'c#', 'csharp']:
+            return True
         else:
-            return Language('build/my-languages.so', language)
+            try:
+                from tree_sitter_language_pack import get_language
+                lang_obj = get_language(language)
+                return lang_obj is not None
+            except Exception:
+                return False
 
-    def get_parser(self, language: str) -> Parser:
-        """Get a parser for a language.
+    def get_tree_sitter_language(self, language: str):
+        """
+        Return a tree_sitter.Language instance for the given language using the appropriate API.
+        
+        For 'c_sharp' (and its variants), use the PyPI package tree_sitter_c_sharp with the pypi tree_sitter API.
+        For other languages, use the tree_sitter_language_pack API.
         
         Args:
-            language: Language identifier
-            
+            language (str): The language identifier.
+        
         Returns:
-            Configured Parser instance
-            
+            tree_sitter.Language: The corresponding language instance.
+        
         Raises:
-            LanguageError: If the language is not supported or parser creation fails
+            LanguageError: If the language cannot be obtained.
         """
-        start_time = self._time_operation('get_parser')
-        try:
-            if not self.is_language_supported(language):
-                raise LanguageError(f"Language not supported: {language}")
-                
-            lang_obj = self.get_tree_sitter_language(language)
-            parser = Parser(lang_obj)
-            if not parser:
-                raise LanguageError(f"Failed to create parser for language: {language}")
+        normalized_lang = language.lower().strip()
+        if normalized_lang in ['c_sharp', 'c#', 'csharp']:
+            import tree_sitter_c_sharp as tscsharp
+            from tree_sitter import Language
+            return Language(tscsharp.language())
+        else:
+            try:
+                from tree_sitter_language_pack import get_language
+                lang_obj = get_language(language)
+                if not lang_obj:
+                    from GithubAnalyzer.models.core.errors import LanguageError
+                    raise LanguageError(f"Failed to obtain language object for {language}.")
+                return lang_obj
+            except Exception as e:
+                from GithubAnalyzer.models.core.errors import LanguageError
+                raise LanguageError(f"Error obtaining tree-sitter language for {language}: {str(e)}")
+
+    def get_parser(self, language: str) -> Parser:
+        """
+        Get a tree-sitter parser for the given language.
+        For C# (c_sharp), use the tree-sitter-c-sharp package.
+        For all other languages, use tree_sitter_language_pack.
+        """
+        language_lower = language.lower()
+        if language_lower in ['c_sharp', 'c#', 'csharp']:
+            import tree_sitter_c_sharp as tscsharp
+            from tree_sitter import Language, Parser
+            CSHARP_LANGUAGE = Language(tscsharp.language())
+            parser = Parser(CSHARP_LANGUAGE)
             return parser
-        except Exception as e:
-            raise LanguageError(f"Error creating parser for {language}: {str(e)}")
-        finally:
-            self._end_operation('get_parser', start_time)
-            
+        else:
+            from tree_sitter_language_pack import get_parser
+            return get_parser(language_lower)
+
     def get_language_object(self, language: str) -> Language:
         """Get the tree-sitter Language object for a language.
         
@@ -208,9 +221,16 @@ class LanguageService(TreeSitterServiceBase):
         """
         start_time = self._time_operation('get_language_object')
         try:
+            normalized_lang = language.lower().strip()
+            if normalized_lang in ['c_sharp', 'c#', 'csharp']:
+                lang_obj = self.get_tree_sitter_language(language)
+                if not lang_obj:
+                    raise LanguageError(f"Failed to get language object for: {language}")
+                return lang_obj
+
             if not self.is_language_supported(language):
                 raise LanguageError(f"Language not supported: {language}")
-                
+
             lang_obj = self.get_tree_sitter_language(language)
             if not lang_obj:
                 raise LanguageError(f"Failed to get language object for: {language}")
@@ -436,4 +456,29 @@ class LanguageService(TreeSitterServiceBase):
             # Clean up logger after parsing
             if 'parser' in locals():
                 parser.logger = None
-            self._end_operation('parse_content', start_time) 
+            self._end_operation('parse_content', start_time)
+
+    def _initialize_patterns(self):
+        """Initialize pattern registry."""
+        self._patterns = {}
+        self._language_patterns = {}
+        
+    def _time_operation(self, operation: str) -> float:
+        """Start timing an operation."""
+        if operation not in self._operation_counts:
+            self._operation_counts[operation] = 0
+        self._operation_counts[operation] += 1
+        return time.time()
+        
+    def _end_operation(self, operation: str, start_time: float):
+        """End timing an operation."""
+        duration = time.time() - start_time
+        if operation not in self._operation_times:
+            self._operation_times[operation] = 0
+        self._operation_times[operation] += duration
+        
+        self._log("debug", f"Operation {operation} completed",
+                operation=operation,
+                duration_ms=duration * 1000,
+                count=self._operation_counts[operation],
+                total_time_ms=self._operation_times[operation] * 1000) 

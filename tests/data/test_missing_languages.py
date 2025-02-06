@@ -1,7 +1,10 @@
-from tree_sitter_language_pack import get_binding, get_language, get_parser
 import logging
 from pathlib import Path
-from src.GithubAnalyzer.services.analysis.parsers.query_patterns import QUERY_PATTERNS
+
+from tree_sitter_language_pack import get_binding, get_language, get_parser
+
+from GithubAnalyzer.services.analysis.parsers.query_patterns import \
+    QUERY_PATTERNS
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

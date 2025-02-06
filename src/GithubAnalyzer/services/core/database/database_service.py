@@ -1,30 +1,31 @@
-from typing import List, Dict, Any, Optional
-import time
 import threading
+import time
 from dataclasses import dataclass
-
-from GithubAnalyzer.services.core.database.postgres_service import PostgresService
-from GithubAnalyzer.utils.db_cleanup import DatabaseCleaner
 from datetime import datetime
-from GithubAnalyzer.services.core.database.neo4j_service import Neo4jService
-from GithubAnalyzer.models.core.database import CodeSnippet, Function, File, CodebaseQuery
-from GithubAnalyzer.services.core.parser_service import ParserService
-from GithubAnalyzer.services.analysis.parsers.query_service import TreeSitterQueryHandler
-from GithubAnalyzer.services.analysis.parsers.tree_sitter_editor import TreeSitterEditor
-from GithubAnalyzer.services.analysis.parsers.traversal_service import TreeSitterTraversal
-from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
+from typing import Any, Dict, List, Optional
+
+from GithubAnalyzer.models.core.db.database import (CodebaseQuery, CodeSnippet,
+                                                    File, Function)
 from GithubAnalyzer.models.core.errors import ParserError
+from GithubAnalyzer.models.core.traversal import TreeSitterTraversal
+from GithubAnalyzer.services.analysis.code_analytics_service import \
+    CodeAnalyticsService
+from GithubAnalyzer.services.analysis.parsers.language_service import \
+    LanguageService
+from GithubAnalyzer.services.analysis.parsers.query_patterns import \
+    QUERY_PATTERNS
+from GithubAnalyzer.services.analysis.parsers.tree_sitter_editor import \
+    TreeSitterEditor
 from GithubAnalyzer.services.analysis.parsers.utils import (
-    get_node_text,
-    node_to_dict,
-    iter_children,
-    get_node_hierarchy,
-    find_common_ancestor
-)
-from GithubAnalyzer.services.analysis.parsers.query_patterns import QUERY_PATTERNS
-from GithubAnalyzer.utils.logging import get_logger
+    find_common_ancestor, get_node_hierarchy, get_node_text, iter_children,
+    node_to_dict)
+from GithubAnalyzer.services.core.database.neo4j_service import Neo4jService
+from GithubAnalyzer.services.core.database.postgres_service import \
+    PostgresService
+from GithubAnalyzer.services.core.parser_service import ParserService
 from GithubAnalyzer.services.core.repo_processor import RepoProcessor
-from GithubAnalyzer.services.analysis.code_analytics_service import CodeAnalyticsService
+from GithubAnalyzer.utils.db.cleanup import DatabaseCleaner
+from GithubAnalyzer.utils.logging import get_logger
 
 # Initialize logger
 logger = get_logger("database")
@@ -38,7 +39,7 @@ This service acts as a high-level coordinator between different components:
    - Neo4j (via Neo4jService): Stores structural relationships between code elements
 
 2. Code Analysis Layer:
-   - Uses TreeSitterQueryHandler (via ParserService) for precise AST-based code analysis
+   - Uses ParserService for precise AST-based code analysis
    - Combines semantic search (embeddings) with structural analysis (AST)
 
 The service provides two main types of queries:
@@ -75,11 +76,10 @@ class DatabaseService:
         self.pg_service = PostgresService()
         self.neo4j_service = Neo4jService()
         self.cleaner = DatabaseCleaner()
-        self._query_handler = TreeSitterQueryHandler()
+        self._parser_service = ParserService()
         self._editor = TreeSitterEditor()
         self._traversal = TreeSitterTraversal()
         self._language_service = LanguageService()
-        self._parser_service = ParserService()
         self._repo_processor = RepoProcessor()
     
     def _get_context(self, **kwargs) -> Dict[str, Any]:
@@ -122,8 +122,8 @@ class DatabaseService:
         with self.neo4j_service as neo4j:
             neo4j.setup_constraints()
             
-        # Ensure initial sync
-        self.sync_databases()
+        # Skip initial sync since we don't have any data yet
+        self._log("info", "Database initialization complete")
     
     def sync_databases(self) -> None:
         """Synchronize data between PostgreSQL and Neo4j databases.
@@ -162,6 +162,12 @@ class DatabaseService:
     def cleanup_databases(self) -> None:
         """Clean up all databases."""
         self.cleaner.cleanup_all()
+    
+    def reset_databases(self) -> None:
+        """Reset both PostgreSQL and Neo4j databases completely."""
+        self._log("info", "Resetting both PostgreSQL and Neo4j databases")
+        self.cleanup_databases()
+        self.initialize_databases()
     
     def analyze_repository(self, repo_url: str) -> str:
         """Analyze a GitHub repository and store its data.
@@ -252,7 +258,7 @@ class DatabaseService:
         with self.pg_service as pg:
             return pg.get_documentation_context(query)
     
-    def store_code_data(self, repo_id: str, file_path: str, code_text: str,
+    def store_code_data(self, repo_id: int, file_path: str, code_text: str,
                        language: Optional[str] = None) -> None:
         """Store code data with full AST information.
         
@@ -342,7 +348,7 @@ class DatabaseService:
             )
             
             # Find function calls within this function
-            calls = self._query_handler.find_nodes(
+            calls = self._parser_service._query_handler.find_nodes(
                 parse_result.tree,
                 "call",
                 parse_result.language
@@ -624,7 +630,7 @@ class DatabaseService:
             is_valid = self._editor.verify_tree_changes(tree)
             errors = []
             if not is_valid:
-                _, errors = self._query_handler.validate_syntax(tree.root_node, language)
+                _, errors = self._parser_service._query_handler.validate_syntax(tree.root_node, language)
             
             return {
                 'modified_code': tree.root_node.text.decode('utf8'),
@@ -658,7 +664,7 @@ class DatabaseService:
                     results[element_type] = query_methods[f'find_{element_type}s'](tree.root_node)
                 else:
                     # Fallback to generic node finding
-                    results[element_type] = self._query_handler.find_nodes(tree, element_type)
+                    results[element_type] = self._parser_service._query_handler.find_nodes(tree, element_type)
             
             return results
         except Exception as e:
@@ -692,11 +698,11 @@ class DatabaseService:
             
             # Analyze control flow
             control_flow = {
-                'conditionals': self._query_handler.find_nodes(tree, "if_statement"),
-                'loops': self._query_handler.find_nodes(tree, "for_statement") + 
-                        self._query_handler.find_nodes(tree, "while_statement"),
-                'returns': self._query_handler.find_nodes(tree, "return_statement"),
-                'raises': self._query_handler.find_nodes(tree, "raise_statement")
+                'conditionals': self._parser_service._query_handler.find_nodes(tree, "if_statement"),
+                'loops': self._parser_service._query_handler.find_nodes(tree, "for_statement") + 
+                        self._parser_service._query_handler.find_nodes(tree, "while_statement"),
+                'returns': self._parser_service._query_handler.find_nodes(tree, "return_statement"),
+                'raises': self._parser_service._query_handler.find_nodes(tree, "raise_statement")
             }
             
             return {
@@ -730,7 +736,7 @@ class DatabaseService:
             'file_extensions': self._language_service.extension_to_language
         }
 
-    def delete_code_data(self, repo_id: str, file_path: str) -> None:
+    def delete_code_data(self, repo_id: int, file_path: str) -> None:
         """Delete code data from both databases atomically."""
         try:
             with self.pg_service as pg, self.neo4j_service as neo4j:
@@ -743,7 +749,7 @@ class DatabaseService:
             self._log("error", "Atomic delete_code_data transaction failed", file=file_path, error=str(e))
             raise ParserError(f"Failed to delete code data: {str(e)}")
 
-    def update_code_data(self, repo_id: str, file_path: str, code_text: str,
+    def update_code_data(self, repo_id: int, file_path: str, code_text: str,
                         language: Optional[str] = None) -> None:
         parse_result = self._parser_service.parse_content(code_text, language)
         if not parse_result.tree:
@@ -774,7 +780,7 @@ class DatabaseService:
             self._log("error", "Atomic update_code_data transaction failed", file=file_path, error=str(e))
             raise ParserError(f"Failed to update code data: {str(e)}")
 
-    def delete_file(self, repo_id: str, file_path: str) -> None:
+    def delete_file(self, repo_id: int, file_path: str) -> None:
         """Delete all data related to a file from both databases.
         
         Args:
@@ -869,7 +875,7 @@ class DatabaseService:
         
         return analysis_results
         
-    def export_codebase_graph(self, repo_id: str, format: str = 'json') -> str:
+    def export_codebase_graph(self, repo_id: int, format: str = 'json') -> str:
         """Export the codebase graph data.
         
         Args:
@@ -890,7 +896,7 @@ class DatabaseService:
         """
         self.neo4j_service.import_graph_data(data, format)
         
-    def get_code_metrics(self, repo_id: str) -> Dict[str, Any]:
+    def get_code_metrics(self, repo_id: int) -> Dict[str, Any]:
         """Get comprehensive code metrics using graph analytics.
         
         This method combines various metrics:

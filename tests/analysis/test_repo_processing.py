@@ -1,19 +1,22 @@
 """Test suite for repository processing flow."""
 import logging
-import tempfile
 import os
+import tempfile
 from pathlib import Path
-from typing import Dict, Any
-import pytest
-from unittest.mock import patch, MagicMock
+from typing import Any, Dict
+from unittest.mock import MagicMock, patch
 
-from tree_sitter import Parser, Language, Tree
+import pytest
+from tree_sitter import Language, Parser, Tree
 from tree_sitter_language_pack import get_binding, get_language, get_parser
-from GithubAnalyzer.services.core.repo_processor import RepoProcessor
+
+from GithubAnalyzer.services.parsers.core.custom_parsers import get_custom_parser
+from GithubAnalyzer.services.analysis.parsers.language_service import \
+    LanguageService
+from GithubAnalyzer.services.analysis.parsers.query_service import \
+    TreeSitterQueryHandler
 from GithubAnalyzer.services.core.file_service import FileService
-from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
-from GithubAnalyzer.services.analysis.parsers.query_service import TreeSitterQueryHandler
-from GithubAnalyzer.services.analysis.parsers.custom_parsers import get_custom_parser
+from GithubAnalyzer.services.core.repo_processor import RepoProcessor
 from GithubAnalyzer.utils.logging import get_logger
 
 # Set up basic logging for tests

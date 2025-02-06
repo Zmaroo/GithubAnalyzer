@@ -1,28 +1,27 @@
 """Parser service for code analysis using tree-sitter."""
-import os
-import time
-import threading
-from pathlib import Path
-from typing import Union, Optional, Callable, Dict, Any, Set
-from tree_sitter import Tree, Language, Parser
 import logging
+import os
+import threading
+import time
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable, Dict, Optional, Set, Union
 
-from GithubAnalyzer.models.core.errors import ParserError, LanguageError
+from tree_sitter import Language, Parser, Tree
+
 from GithubAnalyzer.models.core.ast import ParseResult
+from GithubAnalyzer.models.core.errors import LanguageError, ParserError
 from GithubAnalyzer.models.core.file import FileInfo
+from GithubAnalyzer.models.core.traversal import TreeSitterTraversal
+from GithubAnalyzer.services.analysis.parsers.language_service import \
+    LanguageService
+from GithubAnalyzer.services.parsers.core.query_handler import \
+    TreeSitterQueryHandler
+from GithubAnalyzer.services.analysis.parsers.utils import (
+    find_common_ancestor, get_node_hierarchy, get_node_text, iter_children,
+    node_to_dict)
 from GithubAnalyzer.utils.logging import get_logger, get_tree_sitter_logger
 from GithubAnalyzer.utils.timing import timer
-from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
-from GithubAnalyzer.services.analysis.parsers.query_service import TreeSitterQueryHandler
-from GithubAnalyzer.services.analysis.parsers.traversal_service import TreeSitterTraversal
-from GithubAnalyzer.services.analysis.parsers.utils import (
-    get_node_text,
-    node_to_dict,
-    iter_children,
-    get_node_hierarchy,
-    find_common_ancestor
-)
 
 # Initialize logger
 logger = get_logger("core.parser")

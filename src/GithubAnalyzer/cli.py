@@ -9,13 +9,15 @@ It supports both human users and AI agents with commands for:
 - System information
 """
 
-import click
 import json
-from pathlib import Path
-from typing import Optional, Dict, Any
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional
 
-from GithubAnalyzer.services.core.database.database_service import DatabaseService
+import click
+
+from GithubAnalyzer.services.core.database.database_service import \
+    DatabaseService
 from GithubAnalyzer.utils.logging import get_logger
 
 # Initialize logger
@@ -52,6 +54,15 @@ def clear():
         click.echo("Databases cleared successfully.")
     except Exception as e:
         click.echo(f"Error clearing databases: {str(e)}", err=True)
+
+@db.command()
+def reset():
+    """Reset both PostgreSQL and Neo4j databases (clear then initialize)."""
+    try:
+        db_service.reset_databases()
+        click.echo("Databases have been reset successfully.")
+    except Exception as e:
+        click.echo(f"Error resetting databases: {str(e)}", err=True)
 
 @db.command()
 def info():

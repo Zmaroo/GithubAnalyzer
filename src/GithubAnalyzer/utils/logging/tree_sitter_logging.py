@@ -1,18 +1,20 @@
 try:
-    from tree_sitter import Parser, Tree, QueryError
+    from tree_sitter import Parser, QueryError, Tree
     TREE_SITTER_AVAILABLE = True
 except ImportError:
     TREE_SITTER_AVAILABLE = False
 import json
 import logging
-import time
-from typing import Optional, Union, Dict, Any, List
 import sys
-from datetime import datetime
 import threading
+import time
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
+
 from GithubAnalyzer.utils.logging.config import TREE_SITTER_LOGGING_ENABLED
 
 from . import StructuredFormatter
+
 """Tree-sitter logging handler for GithubAnalyzer."""
 
 class TreeSitterLogHandler(logging.Handler):
@@ -201,6 +203,10 @@ class TreeSitterLogHandler(logging.Handler):
             msg_context = {}
             level = logging.ERROR if log_type == 1 else logging.DEBUG
             timestamp = time.time()
+
+        # Filter out non-parse logs: only process parse logs
+        if msg_log_type != 'parse':
+            return
 
         # Create record with appropriate level and message
         record = logging.LogRecord(

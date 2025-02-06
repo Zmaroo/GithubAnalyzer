@@ -1,8 +1,8 @@
 """Timing utilities for performance monitoring."""
-import time
 import functools
 import sys
-from typing import Callable, TypeVar, ParamSpec
+import time
+from typing import Callable, ParamSpec, TypeVar
 
 from .logging import get_logger
 

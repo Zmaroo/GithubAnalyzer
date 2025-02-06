@@ -1,39 +1,45 @@
 """Repository processor for analyzing GitHub repositories."""
-from typing import List, Dict, Any, Optional
-import git
-import tempfile
 import os
-import time
+import tempfile
 import threading
-from pathlib import Path
-from dataclasses import dataclass
-from dotenv import load_dotenv
+import time
+from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
 
-from GithubAnalyzer.services.core.database.postgres_service import PostgresService
-from GithubAnalyzer.services.core.parser_service import ParserService
-from GithubAnalyzer.services.core.database.neo4j_service import Neo4jService
-from GithubAnalyzer.services.core.file_service import FileService
-from GithubAnalyzer.utils.logging import get_logger
-from GithubAnalyzer.services.analysis.parsers.query_service import TreeSitterQueryHandler
-from GithubAnalyzer.models.core.file import FileInfo, FilePattern, FileFilterConfig
-from GithubAnalyzer.models.core.database import CodeSnippet, Function, File
-from GithubAnalyzer.services.analysis.parsers.language_service import LanguageService
-from GithubAnalyzer.services.analysis.parsers.custom_parsers import get_custom_parser
+import git
+from dotenv import load_dotenv
+
+from GithubAnalyzer.models.core.base_model import BaseModel
+from GithubAnalyzer.models.core.db.database import CodeSnippet, File, Function
+from GithubAnalyzer.models.core.file import (FileFilterConfig, FileInfo,
+                                             FilePattern)
+from GithubAnalyzer.models.core.repository import (ProcessingResult,
+                                                   ProcessingStats,
+                                                   RepositoryInfo)
+from GithubAnalyzer.services.parsers.core.custom_parsers import \
+    get_custom_parser
+from GithubAnalyzer.services.analysis.parsers.language_service import \
+    LanguageService
+from GithubAnalyzer.services.analysis.parsers.query_service import \
+    TreeSitterQueryHandler
 from GithubAnalyzer.services.analysis.parsers.utils import (
-    get_node_text,
-    node_to_dict,
-    iter_children,
-    get_node_hierarchy,
-    find_common_ancestor
-)
+    find_common_ancestor, get_node_hierarchy, get_node_text, iter_children,
+    node_to_dict)
+from GithubAnalyzer.services.core.database.neo4j_service import Neo4jService
+from GithubAnalyzer.services.core.database.postgres_service import \
+    PostgresService
+from GithubAnalyzer.services.core.file_service import FileService
+from GithubAnalyzer.services.core.parser_service import ParserService
+from GithubAnalyzer.utils.logging import get_logger
 
 load_dotenv()
 # Initialize logger
 logger = get_logger(__name__)
 
 @dataclass
-class RepoProcessor:
+class RepoProcessor(BaseModel):
     """Service for processing GitHub repositories."""
     
     def __post_init__(self):
@@ -129,16 +135,49 @@ class RepoProcessor:
             
             for file_info in files:
                 try:
+                    # Skip files we can't process
+                    if not file_info.is_supported:
+                        self._log("debug", "Skipping unsupported file", file=str(file_info.path))
+                        skipped_count += 1
+                        continue
+
+                    # Skip binary files
+                    if self.file_service._is_binary_file(file_info.path):
+                        self._log("debug", "Skipping binary file", file=str(file_info.path))
+                        skipped_count += 1
+                        continue
+
+                    # Read the current file content
+                    try:
+                        with open(file_info.path, "r", encoding="utf-8") as f:
+                            new_code = f.read()
+                    except (UnicodeDecodeError, IOError) as e:
+                        self._log("debug", "File read error", file=str(file_info.path), error=str(e))
+                        skipped_count += 1
+                        continue
+
+                    # Check if the file is already stored
+                    stored_code = self.pg_service.get_code_text(repo_id, str(file_info.path))
+                    if stored_code is not None:
+                        if stored_code == new_code:
+                            self._log("debug", "Skipping unchanged file", file=str(file_info.path))
+                            skipped_count += 1
+                            continue
+                        else:
+                            # File has changed, remove old record before updating
+                            self.pg_service.delete_file_snippets(str(file_info.path))
+
                     snippet = self._process_file(file_info)
                     if snippet:
-                        # Store in databases
+                        snippet.repo_id = repo_id
+                        # Store the updated/new snippet in the databases
                         self._store_in_postgres(snippet)
                         if snippet.ast_data:
                             self._store_ast_in_neo4j(snippet)
                         processed_count += 1
                     else:
                         skipped_count += 1
-                        
+
                 except Exception as e:
                     error_count += 1
                     self._log("error", "Error processing file",
@@ -204,8 +243,7 @@ class RepoProcessor:
                         language=file_info.language,
                         ast_data=ast_data,
                         syntax_valid=True,
-                        embedding=[0.0] * 768,  # Default zero embedding
-                        created_at=datetime.now()
+                        embedding=[0.0] * 1536  # Default zero embedding
                     )
 
             # Process with tree-sitter if language is supported
@@ -226,8 +264,7 @@ class RepoProcessor:
                         language=file_info.language,
                         ast_data=ast_data,
                         syntax_valid=ast_data.get('syntax_valid', True),  # Default to True if not specified
-                        embedding=[0.0] * 768,  # Default zero embedding
-                        created_at=datetime.now()
+                        embedding=[0.0] * 1536  # Default zero embedding
                     )
 
             # If we get here, we have valid content but no successful parse
@@ -243,8 +280,7 @@ class RepoProcessor:
                 language=file_info.language or "unknown",
                 ast_data={},
                 syntax_valid=False,
-                embedding=[0.0] * 768,  # Default zero embedding
-                created_at=datetime.now()
+                embedding=[0.0] * 1536  # Default zero embedding
             )
 
         except Exception as e:
@@ -330,6 +366,35 @@ class RepoProcessor:
             
         return node_to_dict(parse_result.tree.root_node)
         
+    def _extract_functions(self, ast_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Recursively extract function definitions from the AST data.
+        
+        Args:
+            ast_data: AST data dictionary
+            
+        Returns:
+            A dictionary mapping function names to their AST node data.
+        """
+        functions = {}
+
+        def recurse(node):
+            if isinstance(node, dict):
+                # Check for function definition nodes; adjust the node types as needed
+                if node.get('type') in ['function_definition', 'function_declaration', 'method_definition']:
+                    # Attempt to find the function name from children
+                    for child in node.get('children', []):
+                        if isinstance(child, dict) and child.get('type') == 'identifier' and 'text' in child:
+                            func_name = child['text']
+                            if func_name:
+                                functions[func_name] = node
+                                break
+                # Recurse into children
+                for child in node.get('children', []):
+                    recurse(child)
+
+        recurse(ast_data)
+        return functions
+
     def _store_ast_in_neo4j(self, snippet: CodeSnippet) -> None:
         """Store AST structure in Neo4j.
         
@@ -339,25 +404,27 @@ class RepoProcessor:
         if not snippet.ast_data:
             return
             
-        # Store in Neo4j
-        file = File(
+        # Store file node in Neo4j
+        file_node = File(
             path=snippet.file_path,
             repo_id=snippet.repo_id,
             language=snippet.language,
             functions=[]
         )
-        self.neo4j_service.create_file_node(file)
+        self.neo4j_service.create_file_node(file_node)
         
-        # Store functions
-        for function, ast_data in snippet.ast_data.items():
-            self.neo4j_service.create_function_node(function, ast_data)
+        # Extract function definitions from the AST
+        functions = self._extract_functions(snippet.ast_data)
+        
+        # Create function nodes
+        for func_name, func_ast in functions.items():
+            self.neo4j_service.create_function_node(func_name, func_ast)
             
-        # Create function relationships
-        for caller, caller_data in snippet.ast_data.items():
-            for callee, callee_data in snippet.ast_data.items():
+        # Create function call relationships
+        for caller, caller_ast in functions.items():
+            for callee, callee_ast in functions.items():
                 if caller != callee:
-                    # Check for function calls in the caller's AST data
-                    if self._has_function_call(caller_data, callee):
+                    if self._has_function_call(caller_ast, callee):
                         self.neo4j_service.create_function_relationship(caller, callee)
 
     def _has_function_call(self, ast_data: Dict[str, Any], function_name: str) -> bool:
@@ -370,18 +437,15 @@ class RepoProcessor:
         Returns:
             True if a call to the function is found, False otherwise
         """
-        # If this is a call node, check if it's calling our target function
         if ast_data.get('type') == 'call':
             for child in ast_data.get('children', []):
                 if (child.get('type') == 'identifier' and 
                     child.get('text') == function_name):
                     return True
-                    
         # Recursively check children
         for child in ast_data.get('children', []):
             if isinstance(child, dict) and self._has_function_call(child, function_name):
                 return True
-                
         return False
 
     def query_codebase(self, query: str, limit: int = 5) -> Dict[str, Any]:
@@ -411,3 +475,13 @@ class RepoProcessor:
                 results['structural_relationships'] = relationships
                 
         return results 
+
+    def _store_in_postgres(self, snippet: CodeSnippet) -> None:
+        """Store the given CodeSnippet in the PostgreSQL database using PostgresService."""
+        try:
+            # Attempt to insert the new code snippet
+            # Assuming PostgresService has a create_code_snippet method that accepts a CodeSnippet
+            self.pg_service.store_code_with_embedding(snippet)
+        except Exception as e:
+            self._log("error", "Failed to store snippet in Postgres", file=snippet.file_path, error=str(e))
+            raise 

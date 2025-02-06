@@ -1,5 +1,8 @@
-from GithubAnalyzer.services.analysis.parsers.traversal_service import TreeSitterTraversal
 from tree_sitter_language_pack import get_binding, get_language, get_parser
+
+from GithubAnalyzer.services.analysis.parsers.traversal_service import \
+    TreeSitterTraversal
+
 
 def analyze_julia_ast():
     # Initialize services
